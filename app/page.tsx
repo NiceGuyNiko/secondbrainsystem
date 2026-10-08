@@ -1,29 +1,23 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import AuthGate from '@/components/auth-gate';
 import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox } from 'lucide-react';
 
 type Section = 'Scheduling' | 'Goals' | 'Resources';
 type View = 'Day' | 'Week' | 'Month';
 type Task = { id: number; title: string; done: boolean; project: string };
-type WorkBlock = { id: number; title: string; start: string; end: string; tasks: Task[] };
+type WorkBlock = { dbId?: string; id: number; title: string; start: string; end: string; tasks: Task[] };
 
-const initialBlocks: WorkBlock[] = [
-  { id: 1, title: 'Work shift', start: '09:00', end: '17:00', tasks: [
-    { id: 1, title: 'Send email to manager', done: false, project: 'Store operations' },
-    { id: 2, title: 'Check product orders', done: false, project: 'Inventory' }
-  ] },
-  { id: 2, title: 'Creative work', start: '19:00', end: '21:00', tasks: [
-    { id: 3, title: "Work on Michael's backstory", done: false, project: 'Book development' }
-  ] }
-];
 const navigation = [{ name: 'Scheduling' as const, icon: CalendarDays }, { name: 'Goals' as const, icon: Target }, { name: 'Resources' as const, icon: LibraryBig }];
 
 export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
 function Workspace() {
  const [section, setSection] = useState<Section>('Scheduling');
  const [view, setView] = useState<View>('Day');
- const [blocks, setBlocks] = useState<WorkBlock[]>(initialBlocks);
+ const [blocks, setBlocks] = useState<WorkBlock[]>([]);
+ const [loadingBlocks,setLoadingBlocks]=useState(true);
+ const [saveError,setSaveError]=useState('');
  const [newTitle, setNewTitle] = useState('');
  const [showNew, setShowNew] = useState(false);
  const [startDay, setStartDay] = useState('Monday');
@@ -36,17 +30,42 @@ function Workspace() {
    const [hour,min] = value.split(':').map(Number);
    return `${hour%12||12}:${String(min).padStart(2,'0')} ${hour>=12?'PM':'AM'}`;
  };
- function addBlock(){
-   if(!newTitle.trim()) return;
-   setBlocks(old => [...old,{id:Date.now(),title:newTitle.trim(),start:'09:00',end:'10:00',tasks:[]}]);
-   setNewTitle(''); setShowNew(false);
+ useEffect(()=>{
+  let active=true;
+  async function load(){
+   const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});
+   if(!active)return;
+   if(error)setSaveError(error.message);
+   else setBlocks((data??[]).map(row=>({...row.content as WorkBlock,dbId:row.id})));
+   setLoadingBlocks(false);
+  }
+  void load();
+  const channel=supabase.channel('schedule-sync').on('postgres_changes',{event:'*',schema:'public',table:'user_items'},()=>{void load()}).subscribe();
+  const onFocus=()=>{void load()};
+  window.addEventListener('focus',onFocus);
+  return()=>{active=false;window.removeEventListener('focus',onFocus);void supabase.removeChannel(channel)};
+ },[]);
+ async function saveBlock(block:WorkBlock){
+  if(!block.dbId)return;
+  const {error}=await supabase.from('user_items').update({title:block.title,content:{id:block.id,title:block.title,start:block.start,end:block.end,tasks:block.tasks},updated_at:new Date().toISOString()}).eq('id',block.dbId);
+  if(error)setSaveError(error.message);
  }
- function addTask(blockId:number, title:string) {
-   if(!title.trim()) return;
-   setBlocks(current => current.map(block => block.id===blockId ? {...block,tasks:[...block.tasks,{id:Date.now(),title:title.trim(),done:false,project:'Unassigned'}]} : block));
+ async function addBlock(){
+  if(!newTitle.trim())return;
+  const block:WorkBlock={id:Date.now(),title:newTitle.trim(),start:'09:00',end:'10:00',tasks:[]};
+  const {data,error}=await supabase.from('user_items').insert({title:block.title,item_type:'block',content:block}).select('id').single();
+  if(error){setSaveError(error.message);return}
+  setBlocks(old=>[...old,{...block,dbId:data.id}]);setNewTitle('');setShowNew(false);
  }
- function toggleTask(blockId:number,taskId:number) {
-   setBlocks(current => current.map(block => block.id===blockId ? {...block,tasks:block.tasks.map(task=>task.id===taskId?{...task,done:!task.done}:task)} : block));
+ function changeBlock(blockId:number,change:(block:WorkBlock)=>WorkBlock){
+  setBlocks(current=>current.map(block=>{if(block.id!==blockId)return block;const updated=change(block);void saveBlock(updated);return updated}));
+ }
+ function addTask(blockId:number,title:string){
+  if(!title.trim())return;
+  changeBlock(blockId,block=>({...block,tasks:[...block.tasks,{id:Date.now(),title:title.trim(),done:false,project:'Unassigned'}]}));
+ }
+ function toggleTask(blockId:number,taskId:number){
+  changeBlock(blockId,block=>({...block,tasks:block.tasks.map(task=>task.id===taskId?{...task,done:!task.done}:task)}));
  }
  return <div className="min-h-screen md:flex">
   <aside className="w-full border-b border-white/10 bg-[#101829] p-5 md:min-h-screen md:w-64 md:border-b-0 md:border-r">
@@ -60,11 +79,11 @@ function Workspace() {
    {section==='Scheduling' && <>
     <div className="mb-6 flex w-fit rounded-xl border border-white/10 bg-white/5 p-1">{(['Day','Week','Month'] as View[]).map(v=><button key={v} onClick={()=>setView(v)} className={`rounded-lg px-5 py-2 text-sm ${view===v?'bg-slate-700 text-white':'text-slate-400'}`}>{v}</button>)}</div>
     {showNew&&<form onSubmit={e=>{e.preventDefault();addBlock()}} className="mb-5 flex gap-2"><input aria-label="Block name" autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Block name" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-800 px-4 py-3"/><button className="rounded-xl bg-teal-400 px-4 text-slate-950">Add</button></form>}
-    {view==='Day' ? <div className="space-y-4">{blocks.sort((a,b)=>a.start.localeCompare(b.start)).map(block=><BlockCard key={block.id} block={block} formatTime={formatTime} toggleTask={toggleTask} addTask={addTask} updateTime={(key,value)=>setBlocks(old=>old.map(b=>b.id===block.id?{...b,[key]:value}:b))}/>)}</div> : <div className="rounded-2xl border border-white/10 bg-white/5 p-6"><p className="text-lg font-medium">{view} planning</p><p className="mt-2 text-sm text-slate-400">This view is the next feature to build. It will help you arrange your {view==='Week'?'work shifts, activities, due dates and blocks':'paydays, events, commitments and project deadlines'}.</p><p className="mt-5 text-sm text-teal-300">Week starts on {startDay} · {clock} clock</p></div>}
+    {saveError&&<p role="alert" className="mb-3 text-sm text-red-300">Save error: {saveError}</p>}{loadingBlocks&&<p className="mb-3 text-sm text-slate-400">Loading saved schedule…</p>}{view==='Day' ? <div className="space-y-4">{[...blocks].sort((a,b)=>a.start.localeCompare(b.start)).map(block=><BlockCard key={block.id} block={block} formatTime={formatTime} toggleTask={toggleTask} addTask={addTask} updateTime={(key,value)=>changeBlock(block.id,b=>({...b,[key]:value}))}/>)}</div> : <div className="rounded-2xl border border-white/10 bg-white/5 p-6"><p className="text-lg font-medium">{view} planning</p><p className="mt-2 text-sm text-slate-400">This view is the next feature to build. It will help you arrange your {view==='Week'?'work shifts, activities, due dates and blocks':'paydays, events, commitments and project deadlines'}.</p><p className="mt-5 text-sm text-teal-300">Week starts on {startDay} · {clock} clock</p></div>}
    </>}
    {section==='Goals'&&<Placeholder icon={<FolderKanban size={24}/>} title="Goals and projects" description="A home for long-term visions, 13-week sprints, projects and actionable tasks. We'll build this section next."/>}
    {section==='Resources'&&<Placeholder icon={<Inbox size={24}/>} title="Your thought inbox" description="Capture ideas, build collections, and connect reusable resource pages to projects and tasks. We'll build this section next."/>}
-   <p className="mt-10 text-xs text-slate-500">Prototype v0.1 · Example content only · Changes currently reset on refresh</p>
+   <p className="mt-10 text-xs text-slate-500">Scheduling blocks and tasks saved to your account · Goals and Resources coming soon</p>
   </main>
  </div>;
 }
