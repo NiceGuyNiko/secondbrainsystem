@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import AuthGate from '@/components/auth-gate';
 import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox } from 'lucide-react';
 
 type Section = 'Scheduling' | 'Goals' | 'Resources';
@@ -18,7 +19,8 @@ const initialBlocks: WorkBlock[] = [
 ];
 const navigation = [{ name: 'Scheduling' as const, icon: CalendarDays }, { name: 'Goals' as const, icon: Target }, { name: 'Resources' as const, icon: LibraryBig }];
 
-export default function Home() {
+export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
+function Workspace() {
  const [section, setSection] = useState<Section>('Scheduling');
  const [view, setView] = useState<View>('Day');
  const [blocks, setBlocks] = useState<WorkBlock[]>(initialBlocks);
