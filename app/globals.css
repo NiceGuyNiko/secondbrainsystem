@@ -18,3 +18,5 @@
 
 .calendar-hour-scroll{height:min(66vh,650px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--border) transparent}.calendar-hour-scroll .timeline-row{min-height:86px}.calendar-hour-scroll .timeline-cell{min-height:86px}.calendar-hour-scroll .now-line{box-shadow:0 0 8px var(--accent)}.calendar-modal input[type="date"],.calendar-modal input[type="time"]{color-scheme:inherit}
 .week-ribbons{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;padding:8px;border-bottom:1px solid var(--border)}.week-ribbons:empty{display:none}
+
+.calendar-context-backdrop{position:fixed;inset:0;z-index:80}.calendar-context-menu{position:fixed;min-width:174px;background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:0 10px 30px #0003;border-radius:12px;padding:5px;display:grid;gap:2px}.calendar-context-menu button{padding:10px 12px;text-align:left;border-radius:8px;font-size:13px}.calendar-context-menu button:hover{background:var(--surface-2)}.calendar-danger{color:var(--danger)}
