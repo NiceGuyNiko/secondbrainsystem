@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import AuthGate from '@/components/auth-gate';
+import { useProfile } from '@/components/profile-context';
 import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox } from 'lucide-react';
 
 type Section = 'Scheduling' | 'Goals' | 'Resources';
@@ -13,6 +14,7 @@ const navigation = [{ name: 'Scheduling' as const, icon: CalendarDays }, { name:
 
 export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
 function Workspace() {
+ const {displayName}=useProfile();
  const [section, setSection] = useState<Section>('Scheduling');
  const [view, setView] = useState<View>('Day');
  const [blocks, setBlocks] = useState<WorkBlock[]>([]);
@@ -75,7 +77,7 @@ function Workspace() {
     {settings && <div className="mt-3 space-y-3 rounded-xl border border-white/10 p-3 text-sm"><div className="font-semibold">Calendar</div><label className="block text-xs text-slate-400">Week starts on<select value={startDay} onChange={e=>setStartDay(e.target.value)} className="mt-1 w-full rounded-lg bg-slate-800 p-2 text-white">{['Monday','Sunday','Saturday'].map(d=><option key={d}>{d}</option>)}</select></label><label className="block text-xs text-slate-400">Clock format<select value={clock} onChange={e=>setClock(e.target.value)} className="mt-1 w-full rounded-lg bg-slate-800 p-2 text-white"><option value="12-hour">12-hour</option><option value="24-hour">24-hour</option></select></label></div>}
   </aside>
   <main className="mx-auto w-full max-w-6xl p-5 md:p-10">
-   <header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-300">My workspace</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="mt-2 text-sm text-slate-400">{section==='Scheduling'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="flex items-center gap-2 rounded-xl bg-teal-400 px-4 py-2.5 text-sm font-semibold text-slate-950"><Plus size={18}/> New block</button>}</header>
+   <header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-teal-300">{displayName === 'My' ? 'My workspace' : displayName + '\u2019s workspace'}</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="mt-2 text-sm text-slate-400">{section==='Scheduling'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="flex items-center gap-2 rounded-xl bg-teal-400 px-4 py-2.5 text-sm font-semibold text-slate-950"><Plus size={18}/> New block</button>}</header>
    {section==='Scheduling' && <>
     <div className="mb-6 flex w-fit rounded-xl border border-white/10 bg-white/5 p-1">{(['Day','Week','Month'] as View[]).map(v=><button key={v} onClick={()=>setView(v)} className={`rounded-lg px-5 py-2 text-sm ${view===v?'bg-slate-700 text-white':'text-slate-400'}`}>{v}</button>)}</div>
     {showNew&&<form onSubmit={e=>{e.preventDefault();addBlock()}} className="mb-5 flex gap-2"><input aria-label="Block name" autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Block name" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-800 px-4 py-3"/><button className="rounded-xl bg-teal-400 px-4 text-slate-950">Add</button></form>}
