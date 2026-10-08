@@ -9,7 +9,7 @@ import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, Folde
 type Section = 'Scheduling' | 'Calendar' | 'Goals' | 'Resources';
 type View = 'Day' | 'Week' | 'Month';
 type Task = { id: number; title: string; done: boolean; project: string };
-type WorkBlock = { dbId?: string; id: number; title: string; start: string; end: string; tasks: Task[] };
+type WorkBlock = { dbId?: string; id: number; title: string; start: string; end: string; tasks: Task[]; date?:string; endDate?:string; category?:string; kind?:string; locked?:boolean };
 
 const navigation = [{ name: 'Scheduling' as const, icon: CalendarDays }, { name: 'Calendar' as const, icon: CalendarDays }, { name: 'Goals' as const, icon: Target }, { name: 'Resources' as const, icon: LibraryBig }];
 
@@ -30,6 +30,7 @@ function Workspace() {
  useEffect(()=>{const saved=localStorage.getItem('think-theme');if(saved==='light'||saved==='dark')setTheme(saved)},[]);
  useEffect(()=>{if(theme==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);localStorage.setItem('think-theme',theme)},[theme]);
  const today = useMemo(() => new Date(), []);
+ const todayKey=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
  const dateLabel = today.toLocaleDateString('en-CA', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
  const formatTime = (value:string) => {
    if (clock === '24-hour') return value;
@@ -42,7 +43,7 @@ function Workspace() {
    const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});
    if(!active)return;
    if(error)setSaveError(error.message);
-   else setBlocks((data??[]).map(row=>({...row.content as WorkBlock,dbId:row.id})));
+   else setBlocks((data??[]).map(row=>({...row.content as WorkBlock,dbId:row.id})).filter(b=>!b.date||b.date<=todayKey&&(b.endDate||b.date)>=todayKey));
    setLoadingBlocks(false);
   }
   void load();
@@ -53,12 +54,15 @@ function Workspace() {
  },[]);
  async function saveBlock(block:WorkBlock){
   if(!block.dbId)return;
-  const {error}=await supabase.from('user_items').update({title:block.title,content:{id:block.id,title:block.title,start:block.start,end:block.end,tasks:block.tasks},updated_at:new Date().toISOString()}).eq('id',block.dbId);
+  const {data:current,error:readError}=await supabase.from('user_items').select('content').eq('id',block.dbId).single();
+  if(readError){setSaveError(readError.message);return}
+  const {error}=await supabase.from('user_items').update({title:block.title,content:{...(current.content as Record<string,unknown>),id:block.id,title:block.title,start:block.start,end:block.end,tasks:block.tasks},updated_at:new Date().toISOString()}).eq('id',block.dbId);
   if(error)setSaveError(error.message);
  }
  async function addBlock(){
   if(!newTitle.trim())return;
-  const block:WorkBlock={id:Date.now(),title:newTitle.trim(),start:'09:00',end:'10:00',tasks:[]};
+  const date=todayKey;
+  const block:WorkBlock={id:Date.now(),title:newTitle.trim(),start:'09:00',end:'10:00',date,endDate:date,category:'Personal',kind:'block',locked:false,tasks:[]};
   const {data,error}=await supabase.from('user_items').insert({title:block.title,item_type:'block',content:block}).select('id').single();
   if(error){setSaveError(error.message);return}
   setBlocks(old=>[...old,{...block,dbId:data.id}]);setNewTitle('');setShowNew(false);
@@ -99,7 +103,7 @@ function BlockCard({block,formatTime,toggleTask,addTask,updateTime}:{block:WorkB
  const completed=block.tasks.filter(t=>t.done).length;
  return <section className="calendar-card">
   <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{block.title}</h2><div className="calendar-subtle mt-1 flex items-center gap-2 text-sm"><Clock3 size={15}/>{formatTime(block.start)} – {formatTime(block.end)}</div></div><span className="calendar-subtle rounded-lg px-3 py-1 text-xs">{completed}/{block.tasks.length} done</span></div>
-  <div className="calendar-subtle mb-4 flex gap-4 text-xs"><label>Start <input aria-label={`${block.title} start`} type="time" value={block.start} onChange={e=>updateTime('start',e.target.value)} className="calendar-input ml-2 rounded p-1"/></label><label>End <input aria-label={`${block.title} end`} type="time" value={block.end} onChange={e=>updateTime('end',e.target.value)} className="ml-2 rounded bg-slate-800 p-1 text-white"/></label></div>
+  <div className="calendar-subtle mb-4 flex gap-4 text-xs"><label>Start <input aria-label={`${block.title} start`} type="time" value={block.start} onChange={e=>updateTime('start',e.target.value)} className="calendar-input ml-2 rounded p-1"/></label><label>End <input aria-label={`${block.title} end`} type="time" value={block.end} onChange={e=>updateTime('end',e.target.value)} className="calendar-input ml-2 rounded p-1"/></label></div>
   <div className="space-y-2">{block.tasks.map(task=><label key={task.id} className="calendar-task flex cursor-pointer items-start gap-3 rounded-xl p-3"><input type="checkbox" checked={task.done} onChange={()=>toggleTask(block.id,task.id)} className="mt-1 accent-teal-400"/><span className="flex-1"><span className={task.done?'calendar-muted line-through':''}>{task.title}</span><span className="calendar-muted mt-1 flex items-center gap-1 text-xs"><Link2 size={12}/>{task.project}</span></span>{task.done&&<Check className="calendar-accent" size={17}/>}</label>)}</div>
   <form onSubmit={e=>{e.preventDefault();addTask(block.id,taskName);setTaskName('')}} className="mt-4 flex gap-2"><input aria-label={`New task in ${block.title}`} value={taskName} onChange={e=>setTaskName(e.target.value)} placeholder="Add a task…" className="calendar-input min-w-0 flex-1 rounded-xl px-3 py-2 text-sm"/><button aria-label="Add task" className="calendar-panel rounded-xl px-3"><Plus size={18}/></button></form>
  </section>;
