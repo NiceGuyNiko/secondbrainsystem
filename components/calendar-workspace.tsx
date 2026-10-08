@@ -4,7 +4,7 @@ import {ChevronLeft,ChevronRight,Plus,X,Trash2,CalendarDays,Filter,Lock,Unlock} 
 import {supabase} from '@/lib/supabase';
 type View='Day'|'Week'|'Month';
 type Category={name:string;color:string};
-type Event={dbId?:string;id:number;title:string;date:string;endDate:string;start:string;end:string;category:string;kind:'block'|'event'|'due'|'shift';locked?:boolean;repeat?:'none'|'daily'|'weekly'|'monthly';repeatUntil?:string;tasks:{id:number;title:string;done:boolean;project:string}[]};
+type Event={dbId?:string;id:number;title:string;date:string;endDate:string;start:string;end:string;category:string;kind:'block'|'event'|'due'|'shift';locked?:boolean;repeat?:'none'|'daily'|'weekly'|'monthly'|'yearly';repeatEvery?:number;repeatUntil?:string;exceptions?:string[];tasks:{id:number;title:string;done:boolean;project:string}[]};
 const palette=['blue','green','orange','purple','pink','teal'];
 const defaults:Category[]=[{name:'Personal',color:'blue'},{name:'Work',color:'orange'},{name:'Health',color:'green'},{name:'Important',color:'purple'}];
 const iso=(d:Date)=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
@@ -27,6 +27,11 @@ export default function CalendarWorkspace({startDay,clock}:{startDay:string;cloc
  const [newColor,setNewColor]=useState('blue');
  const [filtersOpen,setFiltersOpen]=useState(false);
  const [editMode,setEditMode]=useState(false);
+ const [creationMode,setCreationMode]=useState<'single'|'multi'|'recurring'>('single');
+ const [selectedDates,setSelectedDates]=useState<string[]>([]);
+ const [rollingWeek,setRollingWeek]=useState(false);
+ const [contextMenu,setContextMenu]=useState<{x:number;y:number;event:Event;occurrence:string}|null>(null);
+ const [deletingOccurrence,setDeletingOccurrence]=useState<string|null>(null);
  const scrollRef=useRef<HTMLDivElement>(null);
  const [hiddenKinds,setHiddenKinds]=useState<string[]>([]);
  const [hiddenCategories,setHiddenCategories]=useState<string[]>([]);
@@ -42,23 +47,44 @@ export default function CalendarWorkspace({startDay,clock}:{startDay:string;cloc
  const addCategory=async()=>{const name=newCategory.trim();if(!name||categories.some(c=>c.name.toLowerCase()===name.toLowerCase()))return;await persistCategories([...categories,{name,color:newColor}]);setNewCategory('')};
  const renameCategory=async(oldName:string,name:string)=>{const next=name.trim();if(!next||categories.some(c=>c.name!==oldName&&c.name.toLowerCase()===next.toLowerCase()))return;await persistCategories(categories.map(c=>c.name===oldName?{...c,name:next}:c));setItems(prev=>prev.map(e=>e.category===oldName?{...e,category:next}:e));for(const e of items.filter(e=>e.category===oldName&&e.dbId)){await supabase.from('user_items').update({content:{...e,category:next,dbId:undefined}}).eq('id',e.dbId!)}};
  async function moveEvent(e:Event,target:string){if(!editMode||e.locked||!e.dbId||target===e.date)return;const duration=Math.round((parse(e.endDate).getTime()-parse(e.date).getTime())/86400000);const changed={...e,date:target,endDate:add(target,duration)};const {data:latest,error:readError}=await supabase.from('user_items').select('content').eq('id',e.dbId).single();if(readError){setError(readError.message);return}const {error}=await supabase.from('user_items').update({content:{...(latest.content as Record<string,unknown>),date:changed.date,endDate:changed.endDate},updated_at:new Date().toISOString()}).eq('id',e.dbId);if(error){setError(error.message);return}setItems(prev=>prev.map(x=>x.dbId===e.dbId?changed:x))}
- useEffect(()=>{let active=true;async function load(){const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});if(!active)return;if(error)setError(error.message);else setItems((data||[]).map(r=>{const b=r.content as Partial<Event>;return {id:b.id||Date.now(),title:b.title||'',date:b.date||today,endDate:b.endDate||b.date||today,start:b.start||'09:00',end:b.end||'10:00',category:b.category||'Personal',kind:b.kind||'block',locked:b.locked||false,repeat:b.repeat||'none',repeatUntil:b.repeatUntil||'',tasks:b.tasks||[],dbId:r.id}}));setLoading(false)}void load();const channel=supabase.channel('calendar-events').on('postgres_changes',{event:'*',schema:'public',table:'user_items'},()=>void load()).subscribe();const focus=()=>void load();window.addEventListener('focus',focus);return()=>{active=false;window.removeEventListener('focus',focus);void supabase.removeChannel(channel)}},[]);
+ useEffect(()=>{let active=true;async function load(){const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});if(!active)return;if(error)setError(error.message);else setItems((data||[]).map(r=>{const b=r.content as Partial<Event>;return {id:b.id||Date.now(),title:b.title||'',date:b.date||today,endDate:b.endDate||b.date||today,start:b.start||'09:00',end:b.end||'10:00',category:b.category||'Personal',kind:b.kind||'block',locked:b.locked||false,repeat:b.repeat||'none',repeatEvery:b.repeatEvery||1,repeatUntil:b.repeatUntil||'',exceptions:b.exceptions||[],tasks:b.tasks||[],dbId:r.id}}));setLoading(false)}void load();const channel=supabase.channel('calendar-events').on('postgres_changes',{event:'*',schema:'public',table:'user_items'},()=>void load()).subscribe();const focus=()=>void load();window.addEventListener('focus',focus);return()=>{active=false;window.removeEventListener('focus',focus);void supabase.removeChannel(channel)}},[]);
  const startIndex=weekdays.indexOf(startDay);
  const weekStart=useMemo(()=>{const d=parse(cursor);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);return iso(d)},[cursor,startIndex]);
- const days=useMemo(()=>{if(view==='Day')return [cursor];if(view==='Week')return Array.from({length:7},(_,i)=>add(weekStart,i));const first=iso(new Date(parse(cursor).getFullYear(),parse(cursor).getMonth(),1));const d=parse(first);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);const base=iso(d);return Array.from({length:42},(_,i)=>add(base,i))},[cursor,view,weekStart,startIndex]);
- const occurrenceStart=(e:Event,day:string)=>{if(day<e.date)return null;if(e.repeat==='daily')return day;if(e.repeat==='weekly'){const delta=Math.round((parse(day).getTime()-parse(e.date).getTime())/86400000);return delta%7===0?day:null}if(e.repeat==='monthly')return parse(day).getDate()===parse(e.date).getDate()?day:null;return null};
+ const days=useMemo(()=>{if(view==='Day')return [cursor];if(view==='Week')return Array.from({length:7},(_,i)=>add(rollingWeek?cursor:weekStart,rollingWeek?i-3:i));const first=iso(new Date(parse(cursor).getFullYear(),parse(cursor).getMonth(),1));const d=parse(first);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);const base=iso(d);return Array.from({length:42},(_,i)=>add(base,i))},[cursor,view,weekStart,startIndex,rollingWeek]);
  const spans=(e:Event)=>e.endDate>e.date;
- const overlaps=(e:Event,day:string)=>e.date<=day&&(e.endDate||e.date)>=day||!!(e.repeat&&e.repeat!=='none'&&(!e.repeatUntil||day<=e.repeatUntil)&&occurrenceStart(e,day));
- const ribbon=(e:Event,day:string)=>spans(e)&&e.date<=day&&e.endDate>=day;
+ const dayDifference=(a:string,b:string)=>Math.round((parse(b).getTime()-parse(a).getTime())/86400000);
+ const instances=(e:Event,first:string,last:string)=>{
+  const length=dayDifference(e.date,e.endDate);
+  const output:{event:Event;date:string;endDate:string}[]=[];
+  const include=(date:string)=>{const endDate=add(date,length);if(endDate>=first&&date<=last&&!e.exceptions?.includes(date))output.push({event:e,date,endDate})};
+  include(e.date);
+  if(!e.repeat||e.repeat==='none')return output;
+  const every=Math.max(1,Math.floor(e.repeatEvery||1));
+  let d=parse(e.date);
+  for(let n=1;n<=1500;n++){
+   const next=parse(e.date);
+   if(e.repeat==='daily')next.setDate(next.getDate()+n*every);
+   else if(e.repeat==='weekly')next.setDate(next.getDate()+n*7*every);
+   else if(e.repeat==='monthly'){next.setMonth(next.getMonth()+n*every);if(next.getDate()!==parse(e.date).getDate())continue}
+   else if(e.repeat==='yearly'){next.setFullYear(next.getFullYear()+n*every);if(next.getMonth()!==parse(e.date).getMonth())continue}
+   d=next;const date=iso(d);
+   if(date>last||(e.repeatUntil&&date>e.repeatUntil))break;
+   include(date);
+  }
+  return output;
+ };
+ const occurrenceList=(first:string,last:string)=>items.filter(visible).flatMap(e=>instances(e,first,last));
+ const overlaps=(e:Event,day:string)=>instances(e,day,day).length>0;
+ const ribbon=(e:Event,day:string)=>spans(e)&&instances(e,day,day).length>0;
  const timeMinutes=(t:string)=>{const [h,m]=t.split(':').map(Number);return h*60+m};
  useEffect(()=>{if(view!=='Day'||!scrollRef.current)return;const node=scrollRef.current;const position=cursor===today?Math.max(0,(now.getHours()+now.getMinutes()/60)*86-160):0;node.scrollTop=position},[view,cursor,today]);
 
  const format=(t:string)=>{if(clock==='24-hour')return t;const [h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`};
  const color=(e:Event)=>categories.find(c=>c.name===e.category)?.color||'blue';
- const open=(date=cursor,event?:Event)=>{const base=event||{id:Date.now(),title:'',date,endDate:date,start:'09:00',end:'10:00',category:categories[0]?.name||'Personal',kind:'block' as const,tasks:[]};setEditing(event||null);setForm({...base});setError('');setModal(true)};
- async function save(){if(!form.title.trim()){setError('Please enter a title.');return}if(form.endDate<form.date){setError('End date must be on or after start date.');return}if(form.date===form.endDate&&form.end<=form.start){setError('End time must be later than start time.');return}setError('');const item={...form,title:form.title.trim()};const payload={id:item.id,title:item.title,date:item.date,endDate:item.endDate,start:item.start,end:item.end,category:item.category,kind:item.kind,tasks:item.tasks,locked:item.locked||false,repeat:item.repeat||'none',repeatUntil:item.repeatUntil||''};if(editing?.dbId){const {data:latest,error:readError}=await supabase.from('user_items').select('content').eq('id',editing.dbId).single();if(readError){setError(readError.message);return}const {error}=await supabase.from('user_items').update({title:item.title,content:{...(latest.content as Record<string,unknown>),...payload,tasks:(latest.content as Partial<Event>).tasks||payload.tasks},updated_at:new Date().toISOString()}).eq('id',editing.dbId);if(error){setError(error.message);return}setItems(old=>old.map(e=>e.dbId===editing.dbId?{...item,dbId:editing.dbId}:e))}else{const {data,error}=await supabase.from('user_items').insert({title:item.title,item_type:'block',content:payload}).select('id').single();if(error){setError(error.message);return}setItems(old=>[...old,{...item,dbId:data.id}])}setModal(false)}
+ const open=(date=cursor,event?:Event)=>{const base=event||{id:Date.now(),title:'',date,endDate:date,start:'09:00',end:'10:00',category:categories[0]?.name||'Personal',kind:'block' as const,tasks:[]};setEditing(event||null);setCreationMode(event?.repeat&&event.repeat!=='none'?'recurring':'single');setSelectedDates([date]);setForm({...base});setError('');setModal(true)};
+ async function save(){if(!form.title.trim()){setError('Please enter a title.');return}if(form.endDate<form.date){setError('End date must be on or after start date.');return}if(form.date===form.endDate&&form.end<=form.start){setError('End time must be later than start time.');return}setError('');const item={...form,title:form.title.trim()};const payload={id:item.id,title:item.title,date:item.date,endDate:item.endDate,start:item.start,end:item.end,category:item.category,kind:item.kind,tasks:item.tasks,locked:item.locked||false,repeat:item.repeat||'none',repeatEvery:item.repeatEvery||1,repeatUntil:item.repeatUntil||'',exceptions:item.exceptions||[]};if(editing?.dbId){const {data:latest,error:readError}=await supabase.from('user_items').select('content').eq('id',editing.dbId).single();if(readError){setError(readError.message);return}const {error}=await supabase.from('user_items').update({title:item.title,content:{...(latest.content as Record<string,unknown>),...payload,tasks:(latest.content as Partial<Event>).tasks||payload.tasks},updated_at:new Date().toISOString()}).eq('id',editing.dbId);if(error){setError(error.message);return}setItems(old=>old.map(e=>e.dbId===editing.dbId?{...item,dbId:editing.dbId}:e))}else{const {data,error}=await supabase.from('user_items').insert({title:item.title,item_type:'block',content:payload}).select('id').single();if(error){setError(error.message);return}setItems(old=>[...old,{...item,dbId:data.id}])}setModal(false)}
  async function remove(){if(!editing?.dbId)return;const {error}=await supabase.from('user_items').delete().eq('id',editing.dbId);if(error){setError(error.message);return}setItems(old=>old.filter(e=>e.dbId!==editing.dbId));setModal(false)}
- const move=(dir:number)=>{if(view==='Day')setCursor(add(cursor,dir));else if(view==='Week')setCursor(add(cursor,dir*7));else{const d=parse(cursor);d.setMonth(d.getMonth()+dir);setCursor(iso(d))}};
+ const move=(dir:number)=>{if(view==='Day')setCursor(add(cursor,dir));else if(view==='Week')setCursor(add(cursor,dir*(rollingWeek?1:7)));else{const d=parse(cursor);d.setMonth(d.getMonth()+dir);setCursor(iso(d))}};
  const eventChip=(e:Event,compact=false)=><button draggable={editMode&&!e.locked} onDragStart={ev=>{if(e.locked){ev.preventDefault();return}ev.dataTransfer.setData('text/plain',e.dbId||'')}} key={e.dbId||e.id} onClick={()=>open(e.date,e)} className={`event-chip event-${color(e)} w-full text-left`} title={e.title}><span className="block truncate font-semibold">{e.locked?'🔒 ':''}{e.title}</span><span className="block truncate text-[11px] opacity-80">{format(e.start)}–{format(e.end)}{!compact&&e.endDate>e.date?' · Multi-day':''}</span>{!compact&&showWeekDetails&&e.tasks.length>0&&<span className="block truncate text-[11px]">{e.tasks.map(t=>t.title).join(' · ')}</span>}</button>;
  return <section className="space-y-4">
   <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-2xl font-semibold">{view==='Day'?parse(cursor).toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'}):titleDate(cursor)}</h2></div><button className="calendar-primary flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm" onClick={()=>open()}><Plus size={17}/> New item</button></div>
