@@ -55,6 +55,7 @@ export default function CalendarWorkspace({startDay,clock}:{startDay:string;cloc
  const [rollingWeek,setRollingWeek]=useState(false);
  const [contextMenu,setContextMenu]=useState<{x:number;y:number;event:Event;occurrence:string}|null>(null);
  const [deletingOccurrence,setDeletingOccurrence]=useState<string|null>(null);
+ useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setContextMenu(null);setDeletingOccurrence(null);setModal(false);setFiltersOpen(false);return}const el=e.target as HTMLElement;const typing=el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement||el instanceof HTMLSelectElement||el.isContentEditable;if((e.key==='Delete'||e.key==='Backspace')&&!typing&&contextMenu){e.preventDefault();setDeletingOccurrence(contextMenu.occurrence);setEditing(contextMenu.event);setContextMenu(null)}};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[contextMenu]);
  const scrollRef=useRef<HTMLDivElement>(null);
  const [hiddenKinds,setHiddenKinds]=useState<string[]>([]);
  const [hiddenCategories,setHiddenCategories]=useState<string[]>([]);
