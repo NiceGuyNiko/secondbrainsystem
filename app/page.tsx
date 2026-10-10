@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import AuthGate from '@/components/auth-gate';
 import CalendarWorkspace from '@/components/calendar-workspace';
 import { useProfile } from '@/components/profile-context';
-import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox } from 'lucide-react';
+import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox, Menu, X } from 'lucide-react';
 
 type Section = 'Scheduling' | 'Calendar' | 'Goals' | 'Resources';
 type View = 'Day' | 'Week' | 'Month';
@@ -17,6 +17,7 @@ export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
 function Workspace() {
  const {displayName}=useProfile();
  const [section, setSection] = useState<Section>('Scheduling');
+  const [mobileMenu,setMobileMenu]=useState(false);
  const [view, setView] = useState<View>('Day');
  const [blocks, setBlocks] = useState<WorkBlock[]>([]);
  const [loadingBlocks,setLoadingBlocks]=useState(true);
@@ -78,13 +79,13 @@ function Workspace() {
   changeBlock(blockId,block=>({...block,tasks:block.tasks.map(task=>task.id===taskId?{...task,done:!task.done}:task)}));
  }
  return <div className="app-shell min-h-screen md:flex">
-  <aside className="calendar-sidebar w-full border-b p-5 md:min-h-screen md:w-64 md:border-b-0 md:border-r">
-    <div className="mb-8"><div className="text-xl font-bold tracking-tight">Think About It<span className="calendar-accent">.</span></div><div className="calendar-subtle mt-1 text-xs">Connected information · Contextual action</div></div>
-    <nav className="flex gap-2 md:flex-col">{navigation.map(({name,icon:Icon}) => <button key={name} onClick={()=>setSection(name)} className={`calendar-nav flex flex-1 items-center gap-2 rounded-xl px-3 py-3 text-sm md:flex-none ${section===name?'active':''}`}><Icon size={18}/><span>{name}</span></button>)}</nav>
-    <button onClick={()=>setSettings(!settings)} className="calendar-nav mt-6 flex items-center gap-2 rounded-xl px-3 py-2 text-sm"><Settings2 size={17}/> Settings</button>
+  <aside className="calendar-sidebar w-full min-w-0 border-b p-4 md:min-h-screen md:w-64 md:shrink-0 md:border-b-0 md:border-r md:p-5">
+    <div className="mb-3 flex items-start justify-between gap-2 md:mb-8"><div><div className="text-xl font-bold tracking-tight">Think About It<span className="calendar-accent">.</span></div><div className="calendar-subtle mt-1 text-xs">Connected information · Contextual action</div></div><button type="button" className="calendar-panel rounded-lg p-2 md:hidden" aria-label={mobileMenu?"Close navigation":"Open navigation"} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}>{mobileMenu?<X size={20}/>:<Menu size={20}/>}</button></div>
+    <nav className={`${mobileMenu?"flex":"hidden"} flex-col gap-2 md:flex`}>{navigation.map(({name,icon:Icon}) => <button key={name} onClick={()=>{setSection(name);setMobileMenu(false)}} className={`calendar-nav flex flex-1 items-center gap-2 rounded-xl px-3 py-3 text-sm md:flex-none ${section===name?'active':''}`}><Icon size={18}/><span>{name}</span></button>)}</nav>
+    <button onClick={()=>setSettings(!settings)} className={`calendar-nav mt-6 ${mobileMenu?"flex":"hidden"} items-center gap-2 rounded-xl px-3 py-2 text-sm md:flex` }><Settings2 size={17}/> Settings</button>
     {settings && <div className="calendar-panel mt-3 space-y-3 p-3 text-sm"><div className="font-semibold">Calendar</div><label className="block text-xs text-slate-400">Week starts on<select value={startDay} onChange={e=>setStartDay(e.target.value)} className="calendar-input mt-1 w-full rounded-lg p-2">{['Monday','Sunday','Saturday'].map(d=><option key={d}>{d}</option>)}</select></label><label className="block text-xs text-slate-400">Clock format<select value={clock} onChange={e=>setClock(e.target.value)} className="calendar-input mt-1 w-full rounded-lg p-2"><option value="12-hour">12-hour</option><option value="24-hour">24-hour</option></select></label><label className="calendar-subtle block text-xs">Appearance<select aria-label="Appearance" value={theme} onChange={e=>setTheme(e.target.value as typeof theme)} className="theme-select mt-1"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>}
   </aside>
-  <main className="calendar-main mx-auto w-full max-w-6xl p-5 pt-16 md:p-10">
+  <main className="calendar-main mx-auto min-w-0 w-full max-w-6xl p-3 pt-6 sm:p-5 md:p-10">
    <header className="calendar-header mb-6 flex flex-wrap items-start justify-between gap-4"><div><p className="calendar-accent mb-2 text-xs font-semibold uppercase tracking-[0.15em]">{displayName === 'My' ? 'My workspace' : displayName + (displayName.trim().toLowerCase().endsWith('s') ? '\u2019 workspace' : '\u2019s workspace')}</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="calendar-subtle mt-2 text-sm">{section==='Scheduling'||section==='Calendar'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="calendar-primary flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"><Plus size={18}/> New block</button>}</header>
    {section==='Scheduling' && <>
     <div className="calendar-segment mb-6 flex w-fit rounded-xl p-1">{(['Day','Week','Month'] as View[]).map(v=><button key={v} onClick={()=>setView(v)} className={`rounded-lg px-5 py-2 text-sm ${view===v?'active':''}`}>{v}</button>)}</div>
