@@ -63,7 +63,7 @@ export default function CalendarWorkspace({startDay,clock,fluidOnly=false}:{star
  const [showWeekDetails,setShowWeekDetails]=useState(false);
  const [newCategory,setNewCategory]=useState('');
  const [newColor,setNewColor]=useState('blue');
- const [filtersOpen,setFiltersOpen]=useState(false);
+ 
  useEffect(()=>{const onToggle=(e:globalThis.Event)=>{const category=(e as CustomEvent<string>).detail;setHiddenCategories(prev=>prev.includes(category)?prev.filter(c=>c!==category):[...prev,category])};window.addEventListener('pr11-toggle-calendar',onToggle);return()=>window.removeEventListener('pr11-toggle-calendar',onToggle)},[]);
  const [editMode,setEditMode]=useState(false);
  const [batchMode,setBatchMode]=useState(false);
@@ -84,7 +84,7 @@ export default function CalendarWorkspace({startDay,clock,fluidOnly=false}:{star
   const [batchConfirmOpen,setBatchConfirmOpen]=useState(false);
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setContextMenu(null);setDeletingOccurrence(null);setBatchConfirmOpen(false);if(modal){requestClose()}setFiltersOpen(false);return}const el=e.target as HTMLElement;const typing=el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement||el instanceof HTMLSelectElement||el.isContentEditable;if((e.key==='Delete'||e.key==='Backspace')&&!typing&&contextMenu){e.preventDefault();setDeletingOccurrence(contextMenu.occurrence);setEditing(contextMenu.event);setContextMenu(null)}};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[contextMenu,modal,form,batchMode,repeatEnabled,selectedDates,repeatEndMode,initialForm]);
  const scrollRef=useRef<HTMLDivElement>(null);
- const [hiddenKinds,setHiddenKinds]=useState<string[]>([]);
+ 
  const [hiddenCategories,setHiddenCategories]=useState<string[]>([]);
  const [categoryDoc,setCategoryDoc]=useState<string|null>(null);
  const [categoryEditing,setCategoryEditing]=useState(false);
@@ -101,8 +101,8 @@ export default function CalendarWorkspace({startDay,clock,fluidOnly=false}:{star
  useEffect(()=>{let active=true;async function load(){const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});if(!active)return;if(error)setError(error.message);else setItems((data||[]).map(r=>{const b=r.content as Partial<Event>;return {id:b.id||Date.now(),title:b.title||'',date:b.date||today,endDate:b.endDate||b.date||today,start:b.start||'09:00',end:b.end||'10:00',category:b.category||'Personal',kind:b.kind||'block',locked:b.locked||false,repeat:b.repeat||'none',repeatEvery:b.repeatEvery||1,repeatUntil:b.repeatUntil||'',repeatCount:b.repeatCount,allDay:b.allDay||false,travelMinutes:b.travelMinutes||0,timeZone:b.timeZone||Intl.DateTimeFormat().resolvedOptions().timeZone,exceptions:b.exceptions||[],tasks:b.tasks||[],dbId:r.id}}));setLoading(false)}void load();const channel=supabase.channel('calendar-events').on('postgres_changes',{event:'*',schema:'public',table:'user_items'},()=>void load()).subscribe();const focus=()=>void load();window.addEventListener('focus',focus);return()=>{active=false;window.removeEventListener('focus',focus);void supabase.removeChannel(channel)}},[]);
  const startIndex=weekdays.indexOf(startDay);
  const weekStart=useMemo(()=>{const d=parse(cursor);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);return iso(d)},[cursor,startIndex]);
- const days=useMemo(()=>{if(view==='Day')return singleDay?[cursor]:[add(cursor,-1),cursor,add(cursor,1)];if(view==='Fluid'){const size=[42,14,7,3,1][fluidLevel];const first=rollingFluid?add(cursor,-Math.floor(size/2)):add(weekStart,-Math.floor((size-1)/7)*7);return Array.from({length:size},(_,i)=>add(first,i))}if(view==='Week')return Array.from({length:7},(_,i)=>add(rollingWeek?cursor:weekStart,rollingWeek?i-3:i));const first=iso(new Date(parse(cursor).getFullYear(),parse(cursor).getMonth(),1));const d=parse(first);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);const base=iso(d);return Array.from({length:42},(_,i)=>add(base,i))},[cursor,view,weekStart,startIndex,rollingWeek,fluidLevel,rollingFluid,singleDay]);
- const spans=(e:Event)=>e.endDate>e.date;
+ const days=useMemo(()=>{if(view==='Day')return singleDay?[cursor]:[add(cursor,-1),cursor,add(cursor,1)];if(view==='Fluid'){const size=[42,14,7,3,1][fluidLevel];const first=rollingFluid?add(cursor,-Math.floor(size/2)):add(weekStart,-Math.floor((size-1)/7)*7);return Array.from({length:size},(_,i)=>add(first,i))}if(view==='Week')return Array.from({length:7},(_,i)=>add(rollingWeek?cursor:weekStart,rollingWeek?i-3:i));const first=iso(new Date(parse(cursor).getFullYear(),parse(cursor).getMonth(),1));const d=parse(first);d.setDate(d.getDate()-(d.getDay()-startIndex+7)%7);const base=iso(d);const last=iso(new Date(parse(cursor).getFullYear(),parse(cursor).getMonth()+1,0));const count=Math.ceil((Math.round((parse(last).getTime()-parse(base).getTime())/86400000)+1)/7)*7;return Array.from({length:count},(_,i)=>add(base,i))},[cursor,view,weekStart,startIndex,rollingWeek,fluidLevel,rollingFluid,singleDay]);
+ const spans=(e:Event)=>!!e.allDay||e.endDate>e.date;
  const dayDifference=(a:string,b:string)=>Math.round((parse(b).getTime()-parse(a).getTime())/86400000);
  const instances=(e:Event,first:string,last:string)=>{
   const length=dayDifference(e.date,e.endDate);
