@@ -152,3 +152,23 @@
 .pr11-month-week .pr11-ribbon-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .pr11-month-week .pr11-ribbon-time{white-space:nowrap;flex:none;font-size:9px;font-weight:400}
 .calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#087fb5!important;color:#fff!important}
+
+/* PR11 lapis accent and dense month day panel */
+:root{--pr11-lapis:#245be8}
+.pr11-brand-mark{color:#80aaff!important;border-color:#416ff5!important}
+.pr11-nav.active,.calendar-nav.active{background:#193d88!important;color:#e8efff!important}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:var(--pr11-lapis)!important;color:#fff!important}
+.pr11-date-heading{border-right:0!important;gap:3px;text-align:center}
+.pr11-month-week>.month-grid:first-child{border-bottom:0!important}
+.pr11-month-week .month-day{position:relative}
+.pr11-month-week .month-day .pr11-event-inline{font-weight:400}
+.pr11-month-week .month-day .pr11-event-title{font-weight:400}
+.pr11-day-sidepanel{position:fixed;right:0;top:0;bottom:0;width:min(390px,95vw);background:var(--surface,#191b20);border-left:1px solid var(--border);box-shadow:-16px 0 55px #0007;z-index:55;padding:20px;display:flex;flex-direction:column}
+.pr11-sidepanel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.pr11-sidepanel-list{overflow:auto;flex:1;padding-top:12px;display:flex;flex-direction:column;gap:5px}
+.pr11-sidepanel-event{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;text-align:left;width:100%}
+.pr11-sidepanel-event:hover{background:var(--surface-2)}
+.pr11-sidepanel-dot{width:9px;height:9px;border-radius:50%;background:#4b84ff;margin-top:5px;flex:none}
+.pr11-sidepanel-dot.event-teal{background:#18b8cb}.pr11-sidepanel-dot.event-orange{background:#ff994b}.pr11-sidepanel-dot.event-pink{background:#ef5ac3}.pr11-sidepanel-dot.event-purple{background:#9c50f4}.pr11-sidepanel-dot.event-green{background:#38bf81}
+.pr11-side-toggle{position:fixed;right:12px;top:50%;z-index:52;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px}
+.pr11-month-week .month-day .mt-1.space-y-1{margin-top:0}
