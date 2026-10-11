@@ -82,3 +82,26 @@
 /* Day view: one continuous ribbon across the date columns, with guides behind it. */
 .day-ribbon-grid{display:grid;gap:3px 0;padding:4px 0;align-content:start;min-height:48px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / var(--day-columns,3) - 1px),var(--border) calc(100% / var(--day-columns,3) - 1px),var(--border) calc(100% / var(--day-columns,3)))}
 .day-ribbon-grid .day-ribbon{position:relative;z-index:1;margin:0 4px;min-width:0}
+
+/* PR 11: screenshot-inspired workspace sidebar */
+.pr11-sidebar{display:flex;flex-direction:column;background:var(--sidebar);border-color:var(--border)}
+.pr11-sidebar-content{flex:1;min-height:0}
+.pr11-brand-mark{display:grid;place-items:center;color:var(--accent);border:1px solid var(--accent);border-radius:5px;width:34px;height:38px;flex:none}
+.pr11-nav{transition:background .15s,color .15s}
+.pr11-nav.active{background:var(--accent-soft);color:var(--accent-text)}
+.pr11-badge{background:#65252b;color:#fff;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700}
+.pr11-beta{background:#10395f;color:#49b3ff}
+.pr11-sidebar-divider,.pr11-menu-divider{height:1px;background:var(--border)}
+.pr11-icon-button{display:grid;place-items:center;color:var(--muted);border-radius:7px;padding:5px}
+.pr11-icon-button:hover{background:var(--surface-2)}
+.pr11-calendar-key{width:25px;height:25px;border-radius:5px;display:grid;place-items:center;color:white;flex:none}
+.pr11-profile-trigger:hover{background:var(--surface-2)}
+.pr11-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.pr11-profile-menu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:45;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:0 12px 40px #0005}
+.pr11-profile-menu>button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border-radius:7px;font-size:13px}
+.pr11-profile-menu>button:hover{background:var(--surface-2)}
+.pr11-profile-menu .pr11-menu-divider{margin:4px 0}
+.pr11-settings-menu{bottom:0;padding:12px;display:grid;gap:12px}
+.pr11-settings-menu label{font-size:12px;color:var(--muted);display:grid;gap:5px}
+@media(min-width:768px){.pr11-sidebar{position:sticky;top:0;height:100vh}.pr11-sidebar-content{overflow-y:auto}}
+@media(max-width:767px){.pr11-sidebar-content{flex:none}.pr11-profile-menu{position:relative;bottom:auto;margin-top:6px}}
