@@ -123,3 +123,22 @@
 .calendar-main:has(.pr11-calendar-toolbar) .month-grid{min-width:0}
 .calendar-main:has(.pr11-calendar-toolbar) .month-grid>div{min-width:0}
 @media(max-width:900px){.pr11-calendar-toolbar{gap:10px}.pr11-calendar-title{font-size:20px}.pr11-event-time{font-size:10px}.pr11-event-inline{gap:3px}}
+
+/* PR11: month fits the viewport, with compact non-overlapping ribbon lanes */
+@media(min-width:768px){
+.calendar-main:has(.pr11-month-panel){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.calendar-main:has(.pr11-month-panel)>.space-y-4{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.pr11-month-panel{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-month-body{flex:1;min-height:0;display:grid;grid-template-rows:36px repeat(var(--month-weeks),minmax(0,1fr))}
+.pr11-month-week{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-month-week>.month-grid:last-child{flex:1;min-height:0}
+.calendar-main:has(.pr11-month-panel) .month-day{min-height:0;overflow:hidden;padding:2px 4px}
+.calendar-main:has(.pr11-month-panel) .month-day .mt-1{margin-top:2px}
+.calendar-main:has(.pr11-month-panel) .month-head{padding:7px 2px}
+}
+.pr11-month-week .week-ribbons{padding:1px 3px;gap:2px 0;align-content:start}
+.pr11-month-week .week-ribbons .event-chip{padding:2px 5px;margin:0 2px;min-height:19px;line-height:15px;font-size:11px;white-space:nowrap;text-overflow:ellipsis;color:#f8f9ff}
+.pr11-month-week .month-day .pr11-single-event{padding:2px 3px!important;line-height:1.2;color:#f5f7ff!important}
+.pr11-month-week .pr11-event-title{font-weight:500;color:#f5f7ff}
+.pr11-month-week .pr11-event-time{color:#e0e5ee}
+.pr11-month-week .month-outside .pr11-event-title,.pr11-month-week .month-outside .pr11-event-time{color:#d2d8e5}
