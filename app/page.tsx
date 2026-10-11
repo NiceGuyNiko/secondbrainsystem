@@ -4,14 +4,13 @@ import { supabase } from '@/lib/supabase';
 import AuthGate from '@/components/auth-gate';
 import CalendarWorkspace from '@/components/calendar-workspace';
 import { useProfile } from '@/components/profile-context';
-import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox, Menu, X, UserRound, LogOut, ChevronDown, BookOpen, Layers3, Zap, Search } from 'lucide-react';
+import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Inbox, Menu, X, UserRound, LogOut, ChevronDown, BookOpen, Layers3, Zap } from 'lucide-react';
 
 type Section = 'Scheduling' | 'Calendar' | 'Goals' | 'Resources' | 'Fluid Calendar' | 'Workspaces' | 'Think About It';
 type View = 'Day' | 'Week' | 'Month';
 type Task = { id: number; title: string; done: boolean; project: string };
 type WorkBlock = { dbId?: string; id: number; title: string; start: string; end: string; tasks: Task[]; date?:string; endDate?:string; category?:string; kind?:string; locked?:boolean };
 
-const navigation = [{ name: 'Scheduling' as const, icon: CalendarDays }, { name: 'Calendar' as const, icon: CalendarDays }, { name: 'Goals' as const, icon: Target }, { name: 'Resources' as const, icon: LibraryBig }];
 
 export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
 function Workspace() {
@@ -81,7 +80,7 @@ function Workspace() {
  }
  return <div className="app-shell min-h-screen md:flex">
   <aside className="calendar-sidebar pr11-sidebar w-full min-w-0 border-b md:min-h-screen md:w-[276px] md:shrink-0 md:border-b-0 md:border-r">
-    <div className="pr11-brand flex items-center justify-between gap-2 px-4 py-5"><div className="flex min-w-0 items-center gap-3"><div className="pr11-brand-mark"><Zap size={22}/></div><div className="min-w-0"><div className="truncate text-lg font-semibold tracking-tight">All About Action</div><div className="calendar-subtle text-[11px] uppercase tracking-wide">{displayName}'s calendar</div></div></div><button type="button" className="pr11-icon-button md:hidden" aria-label={mobileMenu?"Close navigation":"Open navigation"} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}>{mobileMenu?<X size={20}/>:<Menu size={20}/>}</button></div>
+    <div className="pr11-brand flex items-center justify-between gap-2 px-4 py-5"><div className="flex min-w-0 items-center gap-3"><div className="pr11-brand-mark"><Zap size={22}/></div><div className="min-w-0"><div className="truncate text-lg font-semibold tracking-tight">All About Action</div><div className="calendar-subtle text-[11px] uppercase tracking-wide">{displayName}&apos;s calendar</div></div></div><button type="button" className="pr11-icon-button md:hidden" aria-label={mobileMenu?"Close navigation":"Open navigation"} aria-expanded={mobileMenu} onClick={()=>setMobileMenu(v=>!v)}>{mobileMenu?<X size={20}/>:<Menu size={20}/>}</button></div>
     <div className={`${mobileMenu?"block":"hidden"} pr11-sidebar-content px-3 pb-4 md:flex md:flex-col`}>
       <nav className="space-y-1" aria-label="Main navigation">
         {([{name:'Goals',icon:Target,badge:'NA'},{name:'Calendar',icon:CalendarDays},{name:'Fluid Calendar',icon:Zap,badge:'Beta'},{name:'Workspaces',icon:Layers3,badge:'NA'},{name:'Resources',icon:BookOpen,badge:'NA'},{name:'Think About It',icon:LibraryBig,badge:'NA'}] as const).map(({name,icon:Icon,...rest})=><button key={name} onClick={()=>{setSection(name);setMobileMenu(false)}} className={`calendar-nav pr11-nav flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm ${section===name?'active':''}`}><Icon size={21}/><span className="flex-1">{name}</span>{'badge' in rest&&<span className={`pr11-badge ${rest.badge==='Beta'?'pr11-beta':''}`}>{rest.badge}</span>}</button>)}
