@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ChevronLeft,ChevronRight,ChevronDown,Clock3,Plus,X,Trash2,CalendarDays,Filter,Lock,Unlock,Settings2} from 'lucide-react';
+import {ChevronLeft,ChevronRight,ChevronDown,Clock3,Plus,X,Trash2,CalendarDays,Lock,Unlock,Settings2} from 'lucide-react';
 import {supabase} from '@/lib/supabase';
 type View='Day'|'Week'|'Month'|'Fluid';
 type Category={name:string;color:string};
@@ -82,7 +82,7 @@ export default function CalendarWorkspace({startDay,clock,fluidOnly=false}:{star
  const [contextMenu,setContextMenu]=useState<{x:number;y:number;event:Event;occurrence:string}|null>(null);
  const [deletingOccurrence,setDeletingOccurrence]=useState<string|null>(null);
   const [batchConfirmOpen,setBatchConfirmOpen]=useState(false);
- useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setContextMenu(null);setDeletingOccurrence(null);setBatchConfirmOpen(false);if(modal){requestClose()}setFiltersOpen(false);return}const el=e.target as HTMLElement;const typing=el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement||el instanceof HTMLSelectElement||el.isContentEditable;if((e.key==='Delete'||e.key==='Backspace')&&!typing&&contextMenu){e.preventDefault();setDeletingOccurrence(contextMenu.occurrence);setEditing(contextMenu.event);setContextMenu(null)}};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[contextMenu,modal,form,batchMode,repeatEnabled,selectedDates,repeatEndMode,initialForm]);
+ useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape'){setContextMenu(null);setDeletingOccurrence(null);setBatchConfirmOpen(false);if(modal){requestClose()}setOptionsOpen(false);return}const el=e.target as HTMLElement;const typing=el instanceof HTMLInputElement||el instanceof HTMLTextAreaElement||el instanceof HTMLSelectElement||el.isContentEditable;if((e.key==='Delete'||e.key==='Backspace')&&!typing&&contextMenu){e.preventDefault();setDeletingOccurrence(contextMenu.occurrence);setEditing(contextMenu.event);setContextMenu(null)}};document.addEventListener('keydown',onKey);return()=>document.removeEventListener('keydown',onKey)},[contextMenu,modal,form,batchMode,repeatEnabled,selectedDates,repeatEndMode,initialForm]);
  const scrollRef=useRef<HTMLDivElement>(null);
  
  const [hiddenCategories,setHiddenCategories]=useState<string[]>([]);
