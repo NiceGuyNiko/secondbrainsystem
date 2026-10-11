@@ -16,7 +16,7 @@ export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
 function Workspace() {
  const {displayName,email,openProfile,signOut}=useProfile();
  const [profileMenu,setProfileMenu]=useState(false);
- const [section, setSection] = useState<Section>('Scheduling');
+ const [section, setSection] = useState<Section>('Calendar');
   const [mobileMenu,setMobileMenu]=useState(false);
  const [view, setView] = useState<View>('Day');
  const [blocks, setBlocks] = useState<WorkBlock[]>([]);
@@ -95,17 +95,17 @@ function Workspace() {
       </div>
     </div>
   </aside>
-  <main className="calendar-main min-w-0 w-full flex-1 p-3 pt-6 sm:p-5 md:p-6">
-   <header className="calendar-header mb-6 flex flex-wrap items-start justify-between gap-4"><div><p className="calendar-accent mb-2 text-xs font-semibold uppercase tracking-[0.15em]">{displayName === 'My' ? 'My workspace' : displayName + (displayName.trim().toLowerCase().endsWith('s') ? '\u2019 workspace' : '\u2019s workspace')}</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="calendar-subtle mt-2 text-sm">{section==='Scheduling'||section==='Calendar'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="calendar-primary flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"><Plus size={18}/> New block</button>}</header>
+  <main className={`calendar-main min-w-0 w-full flex-1 ${section==='Calendar'||section==='Fluid Calendar'?'p-2 md:p-4':'p-3 pt-6 sm:p-5 md:p-6'}`}>
+   {section!=='Calendar'&&section!=='Fluid Calendar'&&<header className="calendar-header mb-6 flex flex-wrap items-start justify-between gap-4"><div><p className="calendar-accent mb-2 text-xs font-semibold uppercase tracking-[0.15em]">{displayName === 'My' ? 'My workspace' : displayName + (displayName.trim().toLowerCase().endsWith('s') ? '\u2019 workspace' : '\u2019s workspace')}</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="calendar-subtle mt-2 text-sm">{section==='Scheduling'||section==='Calendar'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="calendar-primary flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"><Plus size={18}/> New block</button>}</header>}
    {section==='Scheduling' && <>
     <div className="calendar-segment mb-6 flex w-fit rounded-xl p-1">{(['Day','Week','Month'] as View[]).map(v=><button key={v} onClick={()=>setView(v)} className={`rounded-lg px-5 py-2 text-sm ${view===v?'active':''}`}>{v}</button>)}</div>
     {showNew&&<form onSubmit={e=>{e.preventDefault();addBlock()}} className="mb-5 flex gap-2"><input aria-label="Block name" autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Block name" className="calendar-input min-w-0 flex-1 rounded-xl px-4 py-3"/><button className="calendar-primary rounded-xl px-4">Add</button></form>}
     {saveError&&<p role="alert" className="mb-3 text-sm" style={{color:"var(--danger)"}}>Save error: {saveError}</p>}{loadingBlocks&&<p className="calendar-subtle mb-3 text-sm">Loading saved schedule…</p>}{view==='Day' ? <div className="calendar-panel overflow-hidden p-3 md:p-5"><div className="calendar-subtle mb-4 flex items-center gap-2 text-sm"><CalendarDays size={16}/>{dateLabel} · Daily timeline</div><div className="calendar-grid">{Array.from({length:24},(_,hour)=><div key={hour} className="calendar-hour"><div className="calendar-time">{formatTime(String(hour).padStart(2,'0')+':00')}</div><div className="calendar-slot">{[...blocks].filter(b=>Number(b.start.split(':')[0])===hour).sort((a,b)=>a.start.localeCompare(b.start)).map(block=><div className="calendar-event mb-2" key={block.id}><BlockCard block={block} formatTime={formatTime} toggleTask={toggleTask} addTask={addTask} updateTime={(key,value)=>changeBlock(block.id,b=>({...b,[key]:value}))}/></div>)}</div></div>)}</div>{!loadingBlocks&&blocks.length===0&&<p className="calendar-subtle py-5 text-center text-sm">No blocks yet. Select New block to start planning your day.</p>}</div> : <div className="calendar-panel p-6"><p className="text-lg font-medium">{view} planning</p><p className="calendar-subtle mt-2 text-sm">This view is the next feature to build. It will help you arrange your {view==='Week'?'work shifts, activities, due dates and blocks':'paydays, events, commitments and project deadlines'}.</p><p className="calendar-accent mt-5 text-sm">Week starts on {startDay} · {clock} clock</p></div>}
    </>}
-   {(section==='Calendar'||section==='Fluid Calendar')&&<CalendarWorkspace startDay={startDay} clock={clock}/>}
+   {(section==='Calendar'||section==='Fluid Calendar')&&<CalendarWorkspace key={section} startDay={startDay} clock={clock} fluidOnly={section==='Fluid Calendar'}/>}
    {(section==='Goals'||section==='Workspaces')&&<Placeholder icon={<FolderKanban size={24}/>} title="Goals and projects" description="A home for long-term visions, 13-week sprints, projects and actionable tasks. We'll build this section next."/>}
    {(section==='Resources'||section==='Think About It')&&<Placeholder icon={<Inbox size={24}/>} title="Your thought inbox" description="Capture ideas, build collections, and connect reusable resource pages to projects and tasks. We'll build this section next."/>}
-   <p className="calendar-muted mt-10 text-xs">Scheduling blocks and tasks saved to your account · Goals and Resources coming soon</p>
+   {section!=='Calendar'&&section!=='Fluid Calendar'&&<p className="calendar-muted mt-10 text-xs">Scheduling blocks and tasks saved to your account · Goals and Resources coming soon</p>}
   </main>
  </div>;
 }
