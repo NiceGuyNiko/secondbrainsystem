@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ChevronLeft,ChevronRight,ChevronDown,Clock3,Plus,X,Trash2,CalendarDays,Lock,Unlock,Settings2,PanelRightOpen,PanelRightClose,CalendarDays} from 'lucide-react';
+import {ChevronLeft,ChevronRight,ChevronDown,Clock3,Plus,X,Trash2,CalendarDays,Lock,Unlock,Settings2,PanelRightOpen,PanelRightClose} from 'lucide-react';
 import {supabase} from '@/lib/supabase';
 type View='Day'|'Week'|'Month'|'Fluid';
 type Category={name:string;color:string};
