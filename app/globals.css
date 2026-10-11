@@ -105,3 +105,21 @@
 .pr11-settings-menu label{font-size:12px;color:var(--muted);display:grid;gap:5px}
 @media(min-width:768px){.pr11-sidebar{position:sticky;top:0;height:100vh}.pr11-sidebar-content{overflow-y:auto}}
 @media(max-width:767px){.pr11-sidebar-content{flex:none}.pr11-profile-menu{position:relative;bottom:auto;margin-top:6px}}
+
+/* PR11 month calendar: single-line timed events, readable full weekday labels, viewport-fitted weeks */
+.pr11-single-event{background:transparent!important;color:var(--text)!important;border-radius:3px;padding:3px 4px!important}
+.pr11-single-event:hover{background:var(--surface-2)!important}
+.pr11-event-inline{display:flex;align-items:center;gap:6px;min-width:0;width:100%;white-space:nowrap}
+.pr11-event-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--event-border)}
+.event-blue .pr11-event-dot{background:#4189f5}.event-orange .pr11-event-dot{background:#ff9d4f}.event-green .pr11-event-dot{background:#38bf81}.event-purple .pr11-event-dot{background:#a35aff}.event-pink .pr11-event-dot{background:#ef5ac3}.event-teal .pr11-event-dot{background:#19bdd6}
+.pr11-event-title{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.pr11-event-time{flex:none;font-size:11px;color:var(--muted);white-space:nowrap}
+.pr11-calendar-toolbar{min-height:54px}
+.pr11-calendar-title{white-space:nowrap}
+.pr11-toolbar-icon{display:grid;place-items:center;width:43px;height:43px;border:1px solid var(--border);border-radius:8px}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#1677ed;color:white}
+.calendar-main:has(.pr11-calendar-toolbar) .month-head{padding:10px 3px;font-size:12px}
+.calendar-main:has(.pr11-calendar-toolbar) .month-day{min-height:clamp(90px,calc((100dvh - 175px)/5 - 37px),170px);padding:4px}
+.calendar-main:has(.pr11-calendar-toolbar) .month-grid{min-width:0}
+.calendar-main:has(.pr11-calendar-toolbar) .month-grid>div{min-width:0}
+@media(max-width:900px){.pr11-calendar-toolbar{gap:10px}.pr11-calendar-title{font-size:20px}.pr11-event-time{font-size:10px}.pr11-event-inline{gap:3px}}
