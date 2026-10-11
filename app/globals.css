@@ -172,3 +172,25 @@
 .pr11-sidepanel-dot.event-teal{background:#18b8cb}.pr11-sidepanel-dot.event-orange{background:#ff994b}.pr11-sidepanel-dot.event-pink{background:#ef5ac3}.pr11-sidepanel-dot.event-purple{background:#9c50f4}.pr11-sidepanel-dot.event-green{background:#38bf81}
 .pr11-side-toggle{position:fixed;right:12px;top:50%;z-index:52;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px}
 .pr11-month-week .month-day .mt-1.space-y-1{margin-top:0}
+
+/* PR11 electric blue visual system */
+:root{--pr11-lapis:#008fff;--pr11-neon:#00c8ff}
+.pr11-brand-mark{color:#56d9ff!important;border-color:#009dff!important;box-shadow:0 0 11px #008fff50}
+.pr11-nav.active,.calendar-nav.active{background:#073c88!important;color:#f2fbff!important;box-shadow:inset 3px 0 #00baff}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#087eea!important;color:#fff!important;box-shadow:0 0 13px #008fff40}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary:hover{background:#009cf8!important;box-shadow:0 0 17px #00baff66}
+.pr11-month-week .pr11-month-ribbon{justify-content:flex-start}
+.pr11-month-week .pr11-ribbon-title{flex:0 1 auto}
+.pr11-month-week .pr11-ribbon-time{margin-left:0;color:#edf8ff}
+.pr11-month-week .month-day{display:flex;flex-direction:column}
+.pr11-month-week .pr11-day-bullets{min-height:0;overflow:hidden}
+.pr11-day-bottom{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:auto;min-height:17px;position:relative;z-index:3}
+.pr11-see-more{background:#163f76;color:#bfefff;border:1px solid #1489d6;border-radius:4px;padding:1px 5px;font-size:10px;white-space:nowrap}
+.pr11-see-more:hover{background:#075caa}
+.pr11-day-timeline{display:flex;flex-direction:column}
+.pr11-hour-row{display:grid;grid-template-columns:55px 1fr;min-height:54px;border-top:1px solid var(--border);gap:8px}
+.pr11-hour-row>span{font-size:10px;color:#a5b1c8;padding-top:5px}
+.pr11-hour-row>div{border-left:1px solid var(--border);padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:3px}
+.pr11-hour-event{display:flex;flex-direction:column;gap:3px;text-align:left;background:#173c72;border-left:3px solid #00a6ff;padding:5px 7px;border-radius:4px;font-size:12px}
+.pr11-hour-event small{font-size:10px;opacity:.85}
+.pr11-day-all-day{display:flex;flex-direction:column;gap:3px;padding-bottom:8px}
