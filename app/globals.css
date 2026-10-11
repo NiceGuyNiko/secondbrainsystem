@@ -49,3 +49,8 @@
  .calendar-date-row:has(>div:last-child){grid-template-columns:42px minmax(0,1fr)}
  .calendar-modal{padding:16px;overflow-x:visible}
 }
+
+.calendar-date-row:has(>div:last-child){grid-template-columns:50px minmax(0,1fr) 105px}
+.calendar-date-row>div{min-width:0}
+.calendar-modal select option,.calendar-main select option{background:#29292f;color:#fff}
+@media(max-width:640px){.calendar-date-row:has(>div:last-child){grid-template-columns:45px minmax(0,1fr) 90px;gap:5px}}
