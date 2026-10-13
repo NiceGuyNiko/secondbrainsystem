@@ -234,3 +234,31 @@
  .pr11-sidebar-collapsed .pr11-profile-menu{left:calc(100% + 10px);right:auto;bottom:0;width:250px;max-width:calc(100vw - 90px)}
  .pr11-sidebar-collapsed .pr11-settings-menu{width:280px}
 }
+
+/* Mobile month calendar: edge-to-edge, viewport-fitted, Apple-style week rows. */
+@media (max-width:767px) {
+ .app-shell:has(.pr11-month-panel){min-height:100dvh}
+ .app-shell:has(.pr11-month-panel) .calendar-sidebar{position:relative;z-index:50}
+ .app-shell:has(.pr11-month-panel) .calendar-main{height:calc(100dvh - 92px);min-height:0;overflow:hidden;padding:0!important}
+ .calendar-main:has(.pr11-month-panel)>.space-y-4{height:100%;min-height:0;display:flex;flex-direction:column;gap:0}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar{flex:none;padding:8px 12px;gap:8px}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar>div:first-child{gap:7px}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar>div:last-child{gap:5px}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar .pr11-calendar-title{order:10;width:100%;font-size:clamp(26px,8vw,38px);line-height:1.15;margin:8px 0 2px}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar .pr11-toolbar-icon{height:36px;width:36px}
+ .calendar-main:has(.pr11-month-panel) .pr11-calendar-toolbar .calendar-primary{padding:9px 11px}
+ .calendar-main:has(.pr11-month-panel) .pr11-month-panel{border-radius:0;border-left:0;border-right:0;min-height:0;flex:1}
+ .calendar-main:has(.pr11-month-panel) .pr11-month-body{min-height:0;grid-template-rows:34px repeat(var(--month-weeks),minmax(0,1fr))}
+ .calendar-main:has(.pr11-month-panel) .month-head{padding:8px 0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:clip}
+ .calendar-main:has(.pr11-month-panel) .pr11-month-week{border-top:1px solid var(--border);overflow:hidden}
+ .calendar-main:has(.pr11-month-panel) .pr11-date-heading{min-height:32px;padding:5px 0 2px;gap:2px}
+ .calendar-main:has(.pr11-month-panel) .pr11-date-heading .day-number{font-size:15px;font-weight:700}
+ .calendar-main:has(.pr11-month-panel) .pr11-date-heading span{font-size:8px;max-width:44px;overflow:hidden;text-overflow:ellipsis}
+ .calendar-main:has(.pr11-month-panel) .month-day{border-right:0;padding:2px 1px;overflow:hidden}
+ .calendar-main:has(.pr11-month-panel) .week-ribbons{padding:1px 0}
+ .calendar-main:has(.pr11-month-panel) .event-chip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .calendar-main:has(.pr11-month-panel) .pr11-event-time{display:none}
+ .calendar-main:has(.pr11-month-panel) .pr11-event-inline{gap:3px}
+ .calendar-main:has(.pr11-month-panel) .pr11-event-dot{width:6px;height:6px}
+ .calendar-main:has(.pr11-month-panel) .pr11-single-event{padding:2px 1px!important}
+}
