@@ -227,3 +227,10 @@
 .pr11-side-now-line{position:absolute;left:64px;right:0;height:2px;background:var(--accent,#3b82f6);z-index:5;pointer-events:none;box-shadow:0 0 7px var(--accent,#3b82f6)}
 .pr11-side-now-line span{position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent,#3b82f6)}
 .pr11-global-day-button{position:fixed;right:16px;bottom:18px;z-index:30;display:flex;align-items:center;gap:8px;border-radius:10px;padding:10px 14px;background:var(--accent,#2687e9);color:white;font-size:13px;font-weight:600;box-shadow:0 4px 20px #0005}
+
+/* Keep profile actions full-size outside the collapsed icon rail. */
+@media(min-width:768px){
+ .pr11-sidebar-content.pr11-sidebar-collapsed{overflow:visible}
+ .pr11-sidebar-collapsed .pr11-profile-menu{left:calc(100% + 10px);right:auto;bottom:0;width:250px;max-width:calc(100vw - 90px)}
+ .pr11-sidebar-collapsed .pr11-settings-menu{width:280px}
+}
