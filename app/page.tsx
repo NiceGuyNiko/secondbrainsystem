@@ -84,7 +84,7 @@ function Workspace() {
   changeBlock(blockId,block=>({...block,tasks:block.tasks.map(task=>task.id===taskId?{...task,done:!task.done}:task)}));
  }
  return <div className="app-shell min-h-screen md:flex">
-  <aside className={`calendar-sidebar pr11-sidebar w-full min-w-0 border-b md:min-h-screen md:shrink-0 md:border-b-0 md:border-r transition-[width] duration-200 ${sidebarCollapsed?"md:w-[64px]":"md:w-[276px]"}`}>
+  <aside className={`calendar-sidebar pr11-sidebar w-full min-w-0 border-b md:min-h-screen md:shrink-0 md:border-b-0 md:border-r  ${sidebarCollapsed?"md:w-[64px]":"md:w-[276px]"}`}>
     <div className={`pr11-brand flex shrink-0 items-center gap-2 py-5 ${sidebarCollapsed?"justify-center px-1":"justify-between px-4"}`}><div className={`flex min-w-0 items-center gap-3 ${sidebarCollapsed?"justify-center":""}`}><button type="button" className="pr11-brand-mark shrink-0" aria-label={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} title={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} onClick={toggleSidebar}><Zap size={22}/></button><div className={`${sidebarCollapsed?"hidden":"min-w-0"}`}><div className="truncate text-lg font-semibold tracking-tight">All About Action</div><div className="calendar-subtle text-[11px] uppercase tracking-wide">{displayName}&apos;s calendar</div></div></div>{!sidebarCollapsed&&<button type="button" className="pr11-icon-button hidden md:flex" aria-label="Collapse sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}><Menu size={20}/></button>}</div>
     <div className={`${mobileMenu?"block":"hidden"} pr11-sidebar-content pb-4 md:flex md:flex-col ${sidebarCollapsed?"pr11-sidebar-collapsed px-1":"px-3"}`}>
       <nav className="space-y-1" aria-label="Main navigation">
