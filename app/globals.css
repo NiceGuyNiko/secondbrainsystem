@@ -82,3 +82,148 @@
 /* Day view: one continuous ribbon across the date columns, with guides behind it. */
 .day-ribbon-grid{display:grid;gap:3px 0;padding:4px 0;align-content:start;min-height:48px;background:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / var(--day-columns,3) - 1px),var(--border) calc(100% / var(--day-columns,3) - 1px),var(--border) calc(100% / var(--day-columns,3)))}
 .day-ribbon-grid .day-ribbon{position:relative;z-index:1;margin:0 4px;min-width:0}
+
+/* PR 11: screenshot-inspired workspace sidebar */
+.pr11-sidebar{display:flex;flex-direction:column;background:var(--sidebar);border-color:var(--border)}
+.pr11-sidebar-content{flex:1;min-height:0}
+.pr11-brand-mark{display:grid;place-items:center;color:var(--accent);border:1px solid var(--accent);border-radius:5px;width:34px;height:38px;flex:none}
+.pr11-nav{transition:background .15s,color .15s}
+.pr11-nav.active{background:var(--accent-soft);color:var(--accent-text)}
+.pr11-badge{background:#65252b;color:#fff;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700}
+.pr11-beta{background:#10395f;color:#49b3ff}
+.pr11-sidebar-divider,.pr11-menu-divider{height:1px;background:var(--border)}
+.pr11-icon-button{display:grid;place-items:center;color:var(--muted);border-radius:7px;padding:5px}
+.pr11-icon-button:hover{background:var(--surface-2)}
+.pr11-calendar-key{width:25px;height:25px;border-radius:5px;display:grid;place-items:center;color:white;flex:none}
+.pr11-profile-trigger:hover{background:var(--surface-2)}
+.pr11-avatar{width:34px;height:34px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);display:grid;place-items:center;flex:none}
+.pr11-profile-menu{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:45;padding:6px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:0 12px 40px #0005}
+.pr11-profile-menu>button{width:100%;display:flex;align-items:center;gap:10px;text-align:left;padding:10px;border-radius:7px;font-size:13px}
+.pr11-profile-menu>button:hover{background:var(--surface-2)}
+.pr11-profile-menu .pr11-menu-divider{margin:4px 0}
+.pr11-settings-menu{bottom:0;padding:12px;display:grid;gap:12px}
+.pr11-settings-menu label{font-size:12px;color:var(--muted);display:grid;gap:5px}
+@media(min-width:768px){.pr11-sidebar{position:sticky;top:0;height:100vh}.pr11-sidebar-content{overflow-y:auto}}
+@media(max-width:767px){.pr11-sidebar-content{flex:none}.pr11-profile-menu{position:relative;bottom:auto;margin-top:6px}}
+
+/* PR11 month calendar: single-line timed events, readable full weekday labels, viewport-fitted weeks */
+.pr11-single-event{background:transparent!important;color:var(--text)!important;border-radius:3px;padding:3px 4px!important}
+.pr11-single-event:hover{background:var(--surface-2)!important}
+.pr11-event-inline{display:flex;align-items:center;gap:6px;min-width:0;width:100%;white-space:nowrap}
+.pr11-event-dot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--event-border)}
+.event-blue .pr11-event-dot{background:#4189f5}.event-orange .pr11-event-dot{background:#ff9d4f}.event-green .pr11-event-dot{background:#38bf81}.event-purple .pr11-event-dot{background:#a35aff}.event-pink .pr11-event-dot{background:#ef5ac3}.event-teal .pr11-event-dot{background:#19bdd6}
+.pr11-event-title{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+.pr11-event-time{flex:none;font-size:11px;color:var(--muted);white-space:nowrap}
+.pr11-calendar-toolbar{min-height:54px}
+.pr11-calendar-title{white-space:nowrap}
+.pr11-toolbar-icon{display:grid;place-items:center;width:43px;height:43px;border:1px solid var(--border);border-radius:8px}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#1677ed;color:white}
+.calendar-main:has(.pr11-calendar-toolbar) .month-head{padding:10px 3px;font-size:12px}
+.calendar-main:has(.pr11-calendar-toolbar) .month-day{min-height:clamp(90px,calc((100dvh - 175px)/5 - 37px),170px);padding:4px}
+.calendar-main:has(.pr11-calendar-toolbar) .month-grid{min-width:0}
+.calendar-main:has(.pr11-calendar-toolbar) .month-grid>div{min-width:0}
+@media(max-width:900px){.pr11-calendar-toolbar{gap:10px}.pr11-calendar-title{font-size:20px}.pr11-event-time{font-size:10px}.pr11-event-inline{gap:3px}}
+
+/* PR11: month fits the viewport, with compact non-overlapping ribbon lanes */
+@media(min-width:768px){
+.calendar-main:has(.pr11-month-panel){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.calendar-main:has(.pr11-month-panel)>.space-y-4{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.pr11-month-panel{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-month-body{flex:1;min-height:0;display:grid;grid-template-rows:36px repeat(var(--month-weeks),minmax(0,1fr))}
+.pr11-month-week{min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-month-week>.month-grid:last-child{flex:1;min-height:0}
+.calendar-main:has(.pr11-month-panel) .month-day{min-height:0;overflow:hidden;padding:2px 4px}
+.calendar-main:has(.pr11-month-panel) .month-day .mt-1{margin-top:2px}
+.calendar-main:has(.pr11-month-panel) .month-head{padding:7px 2px}
+}
+.pr11-month-week .week-ribbons{padding:1px 3px;gap:2px 0;align-content:start}
+.pr11-month-week .week-ribbons .event-chip{padding:2px 5px;margin:0 2px;min-height:19px;line-height:15px;font-size:11px;white-space:nowrap;text-overflow:ellipsis;color:#f8f9ff}
+.pr11-month-week .month-day .pr11-single-event{padding:2px 3px!important;line-height:1.2;color:#f5f7ff!important}
+.pr11-month-week .pr11-event-title{font-weight:500;color:#f5f7ff}
+.pr11-month-week .pr11-event-time{color:#e0e5ee}
+.pr11-month-week .month-outside .pr11-event-title,.pr11-month-week .month-outside .pr11-event-time{color:#d2d8e5}
+
+/* PR11 compact month events */
+.pr11-month-week .month-day .pr11-single-event{font-size:10px!important;font-weight:400!important;padding:1px 2px!important}
+.pr11-month-week .pr11-event-title{font-weight:400;font-size:10px}
+.pr11-month-week .pr11-event-time{font-size:9px;margin-left:auto;text-align:right}
+.pr11-month-week .month-day .mt-1.space-y-1{display:grid;gap:1px}
+.pr11-month-week .pr11-month-ribbon{display:flex;align-items:center;gap:5px;min-width:0}
+.pr11-month-week .pr11-ribbon-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.pr11-month-week .pr11-ribbon-time{white-space:nowrap;flex:none;font-size:9px;font-weight:400}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#087fb5!important;color:#fff!important}
+
+/* PR11 lapis accent and dense month day panel */
+:root{--pr11-lapis:#245be8}
+.pr11-brand-mark{color:#80aaff!important;border-color:#416ff5!important}
+.pr11-nav.active,.calendar-nav.active{background:#193d88!important;color:#e8efff!important}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:var(--pr11-lapis)!important;color:#fff!important}
+.pr11-date-heading{border-right:0!important;gap:3px;text-align:center}
+.pr11-month-week>.month-grid:first-child{border-bottom:0!important}
+.pr11-month-week .month-day{position:relative}
+.pr11-month-week .month-day .pr11-event-inline{font-weight:400}
+.pr11-month-week .month-day .pr11-event-title{font-weight:400}
+.pr11-day-sidepanel{position:fixed;right:0;top:0;bottom:0;width:min(390px,95vw);background:var(--surface,#191b20);border-left:1px solid var(--border);box-shadow:-16px 0 55px #0007;z-index:55;padding:20px;display:flex;flex-direction:column}
+.pr11-sidepanel-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.pr11-sidepanel-list{overflow:auto;flex:1;padding-top:12px;display:flex;flex-direction:column;gap:5px}
+.pr11-sidepanel-event{display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:8px;text-align:left;width:100%}
+.pr11-sidepanel-event:hover{background:var(--surface-2)}
+.pr11-sidepanel-dot{width:9px;height:9px;border-radius:50%;background:#4b84ff;margin-top:5px;flex:none}
+.pr11-sidepanel-dot.event-teal{background:#18b8cb}.pr11-sidepanel-dot.event-orange{background:#ff994b}.pr11-sidepanel-dot.event-pink{background:#ef5ac3}.pr11-sidepanel-dot.event-purple{background:#9c50f4}.pr11-sidepanel-dot.event-green{background:#38bf81}
+.pr11-side-toggle{position:fixed;right:12px;top:50%;z-index:52;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:8px}
+.pr11-month-week .month-day .mt-1.space-y-1{margin-top:0}
+
+/* PR11 electric blue visual system */
+:root{--pr11-lapis:#008fff;--pr11-neon:#00c8ff}
+.pr11-brand-mark{color:#56d9ff!important;border-color:#009dff!important;box-shadow:0 0 11px #008fff50}
+.pr11-nav.active,.calendar-nav.active{background:#073c88!important;color:#f2fbff!important;box-shadow:inset 3px 0 #00baff}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary{background:#087eea!important;color:#fff!important;box-shadow:0 0 13px #008fff40}
+.calendar-main:has(.pr11-calendar-toolbar) .calendar-primary:hover{background:#009cf8!important;box-shadow:0 0 17px #00baff66}
+.pr11-month-week .pr11-month-ribbon{justify-content:flex-start}
+.pr11-month-week .pr11-ribbon-title{flex:0 1 auto}
+.pr11-month-week .pr11-ribbon-time{margin-left:0;color:#edf8ff}
+.pr11-month-week .month-day{display:flex;flex-direction:column}
+.pr11-month-week .pr11-day-bullets{min-height:0;overflow:hidden}
+.pr11-day-bottom{display:flex;justify-content:space-between;align-items:center;gap:4px;margin-top:auto;min-height:17px;position:relative;z-index:3}
+.pr11-see-more{background:#163f76;color:#bfefff;border:1px solid #1489d6;border-radius:4px;padding:1px 5px;font-size:10px;white-space:nowrap}
+.pr11-see-more:hover{background:#075caa}
+.pr11-day-timeline{display:flex;flex-direction:column}
+.pr11-hour-row{display:grid;grid-template-columns:55px 1fr;min-height:54px;border-top:1px solid var(--border);gap:8px}
+.pr11-hour-row>span{font-size:10px;color:#a5b1c8;padding-top:5px}
+.pr11-hour-row>div{border-left:1px solid var(--border);padding:4px 0 4px 8px;display:flex;flex-direction:column;gap:3px}
+.pr11-hour-event{display:flex;flex-direction:column;gap:3px;text-align:left;background:#173c72;border-left:3px solid #00a6ff;padding:5px 7px;border-radius:4px;font-size:12px}
+.pr11-hour-event small{font-size:10px;opacity:.85}
+.pr11-day-all-day{display:flex;flex-direction:column;gap:3px;padding-bottom:8px}
+
+/* PR11 viewport parity for week/day/fluid */
+@media(min-width:768px){
+.calendar-main:has(.pr11-week-panel),.calendar-main:has(.pr11-day-panel),.calendar-main:has(.pr11-fluid-viewport){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.calendar-main:has(.pr11-week-panel)>.space-y-4,.calendar-main:has(.pr11-day-panel)>.space-y-4,.calendar-main:has(.pr11-fluid-viewport)>.space-y-4{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.pr11-week-panel,.pr11-day-panel{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-week-panel>.week-body-grid{flex:1;min-height:0;overflow-y:auto}
+.pr11-week-panel>.week-compact:first-child{min-height:0;flex:none}
+.pr11-day-panel>.w-full{flex:1;min-height:0;display:flex;flex-direction:column}
+.pr11-day-panel .timeline-scroll,.pr11-day-panel .timeline-body,.pr11-day-panel .day-timeline-scroll{flex:1;min-height:0;overflow-y:auto}
+.pr11-fluid-viewport{flex:1;min-height:0;overflow:auto;align-content:stretch;grid-auto-rows:minmax(0,1fr)}
+.pr11-fluid-viewport>[data-fluid-date]{min-height:0;overflow:auto}
+}
+.pr11-week-ribbons{padding:3px 5px!important;gap:3px 0!important;align-content:start}
+.pr11-week-ribbon{display:flex;align-items:center;gap:5px;min-width:0;min-height:22px;margin:0 3px!important;padding:3px 6px!important;white-space:nowrap;overflow:hidden}
+.pr11-week-ribbon .pr11-ribbon-title{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr11-week-ribbon .pr11-ribbon-time{flex:none;font-size:10px;white-space:nowrap}
+.pr11-week-panel .week-column{padding-top:6px}
+.pr11-week-panel .week-column .space-y-1{margin-top:0}
+.pr11-month-week .week-ribbons .event-chip{margin:0 3px!important}
+
+/* Calendar ribbon spacing and day-panel polish */
+.pr11-month-week .week-ribbons .event-chip{margin-left:4px!important;margin-right:4px!important;border-radius:5px!important}
+.pr11-week-ribbons{padding-left:7px!important;padding-right:7px!important}
+.pr11-week-ribbons .pr11-week-ribbon{margin-left:5px!important;margin-right:5px!important;border-radius:6px!important}
+.pr11-week-panel .week-body-grid{margin-top:0}
+.pr11-all-day-date{grid-template-columns:48px minmax(0,1fr)!important}
+.pr11-all-day-date> :nth-child(2){width:100%;min-width:0}
+.pr11-all-day-date> :nth-child(2)>button{width:100%}
+.pr11-day-timeline{position:relative}
+.pr11-side-now-line{position:absolute;left:64px;right:0;height:2px;background:var(--accent,#3b82f6);z-index:5;pointer-events:none;box-shadow:0 0 7px var(--accent,#3b82f6)}
+.pr11-side-now-line span{position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent,#3b82f6)}
+.pr11-global-day-button{position:fixed;right:16px;bottom:18px;z-index:30;display:flex;align-items:center;gap:8px;border-radius:10px;padding:10px 14px;background:var(--accent,#2687e9);color:white;font-size:13px;font-weight:600;box-shadow:0 4px 20px #0005}
