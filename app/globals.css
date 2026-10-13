@@ -194,3 +194,23 @@
 .pr11-hour-event{display:flex;flex-direction:column;gap:3px;text-align:left;background:#173c72;border-left:3px solid #00a6ff;padding:5px 7px;border-radius:4px;font-size:12px}
 .pr11-hour-event small{font-size:10px;opacity:.85}
 .pr11-day-all-day{display:flex;flex-direction:column;gap:3px;padding-bottom:8px}
+
+/* PR11 viewport parity for week/day/fluid */
+@media(min-width:768px){
+.calendar-main:has(.pr11-week-panel),.calendar-main:has(.pr11-day-panel),.calendar-main:has(.pr11-fluid-viewport){height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.calendar-main:has(.pr11-week-panel)>.space-y-4,.calendar-main:has(.pr11-day-panel)>.space-y-4,.calendar-main:has(.pr11-fluid-viewport)>.space-y-4{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px}
+.pr11-week-panel,.pr11-day-panel{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.pr11-week-panel>.week-body-grid{flex:1;min-height:0;overflow-y:auto}
+.pr11-week-panel>.week-compact:first-child{min-height:0;flex:none}
+.pr11-day-panel>.w-full{flex:1;min-height:0;display:flex;flex-direction:column}
+.pr11-day-panel .timeline-scroll,.pr11-day-panel .timeline-body,.pr11-day-panel .day-timeline-scroll{flex:1;min-height:0;overflow-y:auto}
+.pr11-fluid-viewport{flex:1;min-height:0;overflow:auto;align-content:stretch;grid-auto-rows:minmax(0,1fr)}
+.pr11-fluid-viewport>[data-fluid-date]{min-height:0;overflow:auto}
+}
+.pr11-week-ribbons{padding:3px 5px!important;gap:3px 0!important;align-content:start}
+.pr11-week-ribbon{display:flex;align-items:center;gap:5px;min-width:0;min-height:22px;margin:0 3px!important;padding:3px 6px!important;white-space:nowrap;overflow:hidden}
+.pr11-week-ribbon .pr11-ribbon-title{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr11-week-ribbon .pr11-ribbon-time{flex:none;font-size:10px;white-space:nowrap}
+.pr11-week-panel .week-column{padding-top:6px}
+.pr11-week-panel .week-column .space-y-1{margin-top:0}
+.pr11-month-week .week-ribbons .event-chip{margin:0 3px!important}
