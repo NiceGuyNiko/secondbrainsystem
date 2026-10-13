@@ -214,3 +214,16 @@
 .pr11-week-panel .week-column{padding-top:6px}
 .pr11-week-panel .week-column .space-y-1{margin-top:0}
 .pr11-month-week .week-ribbons .event-chip{margin:0 3px!important}
+
+/* Calendar ribbon spacing and day-panel polish */
+.pr11-month-week .week-ribbons .event-chip{margin-left:4px!important;margin-right:4px!important;border-radius:5px!important}
+.pr11-week-ribbons{padding-left:7px!important;padding-right:7px!important}
+.pr11-week-ribbons .pr11-week-ribbon{margin-left:5px!important;margin-right:5px!important;border-radius:6px!important}
+.pr11-week-panel .week-body-grid{margin-top:0}
+.pr11-all-day-date{grid-template-columns:48px minmax(0,1fr)!important}
+.pr11-all-day-date> :nth-child(2){width:100%;min-width:0}
+.pr11-all-day-date> :nth-child(2)>button{width:100%}
+.pr11-day-timeline{position:relative}
+.pr11-side-now-line{position:absolute;left:64px;right:0;height:2px;background:var(--accent,#3b82f6);z-index:5;pointer-events:none;box-shadow:0 0 7px var(--accent,#3b82f6)}
+.pr11-side-now-line span{position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent,#3b82f6)}
+.pr11-global-day-button{position:fixed;right:16px;bottom:18px;z-index:30;display:flex;align-items:center;gap:8px;border-radius:10px;padding:10px 14px;background:var(--accent,#2687e9);color:white;font-size:13px;font-weight:600;box-shadow:0 4px 20px #0005}
