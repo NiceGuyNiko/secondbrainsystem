@@ -27,6 +27,7 @@ test('migration, transactions, properties, hierarchy, links, schedules, and user
  await db.query(`insert into thought_connections(source_id,target_id,type) values($1,$2,'relates_to')`,[t1,t2]);
  await assert.rejects(db.query(`insert into thought_connections(source_id,target_id,type) values($1,$2,'relates_to')`,[t2,t1]));
  await db.query(`insert into user_items(title,item_type,thought_id,content) values('Schedule','block',$1,'{"date":"2026-10-14","endDate":"2026-10-14","timeZone":"America/Toronto","start":"09:00","end":"10:00"}')`,[t1]);
+ await assert.rejects(db.query(`insert into user_items(title,item_type,thought_id,content) values('Missing dates','block',$1,'{}')`,[t1]));
  const schedule=(await db.query<{content:{starts_at:string}}>("select content from user_items where item_type='block'")).rows[0];
  assert.equal(new Date(schedule.content.starts_at).toISOString(),'2026-10-14T13:00:00.000Z');
  await assert.rejects(db.query(`insert into user_items(title,item_type,thought_id,content) values('DST','block',$1,'{"date":"2027-03-14","endDate":"2027-03-14","start":"02:30","end":"04:00","timeZone":"America/Toronto"}')`,[t1]));

@@ -63,7 +63,7 @@ begin
    if (p->>'type'='number' and jsonb_typeof(v)<>'number') or (p->>'type'='checkbox' and jsonb_typeof(v)<>'boolean') or (p->>'type' in ('text','date','select') and jsonb_typeof(v)<>'string') or (p->>'type'='multi-select' and jsonb_typeof(v)<>'array') then raise exception 'Property type mismatch'; end if;
    if p->>'type'='select' and not (p->'options' @> jsonb_build_array(v)) then raise exception 'Unknown option'; end if;
    if p->>'type'='multi-select' and not (p->'options' @> v) then raise exception 'Unknown options'; end if;
-   if p->>'type'='date' then perform (v#>>'{}')::date; end if;
+   if p->>'type'='date' then if (v#>>'{}') !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Invalid date';end if;perform (v#>>'{}')::date; end if;
   end loop;
   if exists(select 1 from jsonb_object_keys(new.values_json) k where not exists(select 1 from jsonb_array_elements(props) prop where prop->>'id'=k)) then raise exception 'Unknown property'; end if;
  else
@@ -82,6 +82,8 @@ begin
  if new.thought_id is not null and (new.item_type<>'block' or not exists(select 1 from public.thought_details where thought_id=new.thought_id and user_id=new.user_id and user_id=auth.uid())) then raise exception 'Scheduled thought unavailable';end if;
  if new.thought_id is not null then
   if tg_op='UPDATE' and (new.content->>'date',new.content->>'start',new.content->>'endDate',new.content->>'end',new.content->>'timeZone',new.content->>'allDay') is not distinct from (old.content->>'date',old.content->>'start',old.content->>'endDate',old.content->>'end',old.content->>'timeZone',old.content->>'allDay') then return new;end if;
+  if coalesce(new.content->>'date','') !~ '^\d{4}-\d{2}-\d{2}$' or coalesce(new.content->>'endDate','') !~ '^\d{4}-\d{2}-\d{2}$' then raise exception 'Start and end dates required';end if;
+  if not coalesce((new.content->>'allDay')::boolean,false) and (coalesce(new.content->>'start','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' or coalesce(new.content->>'end','') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$') then raise exception 'Start and end times required';end if;
   zone:=coalesce(new.content->>'timeZone','UTC');
   if not exists(select 1 from pg_timezone_names where name=zone) then raise exception 'Invalid time zone';end if;
   if coalesce((new.content->>'allDay')::boolean,false) then
