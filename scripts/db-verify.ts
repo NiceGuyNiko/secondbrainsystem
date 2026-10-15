@@ -1,18 +1,25 @@
-// Checks permissions and read/write behaviour against the STAGING project with two test users.
-//   npm run staging:verify
-// Reads .env.staging.local (never committed). Refuses to run against production.
-// Creates clearly tagged thoughts/tasks in staging and archives them afterwards.
+// Checks permissions and read/write behaviour against a NON-production Supabase stack with two users.
+//   npm run db:verify   (uses the settings in .env.local; refuses production)
+// Local: creates two throwaway users itself (local sign-ups need no email confirmation).
+// Hosted staging (when one exists): uses STAGING_TEST_USER_{A,B}_{EMAIL,PASSWORD} from the environment.
+// Creates clearly tagged thoughts/tasks and archives them afterwards.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { PRODUCTION_PROJECT_REF, projectRef } from "../lib/environment";
+import { resolveEnvironment } from "../lib/environment";
+import { assertLocalOnly } from "./db-guard";
 
 const stop = (message: string): never => {
   console.error(`\n✖ ${message}\n`);
   process.exit(1);
 };
-const env = (name: string) => process.env[name] || stop(`Missing ${name} in .env.staging.local.`);
-const url = env("STAGING_SUPABASE_URL"), key = env("STAGING_SUPABASE_PUBLISHABLE_KEY");
-const ref = projectRef(url) ?? stop("STAGING_SUPABASE_URL is not a Supabase project URL.");
-if (ref === PRODUCTION_PROJECT_REF) stop("STAGING_SUPABASE_URL points at the production project. Refusing.");
+assertLocalOnly();
+const target = resolveEnvironment({
+  deploy: "development",
+  data: process.env.NEXT_PUBLIC_AAA_DATA_ENV,
+  url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  key: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+});
+if (!target.ok) stop(`.env.local is not a safe target: ${target.reason}`);
+const { url, key, data, label } = target as Extract<typeof target, { ok: true }>;
 
 const client = () => createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 const results: { check: string; ok: boolean; detail: string }[] = [];
@@ -28,9 +35,17 @@ const must = <T>(r: { data: T; error: { message: string } | null }) => {
   return r.data;
 };
 async function signIn(c: SupabaseClient, user: "A" | "B") {
-  const { data, error } = await c.auth.signInWithPassword({ email: env(`STAGING_TEST_USER_${user}_EMAIL`), password: env(`STAGING_TEST_USER_${user}_PASSWORD`) });
-  if (error || !data.user) throw new Error(`User ${user} could not sign in: ${error?.message}`);
-  return data.user.id;
+  if (data === "local") {
+    const email = `verify-${user.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}@example.test`;
+    const { data: signUp, error } = await c.auth.signUp({ email, password: crypto.randomUUID(), options: { data: { display_name: `Verify ${user}` } } });
+    if (error || !signUp.session || !signUp.user) throw new Error(`Local user ${user} could not sign up: ${error?.message ?? "no session (is email confirmation disabled locally?)"}`);
+    return signUp.user.id;
+  }
+  const email = process.env[`STAGING_TEST_USER_${user}_EMAIL`], password = process.env[`STAGING_TEST_USER_${user}_PASSWORD`];
+  if (!email || !password) throw new Error(`Missing STAGING_TEST_USER_${user}_EMAIL/PASSWORD`);
+  const { data: session, error } = await c.auth.signInWithPassword({ email, password });
+  if (error || !session.user) throw new Error(`User ${user} could not sign in: ${error?.message}`);
+  return session.user.id;
 }
 async function archive(c: SupabaseClient, id: string) {
   const row = must(await c.from("user_items").select("title,content").eq("id", id).single()) as { title: string; content: unknown };
@@ -39,12 +54,12 @@ async function archive(c: SupabaseClient, id: string) {
 }
 
 async function main() {
-  console.log(`Staging project ${ref}\n`);
+  console.log(`Target: ${data} data · ${label}\n`);
   const anon = client(), a = client(), b = client();
   await check("Anonymous visitors cannot read app tables", async () => {
     for (const table of ["profiles", "user_items", "thought_details", "planning_records"]) {
-      const { data, error } = await anon.from(table).select("*").limit(1);
-      if (!error && data?.length) throw new Error(`${table} returned rows to an anonymous visitor`);
+      const { data: rows, error } = await anon.from(table).select("*").limit(1);
+      if (!error && rows?.length) throw new Error(`${table} returned rows to an anonymous visitor`);
     }
   });
   let userA = "";
@@ -56,7 +71,7 @@ async function main() {
     const rows = must(await a.from("profiles").select("id").eq("id", userA)) as unknown[];
     if (rows.length !== 1) throw new Error("No profile row for user A");
   });
-  const tag = `[staging-verify ${new Date().toISOString()}]`;
+  const tag = `[db-verify ${new Date().toISOString()}]`;
   const thought = crypto.randomUUID(), task = crypto.randomUUID(), other = crypto.randomUUID();
   await check("User A creates a thought", async () => void must(await a.rpc("create_thought", { p_id: thought, p_title: tag, p_content: { blocks: [] } })));
   await check("User A reads the thought back", async () => {

@@ -4,7 +4,7 @@ Next.js, React, TypeScript and Supabase workspace with authenticated calendar an
 
 ## Development
 
-Node 20+; `npm ci`, copy `.env.example` to `.env.local` with the **staging** project's values, then `npm run dev`. The Supabase project is chosen only by environment variables: production deployments must use production, previews and local development must use staging, and anything missing or contradictory refuses to build (`lib/environment.ts`). Staging pages show a STAGING DATA badge. Only publishable keys belong in client configuration — never secret/service-role keys. Setup: `docs/STAGING-SETUP.md`.
+Node 20+ and Docker Desktop; `npm ci`, `npm run db:start`, `npm run db:env`, then `npm run dev`. The database is chosen only by environment variables: production deployments must use production, previews must use a hosted non-production project (none yet, so they refuse to build), and local development uses local Supabase — never production. Anything missing or contradictory refuses to build (`lib/environment.ts`). Non-production pages show a LOCAL/STAGING DATA badge. Only publishable keys belong in client configuration — never secret/service-role keys. Details: `docs/LOCAL-DEVELOPMENT.md`.
 
 ## Checks
 

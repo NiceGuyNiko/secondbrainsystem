@@ -1,6 +1,6 @@
 # Next build — decisions, architecture and plan
 
-**Status:** Phase 0.5. Decisions in §1, the hybrid architecture in §4 (with the §4.4 refinement) and the revised phases in §6 are **approved by the owner (15 October 2026)**. Staging setup: `docs/STAGING-SETUP.md`.
+**Status:** Phase 0.5. Decisions in §1, the hybrid architecture in §4 (with the §4.4 refinement) and the revised phases in §6 are **approved by the owner (15 October 2026)**. Development data isolation: `docs/LOCAL-DEVELOPMENT.md`.
 **Baseline:** `main` at `fbc6cdb1ca637c33ca6359d0a9e7937d3eb0a9c0` (PR #15), production deployment `dpl_2h6UBcapq7DLbB2k9BnTfRkwM3PD`.
 **Authority:** this document overrides conflicting instructions in `docs/ALL_ABOUT_ACTION_NEXT_BUILD_AGENT_SPEC.md` and `docs/ANTIGRAVITY_HANDOFF.md`. Everything else in the spec remains the product contract.
 
@@ -21,8 +21,8 @@
 9. **Safety:** no production schema change, merge to `main`, or production deploy without explicit approval. Additive schema only.
 10. **Records stay Thoughts.** Databases and records remain recognizable Thought pages that take part in connections, backlinks and search. Database membership is a relationship of the underlying Thought, not a replacement for its identity. Legacy lists may exclude them only where showing them would duplicate or confuse (§4.4).
 11. **"Existing" group is temporary.** The legacy section inside Databases is a compatibility arrangement until deliberate integration produces one unified database and workspace experience.
-12. **Staging is fail-closed.** Production uses explicitly configured production credentials; Preview uses explicitly configured staging credentials. Missing or invalid configuration fails safely and never falls back to production. Non-production builds show a STAGING DATA indicator. All new migrations go to staging first.
-13. **Database testing** must include a real Supabase/PostgreSQL environment (staging), including row-level security and permissions, in addition to PGlite tests.
+12. **Development is fail-closed and local.** No second hosted Supabase project (plan limit; no upgrade). Development and database testing use local Supabase (CLI + Docker). Production uses explicitly configured production credentials; Preview fails closed until a hosted non-production project exists; nothing ever falls back to production. Non-production builds show a LOCAL/STAGING DATA indicator. All new migrations are tested locally before any production review.
+13. **Database testing** must include a real Supabase stack (local Supabase), including row-level security and permissions, in addition to PGlite tests.
 14. **Engine requirements before any AI work:** validation before execution, atomic changes, permission checks, consistent two-way relations, rejection of invalid or circular dependencies, version-conflict handling, idempotent retries, clear errors for missing or invalid calculated values. Formulas: an extensible defined subset. Table, board and gallery views before calendar and timeline.
 
 ## 2. Baseline (Phase 0)
@@ -115,24 +115,24 @@ The Goals template is a database with properties: Name, Goal Type (select: Visio
 - Legacy Goals/Projects/Tasks keep their screens, RPCs and Agenda behaviour. New-engine Goals are separate records; the UI labels the two systems distinctly (*Existing planning* vs the new databases).
 - Later integration (separate approval) would be a deliberate import through the same operation API: legacy record → engine record, keeping the same thought page ID, so no page content is copied.
 
-## 5. Safe development and testing (proposal)
+## 5. Safe development and testing
 
-On `main`, Vercel previews use the production Supabase project because `lib/supabase.ts` hard-codes the URL/key. Approved approach (details and owner steps in `docs/STAGING-SETUP.md`):
+Approved approach (owner steps and commands in `docs/LOCAL-DEVELOPMENT.md`):
 
-1. **Automated tests on PGlite** (already in use): every new migration, trigger, RLS rule, operation and progress formula is tested against an in-memory Postgres with simulated users. No network.
-2. **Separate staging Supabase project**, created by the owner; no credentials shared with the agent. New migrations are applied there first, through a guarded helper that refuses to target production.
-3. **Explicit environment configuration, no fallback:** production deployments require production values; Preview and local development require staging values. Missing or contradictory configuration fails the build, and the app renders a configuration error without creating a database client.
-4. **Visible environment indicator:** staging builds show an amber "STAGING DATA · ‹project ref›" badge and a `[Staging]` tab title, including on the sign-in screen.
-5. **Real-database permission checks:** `npm run staging:verify` signs in two staging users and checks anonymous access, owner read/write, cross-account isolation and cross-account link rejection.
-6. **Datasets for future imports:** `db_databases.dataset` (default `primary`) lets import experiments use a labelled dataset on staging that can be listed and deleted as a unit. Production imports remain out of scope.
-7. Supabase Branching (a database per Git branch) is an alternative if a paid plan is acceptable later.
+1. **PGlite tests** for every migration, trigger, RLS rule, operation and progress formula.
+2. **Local Supabase** (CLI + Docker Desktop) as the full integration environment: real Postgres, Auth, PostgREST and RLS. It starts empty (no seed, no production data).
+3. **Explicit environment configuration, no fallback:** production deployments require production values; previews require a hosted non-production project (none yet, so previews refuse to build); local development accepts local Supabase or a hosted staging project, never production.
+4. **Visible indicator:** LOCAL DATA / STAGING DATA badge and tab-title prefix on every non-production page.
+5. **Guarded scripts:** `npm run db:*` only targets the local stack and refuses if the folder is linked to production or a variable could redirect the CLI. `npm run db:verify` checks anonymous access, owner read/write, cross-account isolation and cross-account link rejection with two throwaway local users.
+6. **Datasets for future imports:** `db_databases.dataset` (default `primary`) lets import experiments use labelled, deletable datasets — locally (or on a future hosted staging project), never production.
+7. A hosted staging project or Supabase Branching can be added later without code changes to the environment rules.
 
 ## 6. Proposed phases (revised)
 
 | Phase | Scope | Database |
 |---|---|---|
 | 0 | Branch, docs (this file, spec, handoff), baseline tests, signed-in screenshots | none |
-| 0.5 | Staging environment: fail-closed env config, STAGING DATA indicator, guarded migrate/verify scripts, base migrations committed from production history, owner creates staging project and Vercel variables, isolation verified | none on production |
+| 0.5 | Isolated development: fail-closed env config, LOCAL/STAGING DATA indicator, local Supabase (Docker) with guarded db scripts, base migrations committed from production history, RLS verified locally | none on production |
 | 1 | Pill switch; Developer Mode and Beta Features cards; independent beta switches; settings persistence service; overwrite-on-load fix | **M1** on staging |
 | 2 | Test Profiles: create/duplicate/rename/switch/delete; Primary protected; Return to Primary always available; one-time browser settings transfer; flicker-free start-up cache | M1 |
 | 3 | 11 themes in Dark/Light groups; explicit light tokens; manual only; Light/System one-time mapping; mask logo; dynamic favicon with static fallback; contrast tests | none |
@@ -143,7 +143,7 @@ On `main`, Vercel previews use the production Supabase project because `lib/supa
 | 6 | Workspace dashboards: widgets bound to saved views, contextual filters, grid layout, inline edits, writing Workspaces untouched | **M4** |
 | 7 | Full regression (spec §15 matrix adapted), accessibility on 11 themes, mobile, keyboard, docs and rollback notes | none |
 
-Migrations: **M1** `account_preferences`, `test_profiles` (unique primary per account, active pointer ownership check). **M2** engine core tables and RPC. **M3** template-specific validation rules and progress history support. **M4** `db_widgets` (layout, size, view reference, contextual filter, display config). Each migration is reviewed with the owner, applied to staging first, then to production only with explicit approval. All are additive.
+Migrations: **M1** `account_preferences`, `test_profiles` (unique primary per account, active pointer ownership check). **M2** engine core tables and RPC. **M3** template-specific validation rules and progress history support. **M4** `db_widgets` (layout, size, view reference, contextual filter, display config). Each migration is reviewed with the owner, tested on local Supabase first, then applied to production only with explicit approval. All are additive.
 
 ## 7. Known limitations to state honestly
 

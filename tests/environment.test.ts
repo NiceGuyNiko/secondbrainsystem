@@ -4,24 +4,38 @@ import { resolveEnvironment, PRODUCTION_PROJECT_REF } from "../lib/environment";
 
 const prodUrl = `https://${PRODUCTION_PROJECT_REF}.supabase.co`;
 const stagingUrl = "https://abcdefghijklmnopqrst.supabase.co";
+const localUrl = "http://127.0.0.1:54321";
 const key = "sb_publishable_example";
 const jwt = (role: string) => `x.${btoa(JSON.stringify({ role })).replace(/=+$/, "")}.y`;
 
-test("Each deployment connects only to its own project", () => {
+test("Each deployment connects only to its own data", () => {
   const prod = resolveEnvironment({ deploy: "production", data: "production", url: prodUrl, key });
-  assert.equal(prod.ok && prod.projectRef, PRODUCTION_PROJECT_REF);
+  assert.equal(prod.ok && prod.label, PRODUCTION_PROJECT_REF);
   const preview = resolveEnvironment({ deploy: "preview", data: "staging", url: stagingUrl, key });
   assert.equal(preview.ok && preview.data, "staging");
-  assert.equal(resolveEnvironment({ data: "staging", url: stagingUrl, key }).ok, true, "local development uses staging");
+  const local = resolveEnvironment({ data: "local", url: localUrl, key });
+  assert.equal(local.ok && local.label, "127.0.0.1:54321");
+  assert.equal(resolveEnvironment({ data: "local", url: "http://localhost:54321/", key }).ok, true);
+  assert.equal(resolveEnvironment({ data: "staging", url: stagingUrl, key }).ok, true, "local development may also use a hosted staging project");
 });
 
 test("Previews and local development never reach production", () => {
   for (const deploy of ["preview", undefined]) {
     assert.equal(resolveEnvironment({ deploy, data: "production", url: prodUrl, key }).ok, false);
     assert.equal(resolveEnvironment({ deploy, data: "staging", url: prodUrl, key }).ok, false, "staging label on production URL");
+    assert.equal(resolveEnvironment({ deploy, data: "local", url: prodUrl, key }).ok, false, "local label on production URL");
   }
   assert.equal(resolveEnvironment({ deploy: "production", data: "staging", url: stagingUrl, key }).ok, false);
   assert.equal(resolveEnvironment({ deploy: "production", data: "production", url: stagingUrl, key }).ok, false);
+});
+
+test("Local data is only for local development on this machine", () => {
+  assert.equal(resolveEnvironment({ deploy: "preview", data: "local", url: localUrl, key }).ok, false);
+  assert.equal(resolveEnvironment({ deploy: "production", data: "local", url: localUrl, key }).ok, false);
+  assert.equal(resolveEnvironment({ data: "local", url: "http://192.168.1.20:54321", key }).ok, false);
+  assert.equal(resolveEnvironment({ data: "local", url: "https://127.0.0.1:54321", key }).ok, false);
+  assert.equal(resolveEnvironment({ data: "local", url: stagingUrl, key }).ok, false);
+  assert.equal(resolveEnvironment({ data: "local", url: localUrl, key: jwt("service_role") }).ok, false);
 });
 
 test("Missing or invalid configuration fails closed without exposing values", () => {

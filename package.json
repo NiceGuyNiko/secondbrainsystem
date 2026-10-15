@@ -9,8 +9,13 @@
     "lint": "eslint .",
     "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "staging:migrate": "node --env-file=.env.staging.local --import tsx scripts/staging-migrate.ts",
-    "staging:verify": "node --env-file=.env.staging.local --import tsx scripts/staging-verify.ts"
+    "db:start": "tsx scripts/db.ts start",
+    "db:stop": "tsx scripts/db.ts stop",
+    "db:status": "tsx scripts/db.ts status",
+    "db:env": "tsx scripts/db.ts env",
+    "db:migrate": "tsx scripts/db.ts migrate",
+    "db:reset": "tsx scripts/db.ts reset",
+    "db:verify": "node --env-file=.env.local --import tsx scripts/db-verify.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
