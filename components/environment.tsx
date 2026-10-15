@@ -1,11 +1,12 @@
 import { environment } from "@/lib/environment";
 
-export const nonProductionLabel =
-  environment.ok && environment.data !== "production" ? (environment.data === "local" ? "Local" : "Staging") : null;
+const labels = { demo: "Demo", local: "Local", staging: "Staging", production: null } as const;
+export const nonProductionLabel = environment.ok ? labels[environment.data] : null;
+export const isDemo = environment.ok && environment.data === "demo";
 
 export function EnvironmentBadge() {
   if (!environment.ok || !nonProductionLabel) return null;
-  const text = `${nonProductionLabel.toUpperCase()} DATA · ${environment.label}`;
+  const text = `${nonProductionLabel.toUpperCase()} DATA · ${environment.label.toUpperCase()}`;
   return (
     <div className="aaa-environment-badge" role="status" aria-label={`${nonProductionLabel} data, ${environment.label}`}>
       {text}

@@ -2,11 +2,13 @@
 //   production deployment → the production project only
 //   preview deployment    → a hosted non-production (staging) project only
 //   local development     → local Supabase on this machine, or a hosted staging project
-// Anything missing or contradictory fails closed: no client is created and no request is sent.
+//   preview / local with no data setting → Demo Mode: browser-only sample data, no Supabase client at all
+// Anything contradictory fails closed: no client is created and no request is sent.
+// Production never falls back to anything: it must be configured explicitly.
 export const PRODUCTION_PROJECT_REF = "rpjeqbbvocgwomiavxqh";
 
 export type DeployEnvironment = "production" | "preview" | "development";
-export type DataEnvironment = "production" | "staging" | "local";
+export type DataEnvironment = "production" | "staging" | "local" | "demo";
 export type EnvironmentInput = { deploy?: string; data?: string; url?: string; key?: string };
 export type Environment =
   | { ok: true; deploy: DeployEnvironment; data: DataEnvironment; url: string; key: string; label: string }
@@ -30,6 +32,10 @@ function isSecretKey(key: string) {
 export function resolveEnvironment(input: EnvironmentInput): Environment {
   const deploy: DeployEnvironment = input.deploy === "production" || input.deploy === "preview" ? input.deploy : "development";
   const fail = (reason: string): Environment => ({ ok: false, deploy, reason });
+  // Demo Mode needs no URL or key; any that are present are ignored and never used.
+  if (deploy !== "production" && (!input.data || input.data === "demo"))
+    return { ok: true, deploy, data: "demo", url: "", key: "", label: deploy === "preview" ? "preview" : "local" };
+  if (input.data === "demo") return fail("Production deployments cannot use Demo Mode.");
   const missing = [
     !input.url && "NEXT_PUBLIC_SUPABASE_URL",
     !input.key && "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",

@@ -305,3 +305,4 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 
 /* Non-production data indicator (Phase 0.5). Fixed, non-interactive, above all layers. */
 .aaa-environment-badge{position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:none;padding:3px 10px;border-radius:999px;background:#FFB020;color:#1A1200;font:700 11px/1.4 ui-sans-serif,system-ui,sans-serif;letter-spacing:.06em;box-shadow:0 1px 4px rgba(0,0,0,.35);white-space:nowrap}
+.aaa-demo-notice{max-width:640px;margin:24px}

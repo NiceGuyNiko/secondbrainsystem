@@ -9,7 +9,8 @@ import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/compo
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
 import { type AgendaMode } from "@/components/agenda";
 import { useProfile } from "@/components/profile-context";
-import { ConfigurationError } from "@/components/environment";
+import { ConfigurationError, isDemo } from "@/components/environment";
+import { demoDatabase } from "@/lib/supabase";
 import { environment } from "@/lib/environment";
 import { thoughtStore } from "@/lib/thoughts";
 import {
@@ -37,6 +38,7 @@ import {
   Layers3,
   Zap,
   ArrowLeft,
+  RotateCcw,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -403,10 +405,24 @@ function Workspace() {
                 <Settings2 size={16} />
                 Settings
               </button>
-              <button role="menuitem" onClick={() => void signOut()}>
-                <LogOut size={16} />
-                Log out
-              </button>
+              {isDemo ? (
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    if (!window.confirm("Reset all demo data on this device to the original sample data?")) return;
+                    demoDatabase?.reset();
+                    window.location.reload();
+                  }}
+                >
+                  <RotateCcw size={16} />
+                  Reset demo data
+                </button>
+              ) : (
+                <button role="menuitem" onClick={() => void signOut()}>
+                  <LogOut size={16} />
+                  Log out
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -462,6 +478,13 @@ function Workspace() {
                   onClock={setClock}
                   onBack={() => nav("Calendar")}
                 />
+              ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
+                <div className="aaa-settings-panel aaa-demo-notice" role="note">
+                  <h2>{section} isn’t available in Demo Mode</h2>
+                  <p className="calendar-muted">
+                    The existing {section === "Goals" ? "goals, projects and tasks" : "writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix)"} rely on your real account’s database. They are unchanged and keep working in the live app.
+                  </p>
+                </div>
               ) : section === "Goals" || section === "Workspaces" ? (
                 <PlanningWorkspace
                   key={section}

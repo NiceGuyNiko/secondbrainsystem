@@ -38,10 +38,26 @@ test("Local data is only for local development on this machine", () => {
   assert.equal(resolveEnvironment({ data: "local", url: localUrl, key: jwt("service_role") }).ok, false);
 });
 
-test("Missing or invalid configuration fails closed without exposing values", () => {
-  const none = resolveEnvironment({ deploy: "preview" });
+test("Previews and local development default to Demo Mode, which never uses Supabase settings", () => {
+  for (const deploy of ["preview", undefined]) {
+    const demo = resolveEnvironment({ deploy });
+    assert.equal(demo.ok && demo.data, "demo");
+    const ignored = resolveEnvironment({ deploy, url: prodUrl, key });
+    assert.ok(ignored.ok && ignored.data === "demo" && ignored.url === "" && ignored.key === "", "production values present without a data setting are ignored");
+    const explicit = resolveEnvironment({ deploy, data: "demo", url: prodUrl, key });
+    assert.ok(explicit.ok && explicit.data === "demo" && explicit.url === "");
+  }
+});
+
+test("Production never falls back to Demo Mode or anything else", () => {
+  const none = resolveEnvironment({ deploy: "production" });
   assert.equal(none.ok, false);
-  assert.match(!none.ok ? none.reason : "", /NEXT_PUBLIC_SUPABASE_URL.*NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.*NEXT_PUBLIC_AAA_DATA_ENV.*preview/);
+  assert.match(!none.ok ? none.reason : "", /NEXT_PUBLIC_SUPABASE_URL.*NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.*NEXT_PUBLIC_AAA_DATA_ENV.*production/);
+  assert.equal(resolveEnvironment({ deploy: "production", data: "demo" }).ok, false);
+  assert.equal(resolveEnvironment({ deploy: "production", url: prodUrl, key }).ok, false, "data setting is required in production");
+});
+
+test("Invalid configuration fails closed without exposing values", () => {
   assert.equal(resolveEnvironment({ deploy: "preview", data: "staging", url: stagingUrl }).ok, false);
   assert.equal(resolveEnvironment({ deploy: "preview", data: "staging", url: "https://example.com", key }).ok, false);
   assert.equal(resolveEnvironment({ deploy: "preview", data: "stage", url: stagingUrl, key }).ok, false);

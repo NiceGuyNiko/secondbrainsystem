@@ -1,4 +1,19 @@
-# Local development and data isolation — Phase 0.5
+# Development workflow and data isolation — Phase 0.5
+
+**Workflow (approved):** Build on a feature branch → Vercel Preview in **Demo Mode** → owner reviews on phone/computer → revise → owner approves → production integration. Three separate approvals: **A** merging/releasing code, **B** production database structure, **C** importing or migrating records.
+
+## Demo Mode (Vercel Preview default)
+
+- Any non-production build without an explicit data setting runs in Demo Mode. No Supabase client is created, so no sign-in, background or Realtime request can reach any Supabase project. Supabase settings present on Preview are ignored.
+- Production builds can never enter Demo Mode; they require explicit production settings.
+- Pages show **DEMO DATA · PREVIEW** and a `[Demo]` tab title.
+- Demo data is fictional sample data stored in the browser on each device (`localStorage`, key `aaa-demo-data-v1`). It survives reloads; **Reset demo data** in the profile menu restores the original sample data.
+- Existing screens (Calendar, The Agenda, Think About It, Resources, profile) run against a browser-only stand-in for the Supabase client (`lib/demo/client.ts`). Existing planning Goals and writing Workspaces show a notice in Demo Mode; in production they are unchanged.
+- New features (database engine, Goals, widgets, settings, profiles) use the real engine code with a demo persistence adapter, not a separate mock.
+
+## Optional: local Supabase
+
+Local Supabase (below) is optional, for full integration testing on a machine with Docker. It is not required for UI development or previews.
 
 The hosted Supabase project `rpjeqbbvocgwomiavxqh` is **production only**. A second hosted project is not available on the current plan, so development and database testing use **local Supabase** (Supabase CLI + Docker Desktop) on the developer's Windows machine. Production data, auth settings and schema are never touched by development work.
 
@@ -7,8 +22,8 @@ The hosted Supabase project `rpjeqbbvocgwomiavxqh` is **production only**. A sec
 | Where | Allowed data | Otherwise |
 |---|---|---|
 | Production deployment (Vercel Production) | the production project only | build refused |
-| Preview deployment (Vercel Preview) | a hosted non-production project only — **none exists yet**, so previews currently refuse to build | build refused |
-| Local development (`npm run dev`, `npm run build`) | local Supabase (`http://127.0.0.1:<port>`) or a hosted staging project | build refused; production is never accepted |
+| Preview deployment (Vercel Preview) | Demo Mode by default; a hosted non-production project if one is ever configured | production settings refused |
+| Local development (`npm run dev`, `npm run build`) | Demo Mode by default; local Supabase (`http://127.0.0.1:<port>`) or a hosted staging project when configured | production is never accepted |
 
 - Missing, contradictory or secret-key configuration fails closed (`lib/environment.ts`, tests in `tests/environment.test.ts`). A misconfigured build fails; if one were served, it shows a configuration error and creates no database client.
 - Non-production pages show an amber **LOCAL DATA · 127.0.0.1:54321** (or STAGING DATA) badge and a `[Local]` tab title, including the sign-in screen.
@@ -61,7 +76,7 @@ select string_agg(kind||' '||name||' '||md5(def), E'\n' order by kind, name) fro
 - **Production** variables (Production environment only), required **before** Phase 0.5 is merged to `main`:
   `NEXT_PUBLIC_AAA_DATA_ENV=production`, `NEXT_PUBLIC_SUPABASE_URL=https://rpjeqbbvocgwomiavxqh.supabase.co`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<production publishable key>`.
   Without them the production build is refused and the current deployment stays live.
-- **Preview**: leave unset. Previews fail closed until a hosted non-production project exists. They never fall back to production.
+- **Preview**: leave unset. Previews run in Demo Mode and never fall back to production.
 - If a hosted staging project becomes available later, set its three values for Preview only (`NEXT_PUBLIC_AAA_DATA_ENV=staging`). The environment rules already support it.
 
 ## Path to production
