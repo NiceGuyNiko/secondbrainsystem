@@ -9,3 +9,7 @@
 Commands: npm ci; npm test; npm run typecheck; npm run lint; npm run build.
 
 The database test uses an isolated embedded Postgres instance. It creates temporary roles/users in that instance; it never creates accounts or test rows in the live project.
+
+## 14 October 2026 update
+
+See `docs/ACTION-IMPLEMENTATION.md` for the reconciled specification map, current validation, migration review and exact remaining scope. Apply the earlier thought migration and then `20261014235844_action_workspace.sql` only after explicit approval. Neither migration is installed on the shared live project as of the read-only audit. The calendar UI, appearance and shell do not require the new planning tables; the writing/planning capabilities do.

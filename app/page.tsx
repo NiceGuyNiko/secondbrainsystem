@@ -1,135 +1,503 @@
-'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import AuthGate from '@/components/auth-gate';
-import ThoughtWorkspace from '@/components/thought-workspace';
-import CalendarWorkspace from '@/components/calendar-workspace';
-import { useProfile } from '@/components/profile-context';
-import { CalendarDays, Target, LibraryBig, Plus, Settings2, Check, Clock3, FolderKanban, Link2, Menu, X, UserRound, LogOut, ChevronDown, BookOpen, Layers3, Zap } from 'lucide-react';
-
-type Section = 'Scheduling' | 'Calendar' | 'Goals' | 'Resources' | 'Fluid Calendar' | 'Workspaces' | 'Think About It';
-type View = 'Day' | 'Week' | 'Month';
-type Task = { id: number; title: string; done: boolean; project: string };
-type WorkBlock = { dbId?: string; id: number; title: string; start: string; end: string; tasks: Task[]; date?:string; endDate?:string; category?:string; kind?:string; locked?:boolean };
-
-
-export default function Home() { return <AuthGate><Workspace /></AuthGate>; }
+"use client";
+import { useEffect, useState, useCallback } from "react";
+import AuthGate from "@/components/auth-gate";
+import ThoughtWorkspace from "@/components/thought-workspace";
+import PlanningWorkspace from "@/components/planning-workspace";
+import CalendarWorkspace from "@/components/calendar-workspace";
+import AppearanceSettings from "@/components/appearance-settings";
+import { type AgendaMode } from "@/components/agenda";
+import { useProfile } from "@/components/profile-context";
+import { thoughtStore } from "@/lib/thoughts";
+import {
+  appearanceDefaults,
+  appearanceKey,
+  parseAppearance,
+  applyAppearance,
+  ownedPageTitle,
+  type Appearance,
+} from "@/lib/appearance";
+import { categoryColours } from "@/lib/calendar-layout";
+import {
+  CalendarDays,
+  Target,
+  LibraryBig,
+  Plus,
+  Settings2,
+  Check,
+  Menu,
+  X,
+  UserRound,
+  LogOut,
+  ChevronDown,
+  BookOpen,
+  Layers3,
+  Zap,
+  PanelRightOpen,
+  ArrowLeft,
+} from "lucide-react";
+type Section =
+  | "Calendar"
+  | "Goals"
+  | "Workspaces"
+  | "Resources"
+  | "Fluid Calendar"
+  | "Think About It"
+  | "Settings";
+type ContextItem = { id: string; title: string };
+export default function Home() {
+  return (
+    <AuthGate>
+      <Workspace />
+    </AuthGate>
+  );
+}
 function Workspace() {
- const {displayName,email,openProfile,signOut}=useProfile();
- const [activeThought,setActiveThought]=useState<string|undefined>();
- const [profileMenu,setProfileMenu]=useState(false);
- const [globalDayOpen,setGlobalDayOpen]=useState(false);
- const [hiddenSidebarCalendars,setHiddenSidebarCalendars]=useState<string[]>([]);
- const [section, setSection] = useState<Section>('Calendar');
-  const [mobileMenu,setMobileMenu]=useState(false);
- const [mobileCalendars,setMobileCalendars]=useState(false);
- useEffect(()=>{if(!mobileMenu)return;const prior=document.body.style.overflow;document.body.style.overflow="hidden";const onKey=(event:KeyboardEvent)=>{if(event.key==="Escape")setMobileMenu(false)};window.addEventListener("keydown",onKey);return()=>{document.body.style.overflow=prior;window.removeEventListener("keydown",onKey)}},[mobileMenu]);
- const [sidebarCollapsed,setSidebarCollapsed]=useState(false);
- useEffect(()=>{setSidebarCollapsed(localStorage.getItem('think-sidebar-collapsed')==='true')},[]);
- const toggleSidebar=()=>setSidebarCollapsed(v=>{localStorage.setItem('think-sidebar-collapsed',String(!v));return !v});
- const [view, setView] = useState<View>('Day');
- const [blocks, setBlocks] = useState<WorkBlock[]>([]);
- const [loadingBlocks,setLoadingBlocks]=useState(true);
- const [saveError,setSaveError]=useState('');
- const [newTitle, setNewTitle] = useState('');
- const [showNew, setShowNew] = useState(false);
- const [startDay, setStartDay] = useState('Monday');
- const [clock, setClock] = useState('12-hour');
- const [settings, setSettings] = useState(false);
- const [theme,setTheme]=useState<'system'|'light'|'dark'>('system');
- useEffect(()=>{const saved=localStorage.getItem('think-theme');if(saved==='light'||saved==='dark')setTheme(saved)},[]);
- useEffect(()=>{if(theme==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',theme);localStorage.setItem('think-theme',theme)},[theme]);
- const today = useMemo(() => new Date(), []);
- const todayKey=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
- const dateLabel = today.toLocaleDateString('en-CA', { weekday:'long', month:'long', day:'numeric', year:'numeric' });
- const formatTime = (value:string) => {
-   if (clock === '24-hour') return value;
-   const [hour,min] = value.split(':').map(Number);
-   return `${hour%12||12}:${String(min).padStart(2,'0')} ${hour>=12?'PM':'AM'}`;
- };
- useEffect(()=>{
-  let active=true;
-  async function load(){
-   const {data,error}=await supabase.from('user_items').select('id,content').eq('item_type','block').order('created_at',{ascending:true});
-   if(!active)return;
-   if(error)setSaveError(error.message);
-   else setBlocks((data??[]).map(row=>({...row.content as WorkBlock,dbId:row.id})).filter(b=>!b.date||b.date<=todayKey&&(b.endDate||b.date)>=todayKey));
-   setLoadingBlocks(false);
-  }
-  void load();
-  const channel=supabase.channel('schedule-sync').on('postgres_changes',{event:'*',schema:'public',table:'user_items'},()=>{void load()}).subscribe();
-  const onFocus=()=>{void load()};
-  window.addEventListener('focus',onFocus);
-  return()=>{active=false;window.removeEventListener('focus',onFocus);void supabase.removeChannel(channel)};
- },[]);
- async function saveBlock(block:WorkBlock){
-  if(!block.dbId)return;
-  const {data:current,error:readError}=await supabase.from('user_items').select('content').eq('id',block.dbId).single();
-  if(readError){setSaveError(readError.message);return}
-  const {error}=await supabase.from('user_items').update({title:block.title,content:{...(current.content as Record<string,unknown>),id:block.id,title:block.title,start:block.start,end:block.end,tasks:block.tasks},updated_at:new Date().toISOString()}).eq('id',block.dbId);
-  if(error)setSaveError(error.message);
- }
- async function addBlock(){
-  if(!newTitle.trim())return;
-  const date=todayKey;
-  const block:WorkBlock={id:Date.now(),title:newTitle.trim(),start:'09:00',end:'10:00',date,endDate:date,category:'Personal',kind:'block',locked:false,tasks:[]};
-  const {data,error}=await supabase.from('user_items').insert({title:block.title,item_type:'block',content:block}).select('id').single();
-  if(error){setSaveError(error.message);return}
-  setBlocks(old=>[...old,{...block,dbId:data.id}]);setNewTitle('');setShowNew(false);
- }
- function changeBlock(blockId:number,change:(block:WorkBlock)=>WorkBlock){
-  setBlocks(current=>current.map(block=>{if(block.id!==blockId)return block;const updated=change(block);void saveBlock(updated);return updated}));
- }
- function addTask(blockId:number,title:string){
-  if(!title.trim())return;
-  changeBlock(blockId,block=>({...block,tasks:[...block.tasks,{id:Date.now(),title:title.trim(),done:false,project:'Unassigned'}]}));
- }
- function toggleTask(blockId:number,taskId:number){
-  changeBlock(blockId,block=>({...block,tasks:block.tasks.map(task=>task.id===taskId?{...task,done:!task.done}:task)}));
- }
- return <div className="app-shell min-h-screen md:flex">
-  <aside className={`calendar-sidebar pr11-sidebar ${mobileMenu?"fixed inset-0 z-[80] flex h-[100dvh] flex-col overflow-hidden bg-[var(--sidebar)]":"relative"} w-full min-w-0 border-b md:min-h-screen md:shrink-0 md:border-b-0 md:border-r  ${sidebarCollapsed?"md:w-[64px]":"md:w-[276px]"}`}>
-    <div className={`pr11-brand relative z-50 flex h-[92px] shrink-0 items-center gap-2 py-5 ${sidebarCollapsed?"justify-start px-2":"justify-between px-2"}`}><div className={`flex min-w-0 items-center gap-3 ${sidebarCollapsed?"justify-start":""}`}><button type="button" className="pr11-brand-mark shrink-0" aria-label={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} title={sidebarCollapsed?"Expand sidebar":"Collapse sidebar"} onClick={()=>{if(window.matchMedia("(max-width: 767px)").matches){setMobileMenu(v=>!v);setMobileCalendars(false)}else toggleSidebar()}}><Zap size={22}/></button><div className={`${sidebarCollapsed?"md:hidden":"min-w-0"}`}><div className="truncate text-lg font-semibold tracking-tight">All About Action</div><div className="calendar-subtle text-[11px] uppercase tracking-wide">{displayName}&apos;s calendar</div></div></div><div className="flex items-center gap-2 md:hidden">{!mobileMenu&&(section==="Calendar"||section==="Fluid Calendar")&&<button type="button" className="pr11-icon-button" aria-label="Toggle calendar visibility" aria-expanded={mobileCalendars} onClick={()=>{setMobileCalendars(v=>!v);setMobileMenu(false)}}><CalendarDays size={22}/></button>}<button type="button" className="pr11-icon-button" aria-label={mobileMenu?"Close navigation menu":"Open navigation menu"} aria-expanded={mobileMenu} aria-controls="mobile-navigation-panel" onClick={()=>{setMobileMenu(v=>!v);setMobileCalendars(false)}}>{mobileMenu?<X size={22}/>:<Menu size={22}/>}</button></div>{!sidebarCollapsed&&<button type="button" className="pr11-icon-button hidden md:flex" aria-label="Collapse sidebar" aria-expanded={!sidebarCollapsed} onClick={toggleSidebar}><Menu size={20}/></button>}</div>
-    {mobileCalendars&&<div className="fixed inset-x-3 top-[104px] z-[60] max-h-[65dvh] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--sidebar)] p-4 shadow-2xl md:hidden"><div className="mb-3 flex items-center justify-between"><strong>Calendars</strong><button type="button" aria-label="Close calendars" onClick={()=>setMobileCalendars(false)}><X size={20}/></button></div><div className="space-y-2">{[['Personal','#1688ff'],['Work','#ff994b'],['Health','#ff354a'],['Relationship','#9c50f4'],['Appointment','#ef5ac3'],['Sprints','#74808f'],['Beta Tests','#18b8cb']].map(([label,color])=><button type="button" key={label} aria-pressed={!hiddenSidebarCalendars.includes(label)} onClick={()=>{setHiddenSidebarCalendars(old=>old.includes(label)?old.filter(c=>c!==label):[...old,label]);window.dispatchEvent(new CustomEvent('pr11-toggle-calendar',{detail:label}))}} className="flex w-full items-center gap-3 rounded-lg p-2 text-left"><span className="pr11-calendar-key" style={{background:color}}>{!hiddenSidebarCalendars.includes(label)&&<Check size={14}/>}</span><span>{label}</span></button>)}</div></div>}
-    <div id="mobile-navigation-panel" className={`${mobileMenu?"flex":"hidden"} pr11-sidebar-content flex-col ${mobileMenu?"relative z-50 min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(16px,env(safe-area-inset-bottom))]":" " } pb-4 md:static md:inset-auto md:flex md:flex-col md:overflow-visible md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none ${sidebarCollapsed?"md:pr11-sidebar-collapsed md:px-2":"md:px-2"}`} role="navigation" aria-label="Sidebar menu">
-      <nav className="space-y-1" aria-label="Main navigation">
-        {([{name:'Goals',icon:Target,badge:'NA'},{name:'Calendar',icon:CalendarDays},{name:'Fluid Calendar',icon:Zap,badge:'Beta'},{name:'Workspaces',icon:Layers3,badge:'NA'},{name:'Resources',icon:BookOpen},{name:'Think About It',icon:LibraryBig}] as const).map(({name,icon:Icon,...rest})=><button key={name} onClick={()=>{setSection(name);setMobileMenu(false);setProfileMenu(false);setSettings(false)}} title={sidebarCollapsed?name:undefined} aria-label={name} className={`calendar-nav pr11-nav flex h-[44px] w-full shrink-0 items-center gap-1 rounded-lg text-left text-sm ${sidebarCollapsed?"px-0":"px-0"} ${section===name?'active':''}`}><span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center"><Icon size={21}/></span><span className={`min-w-0 flex-1 truncate whitespace-nowrap ${sidebarCollapsed?"md:hidden":""}`}>{name}</span>{'badge' in rest&&<span className={`pr11-badge shrink-0 ${rest.badge==='Beta'?'pr11-beta':''}`}>{rest.badge}</span>}</button>)}
-      </nav>
-      <div className={`${mobileMenu?"block":"hidden"} md:block`}>{(section==='Calendar'||section==='Fluid Calendar')&&<>
-      <div className="pr11-sidebar-divider my-5"/>
-      <div className={`flex items-center pb-3 ${sidebarCollapsed?"justify-start px-0":"justify-between px-0"}`}><span className={`text-sm font-semibold ${sidebarCollapsed?"md:sr-only":""}`}>Calendars</span><button className={`pr11-icon-button ${sidebarCollapsed?"ml-[6px] flex h-[32px] w-[32px] items-center justify-center":""}`} title="Manage calendars" aria-label="Manage calendars" onClick={()=>{setSection('Calendar');setMobileMenu(false)}}><Plus size={20}/></button></div>
-      <div className={`space-y-2 text-sm ${sidebarCollapsed?"px-0":"px-0"}`}>{[['Personal','#1688ff'],['Work','#ff994b'],['Health','#ff354a'],['Relationship','#9c50f4'],['Appointment','#ef5ac3'],['Sprints','#74808f'],['Beta Tests','#18b8cb']].map(([label,color])=><button type="button" key={label} aria-pressed={!hiddenSidebarCalendars.includes(label)} onClick={()=>{setHiddenSidebarCalendars(old=>old.includes(label)?old.filter(c=>c!==label):[...old,label]);window.dispatchEvent(new CustomEvent('pr11-toggle-calendar',{detail:label}))}} title={label} aria-label={`Toggle ${label} calendar`} className={`flex w-full shrink-0 items-center gap-3 py-1 text-left ${sidebarCollapsed?"justify-start":""} ${hiddenSidebarCalendars.includes(label)?'opacity-40':''}`}><span className="flex h-[33px] w-[44px] shrink-0 items-center justify-center"><span className="pr11-calendar-key" style={{background:color}}>{!hiddenSidebarCalendars.includes(label)&&<Check size={14} strokeWidth={3}/>}</span></span><span className={`min-w-0 truncate whitespace-nowrap ${sidebarCollapsed?"md:hidden":""}`}>{label}</span></button>)}</div>
-      </>}</div>
-      <div className="mt-auto pt-8 relative">
-        <button type="button" aria-haspopup="menu" aria-expanded={profileMenu} onClick={()=>{setProfileMenu(v=>!v);setSettings(false)}} className={`pr11-profile-trigger flex w-full items-center gap-3 rounded-lg py-3 text-left ${sidebarCollapsed?"px-0":"px-0"}`}><span className="flex h-[44px] w-[44px] shrink-0 items-center justify-center"><span className="pr11-avatar"><UserRound size={18}/></span></span><span className={`min-w-0 flex-1 ${sidebarCollapsed?"md:hidden":""}`}><span className="block truncate text-sm font-medium">{displayName}</span><span className="calendar-subtle block truncate text-xs">{email}</span></span>{!sidebarCollapsed&&<ChevronDown size={16}/>}</button>
-        {profileMenu&&<div className="pr11-profile-menu" role="menu"><button role="menuitem" onClick={()=>{openProfile();setProfileMenu(false);setMobileMenu(false)}}><UserRound size={17}/> View profile</button><button role="menuitem" onClick={()=>{setSettings(v=>!v);setProfileMenu(false)}}><Settings2 size={17}/> Settings</button><div className="pr11-menu-divider"/><button role="menuitem" onClick={()=>{setProfileMenu(false);void signOut()}}><LogOut size={17}/> Sign out</button></div>}
-        {settings&&<div className="pr11-profile-menu pr11-settings-menu"><div className="flex items-center justify-between px-2 py-1"><strong>Settings</strong><button aria-label="Close settings" onClick={()=>setSettings(false)}><X size={16}/></button></div><label>Week starts on<select value={startDay} onChange={e=>setStartDay(e.target.value)} className="calendar-input w-full rounded-lg p-2">{['Monday','Sunday','Saturday'].map(d=><option key={d}>{d}</option>)}</select></label><label>Clock format<select value={clock} onChange={e=>setClock(e.target.value)} className="calendar-input w-full rounded-lg p-2"><option value="12-hour">12-hour</option><option value="24-hour">24-hour</option></select></label><label>Appearance<select value={theme} onChange={e=>setTheme(e.target.value as typeof theme)} className="calendar-input w-full rounded-lg p-2"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label></div>}
-      </div>
+  const { displayName, email, openProfile, signOut } = useProfile();
+  const [section, setSection] = useState<Section>("Calendar"),
+    [mobileOpen, setMobileOpen] = useState(false),
+    [collapsed, setCollapsed] = useState(false),
+    [profileMenu, setProfileMenu] = useState(false),
+    [mobileCalendars, setMobileCalendars] = useState(false),
+    [activeThought, setActiveThought] = useState<string | undefined>(),
+    [contextId, setContextId] = useState<string | undefined>(),
+    [returnSection, setReturnSection] = useState<Section>("Calendar");
+  const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
+    [hidden, setHidden] = useState<string[]>([]),
+    [categories, setCategories] = useState<{ name: string; color: string }[]>(
+      [],
+    ),
+    [context, setContext] = useState<ContextItem[]>([]),
+    [resources, setResources] = useState<ContextItem[]>([]);
+  const [command, setCommand] = useState<{
+    id: number;
+    type: "new" | "calendars";
+    task?: { id: string; title: string; workingId?: string };
+  }>();
+  const [appearance, setAppearance] = useState<Appearance>(appearanceDefaults),
+    [mode, setMode] = useState<"dark" | "light" | "system">("dark"),
+    [startDay, setStartDay] = useState("Monday"),
+    [clock, setClock] = useState("12-hour"),
+    [ready, setReady] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem("think-sidebar-collapsed") === "true");
+      const savedMode = localStorage.getItem("think-theme");
+      if (
+        savedMode === "light" ||
+        savedMode === "system" ||
+        savedMode === "dark"
+      )
+        setMode(savedMode);
+      const raw = localStorage.getItem(appearanceKey);
+      if (raw) setAppearance(parseAppearance(JSON.parse(raw)));
+      setStartDay(localStorage.getItem("aaa-week-start") || "Monday");
+      setClock(localStorage.getItem("aaa-clock") || "12-hour");
+    } catch {}
+    setReady(true);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    const apply = () => applyAppearance(appearance, mode);
+    apply();
+    localStorage.setItem(appearanceKey, JSON.stringify(appearance));
+    localStorage.setItem("think-theme", mode);
+    localStorage.setItem("aaa-week-start", startDay);
+    localStorage.setItem("aaa-clock", clock);
+    const mq = matchMedia("(prefers-color-scheme: light)");
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [appearance, mode, ready, startDay, clock]);
+  useEffect(() => {
+    if (!mobileOpen && !mobileCalendars) return;
+    const close = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        setMobileCalendars(false);
+      }
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [mobileOpen, mobileCalendars]);
+  useEffect(() => {
+    if (section !== "Resources" && section !== "Think About It") return;
+    let live = true;
+    void thoughtStore
+      .load()
+      .then((d) => {
+        if (live)
+          setResources(
+            d.thoughts
+              .filter((t) => t.details.collection && !t.details.archived_at)
+              .map((t) => ({ id: t.id, title: t.title || "Untitled" })),
+          );
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [section]);
+  useEffect(()=>{if(!mobileOpen)return;const previous=document.activeElement as HTMLElement;const panel=document.querySelector<HTMLElement>('[aria-label="Workspace navigation"]');panel?.querySelector('button')?.focus();const trap=(e:KeyboardEvent)=>{if(e.key!=='Tab')return;const controls=panel?.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),select:not([disabled])');if(!controls?.length)return;const first=controls[0],last=controls[controls.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}};window.addEventListener('keydown',trap);return()=>{window.removeEventListener('keydown',trap);previous?.focus()}},[mobileOpen]);
+  const setPlanningContext = useCallback(
+    (rows: ContextItem[]) => setContext(rows),
+    [],
+  );
+  const nav = (s: Section) => {
+    setSection(s);
+    setContextId(undefined);
+    setContext([]);
+    setMobileOpen(false);
+    setMobileCalendars(false);
+    setProfileMenu(false);
+  };
+  const toggleSidebar = () =>
+    setCollapsed((v) => {
+      localStorage.setItem("think-sidebar-collapsed", String(!v));
+      return !v;
+    });
+  const openThought = (id: string) => {
+    setReturnSection(section);
+    setActiveThought(id);
+    setSection("Think About It");
+  };
+  const calendarSection =
+    section === "Calendar" || section === "Fluid Calendar";
+  const contextual = calendarSection
+    ? categories.map((c) => ({ id: c.name, title: c.name }))
+    : section === "Resources" || section === "Think About It"
+      ? resources
+      : context;
+  const contextualTitle = calendarSection
+    ? "Calendars"
+    : section === "Resources" || section === "Think About It"
+      ? "Collections"
+      : section === "Settings"
+        ? "Settings"
+        : section;
+  const contextClick = (id: string) => {
+    if (calendarSection)
+      setHidden((old) =>
+        old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
+      );
+    else if (section === "Resources" || section === "Think About It")
+      setActiveThought(id);
+    else setContextId(id);
+  };
+  const manage = () => {
+    setCommand({ id: Date.now(), type: "calendars" });
+    setMobileOpen(false);
+    setMobileCalendars(false);
+  };
+  const calendarControls = (
+    <>
+      {categories.map((c) => (
+        <button
+          className="aaa-context-row"
+          type="button"
+          key={c.name}
+          title={c.name}
+          aria-label={`Toggle ${c.name} calendar`}
+          aria-pressed={!hidden.includes(c.name)}
+          onClick={() => contextClick(c.name)}
+        >
+          <span className="aaa-icon-slot">
+            <span
+              className="aaa-calendar-key"
+              style={{
+                borderColor: categoryColours[c.color] || c.color,
+                background: hidden.includes(c.name)
+                  ? "transparent"
+                  : categoryColours[c.color] || c.color,
+              }}
+            >
+              {!hidden.includes(c.name) && <Check size={13} />}
+            </span>
+          </span>
+          <span className="aaa-sidebar-label">{c.name}</span>
+        </button>
+      ))}
+    </>
+  );
+  return (
+    <div className={`app-shell aaa-shell ${collapsed ? "aaa-collapsed" : ""}`}>
+      <header className="aaa-mobile-header">
+        <button
+          aria-label="Open navigation menu"
+          onClick={() => {
+            setMobileOpen(true);
+            setMobileCalendars(false);
+          }}
+        >
+          <Menu size={21} />
+        </button>
+        <strong>
+          <Zap size={18} />
+          All About Action
+        </strong>
+        <button
+          aria-label="Calendar visibility"
+          onClick={() => setMobileCalendars(!mobileCalendars)}
+        >
+          <CalendarDays size={20} />
+        </button>
+      </header>
+      <aside
+        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""}`}
+        aria-label="Workspace navigation"
+      >
+        <div className="aaa-brand">
+          <button
+            className="aaa-icon-slot"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => {
+              if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
+              else toggleSidebar();
+            }}
+          >
+            <span className="aaa-logo">
+              <Zap size={22} />
+            </span>
+          </button>
+          <div className="aaa-sidebar-label aaa-wordmark">
+            <strong>All About Action</strong>
+            <small>{ownedPageTitle(displayName, section)}</small>
+          </div>
+          <button
+            className="aaa-collapse-control"
+            aria-label="Close navigation"
+            onClick={() => {
+              if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
+              else toggleSidebar();
+            }}
+          >
+            <Menu size={18} />
+          </button>
+        </div>
+        <nav aria-label="Main navigation">
+          {(
+            [
+              { name: "Calendar", icon: CalendarDays, badge: "GO" },
+              { name: "Goals", icon: Target, badge: "NA" },
+              { name: "Workspaces", icon: Layers3, badge: "NA" },
+              { name: "Resources", icon: BookOpen, badge: "NA" },
+              { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
+              { name: "Think About It", icon: LibraryBig, badge: "BETA" },
+            ] as const
+          ).map(({ name, icon: Icon, badge }) => (
+            <button
+              key={name}
+              title={name}
+              aria-label={name}
+              aria-current={section === name ? "page" : undefined}
+              className={`aaa-nav-row ${section === name ? "active" : ""}`}
+              onClick={() => nav(name)}
+            >
+              <span className="aaa-icon-slot">
+                <Icon size={21} />
+              </span>
+              <span className="aaa-sidebar-label">{name}</span>
+              <small
+                className={`aaa-badge aaa-sidebar-label aaa-badge-${badge.toLowerCase()}`}
+              >
+                {badge}
+              </small>
+            </button>
+          ))}
+        </nav>
+        <div className="aaa-context">
+          <div className="aaa-context-heading">
+            <button
+              className="aaa-icon-slot"
+              title={calendarSection ? "Manage calendars" : contextualTitle}
+              aria-label={
+                calendarSection ? "Manage calendars" : contextualTitle
+              }
+              onClick={() => {
+                if (calendarSection) manage();
+              }}
+            >
+              {calendarSection ? <Plus size={19} /> : <Layers3 size={18} />}
+            </button>
+            <strong className="aaa-sidebar-label">{contextualTitle}</strong>
+          </div>
+          <div className="aaa-context-scroll">
+            {calendarSection ? (
+              calendarControls
+            ) : section === "Settings" ? (
+              <button
+                className="aaa-context-row"
+                title="Appearance"
+                onClick={() => nav("Settings")}
+              >
+                <span className="aaa-icon-slot">
+                  <Settings2 size={18} />
+                </span>
+                <span className="aaa-sidebar-label">Appearance</span>
+              </button>
+            ) : (
+              contextual.map((c) => (
+                <button
+                  key={c.id}
+                  className="aaa-context-row"
+                  title={c.title}
+                  aria-pressed={contextId === c.id || activeThought === c.id}
+                  onClick={() => contextClick(c.id)}
+                >
+                  <span className="aaa-icon-slot">
+                    <BookOpen size={18} />
+                  </span>
+                  <span className="aaa-sidebar-label">{c.title}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+        <button
+          className={`aaa-nav-row aaa-settings-link ${section === "Settings" ? "active" : ""}`}
+          title="Settings"
+          onClick={() => nav("Settings")}
+        >
+          <span className="aaa-icon-slot">
+            <Settings2 size={20} />
+          </span>
+          <span className="aaa-sidebar-label">Settings</span>
+        </button>
+        <div className="aaa-profile">
+          <button
+            className="aaa-profile-button"
+            aria-haspopup="menu"
+            aria-expanded={profileMenu}
+            onClick={() => setProfileMenu(!profileMenu)}
+            title={displayName}
+          >
+            <span className="aaa-icon-slot">
+              <span className="pr11-avatar">
+                <UserRound size={18} />
+              </span>
+            </span>
+            <span className="aaa-sidebar-label aaa-profile-text">
+              <strong>{displayName}</strong>
+              <small>{email}</small>
+            </span>
+            <ChevronDown className="aaa-sidebar-label" size={15} />
+          </button>
+          {profileMenu && (
+            <div className="aaa-profile-menu" role="menu">
+              <button
+                role="menuitem"
+                onClick={() => {
+                  openProfile();
+                  setProfileMenu(false);
+                  setMobileOpen(false);
+                }}
+              >
+                <UserRound size={16} />
+                Profile
+              </button>
+              <button role="menuitem" onClick={() => nav("Settings")}>
+                <Settings2 size={16} />
+                Settings
+              </button>
+              <button role="menuitem" onClick={() => void signOut()}>
+                <LogOut size={16} />
+                Log out
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
+      {mobileCalendars && (
+        <div className="aaa-mobile-calendars">
+          <div className="aaa-options">
+            <strong>Calendars</strong>
+            <button
+              aria-label="Close calendar visibility"
+              onClick={() => setMobileCalendars(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          {calendarControls}
+          <button onClick={manage}>+ Manage calendars</button>
+        </div>
+      )}
+      <main className="aaa-workspace" inert={mobileOpen}>
+        <CalendarWorkspace
+          startDay={startDay}
+          clock={clock}
+          fluidOnly={section === "Fluid Calendar"}
+          hiddenCategories={hidden}
+          onCategoriesChange={setCategories}
+          command={command}
+          agendaMode={agendaMode}
+          onAgendaMode={setAgendaMode}
+          onOpenThought={openThought}
+        >
+          {!calendarSection && (
+            <>
+              <div className="aaa-page-toolbar">
+                <span>{ownedPageTitle(displayName, section)}</span>
+                <button
+                  onClick={() =>
+                    setAgendaMode(
+                      agendaMode === "closed" ? "overlay" : "closed",
+                    )
+                  }
+                >
+                  <PanelRightOpen size={17} />
+                  The Agenda
+                </button>
+              </div>
+              {section === "Settings" ? (
+                <AppearanceSettings
+                  value={appearance}
+                  onChange={setAppearance}
+                  mode={mode}
+                  onMode={setMode}
+                  startDay={startDay}
+                  onStartDay={setStartDay}
+                  clock={clock}
+                  onClock={setClock}
+                  onBack={() => nav("Calendar")}
+                />
+              ) : section === "Goals" || section === "Workspaces" ? (
+                <PlanningWorkspace
+                  key={section}
+                  section={section}
+                  initialId={contextId}
+                  onContext={setPlanningContext}
+                  onOpenPage={openThought}
+                  onSchedule={(task) => {
+                    setCommand({ id: Date.now(), type: "new", task });
+                  }}
+                />
+              ) : (
+                <>
+                  <div className="aaa-resource-heading">
+                    <h1>{section}</h1>
+                    {activeThought && (
+                      <button
+                        onClick={() => {
+                          nav(returnSection);
+                          setActiveThought(undefined);
+                        }}
+                      >
+                        <ArrowLeft size={15} />
+                        Back to {returnSection}
+                      </button>
+                    )}
+                  </div>
+                  <ThoughtWorkspace
+                    key={section + String(activeThought)}
+                    collectionsOnly={section === "Resources"}
+                    initialId={activeThought}
+                    onNavigate={() => nav("Calendar")}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </CalendarWorkspace>
+      </main>
     </div>
-  </aside>
-  <main className={`calendar-main min-w-0 w-full flex-1 ${section==='Calendar'||section==='Fluid Calendar'?'p-2 md:p-4':'p-3 pt-6 sm:p-5 md:p-6'}`}>
-   {section!=='Calendar'&&section!=='Fluid Calendar'&&<header className="calendar-header mb-6 flex flex-wrap items-start justify-between gap-4"><div><p className="calendar-accent mb-2 text-xs font-semibold uppercase tracking-[0.15em]">{displayName === 'My' ? 'My workspace' : displayName + (displayName.trim().toLowerCase().endsWith('s') ? '\u2019 workspace' : '\u2019s workspace')}</p><h1 className="text-3xl font-semibold md:text-4xl">{section}</h1><p className="calendar-subtle mt-2 text-sm">{section==='Scheduling'?dateLabel:section==='Goals'?'Turn long-term visions into achievable projects.':'Capture thoughts and build an interconnected knowledge system.'}</p></div>{section==='Scheduling'&&<button onClick={()=>setShowNew(!showNew)} className="calendar-primary flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm"><Plus size={18}/> New block</button>}</header>}
-   {section==='Scheduling' && <>
-    <div className="calendar-segment mb-6 flex w-fit rounded-xl p-1">{(['Day','Week','Month'] as View[]).map(v=><button key={v} onClick={()=>setView(v)} className={`rounded-lg px-5 py-2 text-sm ${view===v?'active':''}`}>{v}</button>)}</div>
-    {showNew&&<form onSubmit={e=>{e.preventDefault();addBlock()}} className="mb-5 flex gap-2"><input aria-label="Block name" autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Block name" className="calendar-input min-w-0 flex-1 rounded-xl px-4 py-3"/><button className="calendar-primary rounded-xl px-4">Add</button></form>}
-    {saveError&&<p role="alert" className="mb-3 text-sm" style={{color:"var(--danger)"}}>Save error: {saveError}</p>}{loadingBlocks&&<p className="calendar-subtle mb-3 text-sm">Loading saved schedule…</p>}{view==='Day' ? <div className="calendar-panel overflow-hidden p-3 md:p-5"><div className="calendar-subtle mb-4 flex items-center gap-2 text-sm"><CalendarDays size={16}/>{dateLabel} · Daily timeline</div><div className="calendar-grid">{Array.from({length:24},(_,hour)=><div key={hour} className="calendar-hour"><div className="calendar-time">{formatTime(String(hour).padStart(2,'0')+':00')}</div><div className="calendar-slot">{[...blocks].filter(b=>Number(b.start.split(':')[0])===hour).sort((a,b)=>a.start.localeCompare(b.start)).map(block=><div className="calendar-event mb-2" key={block.id}><BlockCard block={block} formatTime={formatTime} toggleTask={toggleTask} addTask={addTask} updateTime={(key,value)=>changeBlock(block.id,b=>({...b,[key]:value}))}/></div>)}</div></div>)}</div>{!loadingBlocks&&blocks.length===0&&<p className="calendar-subtle py-5 text-center text-sm">No blocks yet. Select New block to start planning your day.</p>}</div> : <div className="calendar-panel p-6"><p className="text-lg font-medium">{view} planning</p><p className="calendar-subtle mt-2 text-sm">This view is the next feature to build. It will help you arrange your {view==='Week'?'work shifts, activities, due dates and blocks':'paydays, events, commitments and project deadlines'}.</p><p className="calendar-accent mt-5 text-sm">Week starts on {startDay} · {clock} clock</p></div>}
-   </>}
-   {(section==='Calendar'||section==='Fluid Calendar')&&<CalendarWorkspace key={section} startDay={startDay} clock={clock} fluidOnly={section==='Fluid Calendar'} onOpenThought={id=>{setActiveThought(id);setSection('Think About It')}}/>}
-   {section!=='Calendar'&&section!=='Fluid Calendar'&&<><button type="button" className="pr11-global-day-button" aria-label="Open today's day calendar" onClick={()=>setGlobalDayOpen(v=>!v)}><CalendarDays size={19}/> Day calendar</button>{globalDayOpen&&<aside className="pr11-day-sidepanel" aria-label="Day calendar details"><div className="pr11-sidepanel-head"><div><span className="calendar-muted text-xs">DAY CALENDAR</span><h3 className="text-lg font-semibold">{dateLabel}</h3></div><button aria-label="Close day calendar" onClick={()=>setGlobalDayOpen(false)}><X size={20}/></button></div><div className="pr11-sidepanel-list"><div className="pr11-day-timeline">{Array.from({length:24},(_,hour)=><div key={hour} className="pr11-hour-row"><span>{hour%12||12} {hour<12?'AM':'PM'}</span><div>{blocks.filter(b=>Number(b.start?.slice(0,2))===hour).map(b=><div key={b.dbId||b.id} className="pr11-hour-event"><strong>{b.title}</strong><small>{formatTime(b.start)} – {formatTime(b.end)}</small></div>)}</div></div>)}</div></div></aside>}</>}
-   {(section==='Goals'||section==='Workspaces')&&<Placeholder icon={<FolderKanban size={24}/>} title="Goals and projects" description="A home for long-term visions, 13-week sprints, projects and actionable tasks. We'll build this section next."/>}
-   {(section==='Resources'||section==='Think About It')&&<ThoughtWorkspace key={section+String(activeThought)} collectionsOnly={section==='Resources'} initialId={activeThought} onNavigate={()=>setSection('Calendar')}/> }
-   {section!=='Calendar'&&section!=='Fluid Calendar'&&<p className="calendar-muted mt-10 text-xs">Thoughts, collections, and calendar blocks saved to your account</p>}
-  </main>
- </div>;
+  );
 }
-function BlockCard({block,formatTime,toggleTask,addTask,updateTime}:{block:WorkBlock;formatTime:(v:string)=>string;toggleTask:(b:number,t:number)=>void;addTask:(b:number,t:string)=>void;updateTime:(k:'start'|'end',v:string)=>void}) {
- const [taskName,setTaskName]=useState('');
- const completed=block.tasks.filter(t=>t.done).length;
- return <section className="calendar-card">
-  <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">{block.title}</h2><div className="calendar-subtle mt-1 flex items-center gap-2 text-sm"><Clock3 size={15}/>{formatTime(block.start)} – {formatTime(block.end)}</div></div><span className="calendar-subtle rounded-lg px-3 py-1 text-xs">{completed}/{block.tasks.length} done</span></div>
-  <div className="calendar-subtle mb-4 flex gap-4 text-xs"><label>Start <input aria-label={`${block.title} start`} type="time" value={block.start} onChange={e=>updateTime('start',e.target.value)} className="calendar-input ml-2 rounded p-1"/></label><label>End <input aria-label={`${block.title} end`} type="time" value={block.end} onChange={e=>updateTime('end',e.target.value)} className="calendar-input ml-2 rounded p-1"/></label></div>
-  <div className="space-y-2">{block.tasks.map(task=><label key={task.id} className="calendar-task flex cursor-pointer items-start gap-3 rounded-xl p-3"><input type="checkbox" checked={task.done} onChange={()=>toggleTask(block.id,task.id)} className="mt-1 accent-teal-400"/><span className="flex-1"><span className={task.done?'calendar-muted line-through':''}>{task.title}</span><span className="calendar-muted mt-1 flex items-center gap-1 text-xs"><Link2 size={12}/>{task.project}</span></span>{task.done&&<Check className="calendar-accent" size={17}/>}</label>)}</div>
-  <form onSubmit={e=>{e.preventDefault();addTask(block.id,taskName);setTaskName('')}} className="mt-4 flex gap-2"><input aria-label={`New task in ${block.title}`} value={taskName} onChange={e=>setTaskName(e.target.value)} placeholder="Add a task…" className="calendar-input min-w-0 flex-1 rounded-xl px-3 py-2 text-sm"/><button aria-label="Add task" className="calendar-panel rounded-xl px-3"><Plus size={18}/></button></form>
- </section>;
-}
-function Placeholder({icon,title,description}:{icon:React.ReactNode;title:string;description:string}) {return <div className="calendar-panel p-10"><div className="calendar-accent mb-4">{icon}</div><h2 className="mb-2 text-xl font-semibold">{title}</h2><p className="calendar-subtle max-w-lg text-sm leading-6">{description}</p></div>}
