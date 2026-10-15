@@ -291,7 +291,7 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-calendar-host>.calendar-overlay{z-index:120}.aaa-nav-row .aaa-icon-slot,.aaa-collapsed .aaa-nav-row .aaa-icon-slot{width:52px}
 @media(max-width:767px){.aaa-sidebar .aaa-context{min-height:0}}
 /* Next settings build */
-.aaa-logo{background:#000!important;border:0!important;overflow:hidden}.aaa-logo img{width:35px;height:35px;object-fit:contain}.aaa-mobile-header img{object-fit:contain;flex:none}
+.aaa-logo{background:var(--ui-logo-backing,transparent)!important;border:0!important;overflow:hidden}.aaa-logo img{width:35px;height:35px;object-fit:contain}.aaa-mobile-header img{object-fit:contain;flex:none}
 .aaa-context-row.active{background:var(--ui-accent-soft);color:var(--accent-text);border-left:2px solid var(--accent-text)}
 .aaa-settings-page{max-width:1040px;margin:30px auto;width:100%}.aaa-preference-summary{font-size:12px;color:var(--muted);margin-top:20px}
 .aaa-settings-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;margin-top:30px}.aaa-settings-cards>button{display:flex;align-items:center;gap:15px;background:var(--surface);border:1px solid var(--border);border-radius:var(--ui-radius);text-align:left;padding:18px;min-height:103px}.aaa-settings-cards>button:hover{border-color:var(--accent-text);background:var(--surface-2)}.aaa-settings-cards>button>span:nth-child(2){flex:1}.aaa-settings-cards strong{display:block;font-size:13px;margin-bottom:7px}.aaa-settings-cards small{display:block;font-size:11px;color:var(--muted);line-height:1.6}.aaa-card-icon{display:grid;place-items:center;width:42px;height:42px;flex:none;background:var(--ui-accent-soft);color:var(--accent-text);border-radius:10px}
@@ -302,3 +302,107 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 @media(max-width:767px){.aaa-settings-cards{grid-template-columns:1fr}.aaa-settings-panel{padding:18px}.aaa-agenda [data-desktop-pin]{display:none!important}.aaa-agenda .aaa-mobile-only{display:grid!important}.aaa-agenda-edge,.aaa-edge-docked,.aaa-calendar-host:has(.aaa-agenda-overlay)>.aaa-agenda-edge{right:0}.aaa-calendar-host:has(.aaa-agenda)>.aaa-agenda-edge{display:none}.aaa-agenda-pinned,.aaa-agenda-overlay{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important}.aaa-event-header{flex-wrap:wrap}.aaa-event-header time{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.aaa-agenda{transition:none}}
 .aaa-timeline-overflow{border:1px solid var(--border);border-left:2px solid var(--accent-text);border-radius:4px;background:var(--ui-accent-soft);padding:5px;text-align:left;overflow:hidden}.aaa-timeline-overflow strong,.aaa-timeline-overflow small,.aaa-timeline-overflow span{display:block;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.aaa-timeline-overflow span{margin-top:4px;color:var(--accent-text)}
+
+/* Non-production data indicator (Phase 0.5). Fixed, non-interactive, above all layers. */
+.aaa-environment-badge{position:fixed;top:6px;left:50%;transform:translateX(-50%);z-index:1000;pointer-events:none;padding:3px 10px;border-radius:999px;background:#FFB020;color:#1A1200;font:700 11px/1.4 ui-sans-serif,system-ui,sans-serif;letter-spacing:.06em;box-shadow:0 1px 4px rgba(0,0,0,.35);white-space:nowrap}
+.aaa-demo-notice{max-width:640px;margin:24px}
+/* Phase 1 — pill switches, settings cards and notices. Colours come from the active theme tokens. */
+.aaa-switch-row{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--ui-border,var(--border))}
+.aaa-switch-row:first-of-type{border-top:0}
+.aaa-switch-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.aaa-switch-label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:14px;font-weight:600;color:var(--ui-text,var(--text))}
+.aaa-switch-label label{cursor:pointer}
+.aaa-switch-text small{font-size:12px;line-height:1.45;color:var(--ui-muted,var(--muted))}
+.aaa-switch-state{font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--ui-muted,var(--muted));min-width:24px;text-align:right}
+.aaa-switch{position:relative;flex:none;width:48px;height:28px;border-radius:999px;border:1px solid var(--ui-border-strong,var(--ui-border,var(--border)));background:color-mix(in srgb,var(--ui-subtle,#888) 45%,transparent);cursor:pointer;transition:background-color .18s ease,border-color .18s ease;padding:0}
+.aaa-switch::before{content:"";position:absolute;inset:-8px -4px}
+.aaa-switch-thumb{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .18s ease}
+.aaa-switch[aria-checked="true"]{background:var(--ui-accent,var(--accent));border-color:var(--ui-accent,var(--accent))}
+.aaa-switch[aria-checked="true"] .aaa-switch-thumb{transform:translateX(20px);background:var(--ui-on-accent,#fff)}
+.aaa-switch:focus-visible{outline:2px solid var(--ui-focus-ring,var(--accent));outline-offset:3px}
+.aaa-switch:disabled{cursor:not-allowed;opacity:.45}
+.aaa-switch-row.is-disabled .aaa-switch-label,.aaa-switch-row.is-disabled .aaa-switch-state{opacity:.6}
+@media (prefers-reduced-motion:reduce){.aaa-switch,.aaa-switch-thumb{transition:none}}
+.aaa-settings-card{max-width:750px;border:1px solid var(--ui-border,var(--border));background:var(--ui-panel,var(--surface));border-radius:calc(var(--ui-radius,10px) + 6px);padding:6px 22px 8px;margin-top:20px}
+.aaa-settings-card>header{padding:18px 0 4px}
+.aaa-settings-card>header h2{margin:0;font-size:17px}
+.aaa-settings-card>header p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--ui-muted,var(--muted))}
+.aaa-settings-card .aaa-badge{margin-right:0}
+.aaa-card-note{font-size:12px;color:var(--ui-muted,var(--muted));padding:4px 0 12px;margin:0}
+.aaa-isolation{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--ui-muted,var(--muted));padding:12px 0}
+.aaa-toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:900;display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 32px));padding:10px 12px 10px 16px;border-radius:12px;background:var(--ui-elevated,var(--surface));color:var(--ui-text,var(--text));border:1px solid var(--ui-border,var(--border));box-shadow:0 6px 24px rgba(0,0,0,.35);font-size:13px}
+.aaa-toast-error{border-color:#d9534f}
+.aaa-toast button{display:grid;place-items:center;padding:4px;border-radius:8px}
+@media (max-width:767px){.aaa-settings-card{padding:4px 16px 6px}.aaa-switch-row{gap:10px}}
+@media (max-width:767px){.aaa-environment-badge{top:auto;bottom:calc(10px + env(safe-area-inset-bottom));font-size:10px}}
+@media (max-width:767px){.aaa-toast{bottom:calc(44px + env(safe-area-inset-bottom))}}
+/* Phase 2 — Test Profiles in the profile control */
+.pr11-avatar{position:relative}
+.aaa-profile-dot{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;background:#4d9cff;border:2px solid var(--ui-sidebar,#000)}
+.aaa-profile-text small.aaa-profile-active{color:#9ccaff;font-weight:600}
+.aaa-profile-menu{min-width:250px;max-width:min(320px,calc(100vw - 20px));max-height:calc(100vh - 110px);overflow:auto}
+.aaa-menu-heading{display:flex;align-items:center;gap:8px;padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-muted,var(--muted))}
+.aaa-menu-heading .aaa-badge{margin:0}
+.aaa-profile-list button{align-items:center;border-radius:calc(var(--ui-radius,10px) - 2px)}
+.aaa-profile-list button[aria-checked="true"]{background:var(--ui-accent-soft,var(--accent-soft));font-weight:650}
+.aaa-menu-check{width:16px;display:grid;place-items:center;flex:none;color:var(--ui-accent-bright,var(--accent))}
+.aaa-menu-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aaa-profile-tag{font-size:10px;font-weight:650;padding:2px 7px;border-radius:999px;border:1px solid var(--ui-border,var(--border));color:var(--ui-muted,var(--muted));white-space:nowrap}
+.aaa-profile-tag.is-active{border-color:var(--ui-accent,var(--accent));color:var(--ui-text,var(--text))}
+.aaa-menu-separator{height:1px;margin:6px 4px;background:var(--ui-border,var(--border))}
+.aaa-profile-menu button:hover,.aaa-profile-menu button:focus-visible{background:var(--ui-hover,var(--surface-2))}
+.aaa-dialog-backdrop{position:fixed;inset:0;z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6)}
+.aaa-dialog{width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;background:var(--ui-panel,var(--surface));color:var(--ui-text,var(--text));border:1px solid var(--ui-border,var(--border));border-radius:calc(var(--ui-radius,10px) + 6px);padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.aaa-dialog-header{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.aaa-dialog-header h2{margin:0;font-size:18px;display:flex;align-items:center;gap:8px}
+.aaa-dialog-header h2 .aaa-badge{margin:0}
+.aaa-dialog-header p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--ui-muted,var(--muted))}
+.aaa-dialog-header button{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;flex:none}
+.aaa-dialog-error{margin:12px 0 0;padding:8px 12px;border-radius:10px;border:1px solid #d9534f;font-size:13px}
+.aaa-profile-rows{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.aaa-profile-rows li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px;padding:8px 10px 8px 14px;border:1px solid var(--ui-border,var(--border));border-radius:var(--ui-radius,10px);background:var(--ui-elevated,var(--surface-2))}
+.aaa-profile-rows li.is-active{border-color:var(--ui-accent,var(--accent))}
+.aaa-profile-row-name{flex:1;min-width:140px;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.aaa-profile-row-name strong{font-size:14px;overflow-wrap:anywhere}
+.aaa-profile-row-actions{display:flex;align-items:center;gap:4px}
+.aaa-profile-row-actions button{min-width:36px;height:36px;padding:0 10px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:600}
+.aaa-profile-row-actions button:hover,.aaa-profile-row-actions button:focus-visible{background:var(--ui-hover,var(--surface-2))}
+.aaa-danger-icon:hover,.aaa-danger-icon:focus-visible{color:#ff8a8a}
+.aaa-inline-form{display:flex;gap:8px;flex:1;flex-wrap:wrap}
+.aaa-inline-form input{flex:1;min-width:140px}
+.aaa-inline-form button,.aaa-confirm button{height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--ui-border,var(--border))}
+.aaa-confirm{display:flex;flex-direction:column;gap:10px;width:100%;font-size:13px;line-height:1.5}
+.aaa-confirm>div{display:flex;gap:8px;flex-wrap:wrap}
+.aaa-danger{background:#b42332;border-color:#b42332!important;color:#fff}
+.aaa-create-profile{margin-top:18px;padding-top:16px;border-top:1px solid var(--ui-border,var(--border));display:grid;gap:10px}
+.aaa-create-profile h3{margin:0;font-size:14px}
+.aaa-create-profile label{display:grid;gap:6px;font-size:13px}
+.aaa-create-profile button{justify-self:start;display:inline-flex;align-items:center;gap:6px}
+@media (max-width:767px){.aaa-dialog-backdrop{align-items:flex-end;padding:0}.aaa-dialog{max-width:none;border-radius:18px 18px 0 0;max-height:92vh;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}.aaa-create-profile button{justify-self:stretch;justify-content:center}}
+.aaa-dialog input,.aaa-dialog select{height:38px;padding:0 10px;border-radius:9px;border:1px solid var(--ui-border,var(--border));background:var(--ui-canvas,var(--bg));color:var(--ui-text,var(--text));font:inherit}
+.aaa-dialog input:focus-visible,.aaa-dialog select:focus-visible,.aaa-dialog button:focus-visible{outline:2px solid var(--ui-focus-ring,var(--accent));outline-offset:2px}
+.aaa-create-profile button{padding:10px 16px;border-radius:10px;font-weight:650}
+@media (max-width:767px){.aaa-dialog{padding-bottom:calc(48px + env(safe-area-inset-bottom))}}
+/* Phase 3 — adaptive emblem, manual themes, light-theme states */
+.aaa-brand-mark{position:relative;display:inline-block;flex:none;border-radius:22%;background:var(--ui-logo-backing,transparent)}
+.aaa-brand-ring,.aaa-brand-glyph{position:absolute;inset:0;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.aaa-brand-ring{-webkit-mask-image:url(/brand/aaa-mark-ring.png);mask-image:url(/brand/aaa-mark-ring.png);background:var(--ui-logo-border,#c6a15c)}
+.aaa-brand-glyph{-webkit-mask-image:url(/brand/aaa-mark-glyph.png);mask-image:url(/brand/aaa-mark-glyph.png);background:var(--ui-logo-glyph,#e8d39a)}
+.aaa-mobile-header strong{display:flex;align-items:center;gap:8px}
+.aaa-logo .aaa-brand-mark{width:30px!important;height:30px!important}
+.aaa-theme-group{margin-top:14px}
+.aaa-theme-group h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ui-muted,var(--muted))}
+.aaa-active-theme{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aaa-switch{background:var(--ui-switch-off,color-mix(in srgb,var(--ui-subtle,#888) 45%,transparent))}
+.aaa-profile-menu,.aaa-toast{background:var(--ui-floating,var(--surface))}
+:root[data-theme='light'] .aaa-mini-shell b{border-color:#0000001a}
+:root[data-theme='light'] .aaa-swatches i{border-color:#00000026}
+:root[data-theme='light'] .aaa-badge-go{background:#d6efdf;color:#145232}
+:root[data-theme='light'] .aaa-badge-na{background:#f8dde2;color:#8a1c2d}
+:root[data-theme='light'] .aaa-badge-beta{background:#dbe8fa;color:#174a8b}
+:root[data-theme='light'] .aaa-profile-text small.aaa-profile-active{color:#1d5aa0}
+:root[data-theme='light'] .aaa-profile-dot{background:#1f6fd0}
+:root[data-theme='light'] .aaa-toast,:root[data-theme='light'] .aaa-profile-menu{box-shadow:0 8px 28px rgba(20,30,45,.18)}
+:root[data-theme='light'] .aaa-dialog{box-shadow:0 20px 60px rgba(20,30,45,.25)}
+:root[data-theme='light'] .aaa-dialog-backdrop{background:rgba(20,30,45,.35)}
+:root[data-theme='light'] .aaa-switch-thumb{box-shadow:0 1px 3px rgba(20,30,45,.35)}
