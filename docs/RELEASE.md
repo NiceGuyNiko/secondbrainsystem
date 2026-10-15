@@ -1,15 +1,26 @@
 # Release and verification
 
-1. Review docs/PRD-AUDIT.md and the additive migration.
-2. Approve applying `20261014030325_thought_workspace.sql` to the shared live Supabase project. The branch preview currently shares production auth/data; there is no isolated Supabase branch configured. Do not apply without this approval.
-3. Apply migration once with the Supabase migration mechanism. Check advisors, RLS and function grants, then exercise a disposable account. Existing calendar queries work before migration; thought capture remains disabled until schema loads.
-4. Verify authenticated desktop and mobile flows A–G: capture/refresh, nested moves, collection conversion, typed properties, table/board consistency, backlinks, linked calendar edit from both surfaces, archive/restore, and second-user isolation. Reconfirm mobile full-screen navigation and calendar rendering against user references.
-5. Keep changes on feature/pr11-ui-sidebar. Do not merge main. Only call the full implementation complete after authenticated UI checks, outstanding PRD scope and release approval are resolved.
+## Current state — 14 October 2026
 
-Commands: npm ci; npm test; npm run typecheck; npm run lint; npm run build.
+Application code is on `feature/pr11-ui-sidebar`. Core UI/planning implementation: `6ba32afbd1b8aa3b019ac38f3040b5eab9d62556`; Vercel reported success. Main has not been merged.
 
-The database test uses an isolated embedded Postgres instance. It creates temporary roles/users in that instance; it never creates accounts or test rows in the live project.
+After the user's explicit approval at 20:23 Toronto time, the previously pending thought migration and the action-workspace migration were installed on the shared Supabase project `rpjeqbbvocgwomiavxqh`. A follow-up index migration addresses the foreign-key checks identified by the performance advisor. Do not reapply those files manually.
 
-## 14 October 2026 update
+See `docs/ACTION-IMPLEMENTATION.md` for the specification map, activation evidence and exact remaining scope.
 
-See `docs/ACTION-IMPLEMENTATION.md` for the reconciled specification map, current validation, migration review and exact remaining scope. Apply the earlier thought migration and then `20261014235844_action_workspace.sql` only after explicit approval. Neither migration is installed on the shared live project as of the read-only audit. The calendar UI, appearance and shell do not require the new planning tables; the writing/planning capabilities do.
+## Completed database checks
+
+- Both main migrations and the follow-up indexes installed successfully.
+- All new tables have RLS and owner policies.
+- Authenticated live smoke test passed inside a rolled-back transaction: canonical creation, perspective uniqueness, task completion, goal measurements, calendar task links and cross-owner isolation.
+- All 66 existing calendar blocks and saved category configuration have identical before/after content fingerprints.
+- No sample records, auth accounts or imported Notion data were left behind.
+- Seven automated tests pass against isolated Postgres, including all migration files. TypeScript, lint (warnings only), and the production build passed for the application commit.
+
+## Remaining release verification
+
+The preview shares production auth/data. Authenticated desktop/mobile UI tests remain unverified in this agent's browser. Verify capture/refresh, nested moves, collection conversion, typed properties, table/board consistency, backlinks, writing matrix/timeline, goal measurements, linked task execution and the preserved event editor before merging to main.
+
+General arbitrary database-axis semantics and Notion import still require the unresolved product choices/source data identified in the handoff. No further live import is authorized by database activation alone.
+
+Commands: `npm ci`; `npm test`; `npm run typecheck`; `npm run lint`; `npm run build`.
