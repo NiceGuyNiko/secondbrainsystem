@@ -290,3 +290,29 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 /* Keep fixed layers usable on phones when opening creation from The Agenda. */
 .aaa-calendar-host>.calendar-overlay{z-index:120}.aaa-nav-row .aaa-icon-slot,.aaa-collapsed .aaa-nav-row .aaa-icon-slot{width:52px}
 @media(max-width:767px){.aaa-sidebar .aaa-context{min-height:0}}
+
+
+/* Settings section mockup: context navigation and lightweight section panels. */
+.aaa-settings-context-row{border-left:2px solid transparent;padding-left:4px}
+.aaa-settings-context-row.active{background:var(--accent-soft);color:var(--accent-text);border-left-color:var(--accent-text)}
+.aaa-settings-basic{max-width:1040px}
+.aaa-settings-section-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:28px}
+.aaa-settings-section-card{display:flex;align-items:center;gap:14px;min-height:102px;padding:18px;text-align:left;border:1px solid var(--border);border-radius:var(--ui-radius);background:var(--surface)}
+.aaa-settings-section-card:hover{border-color:var(--accent-text);background:var(--ui-elevated)}
+.aaa-settings-section-card>span:nth-child(2){flex:1;min-width:0}
+.aaa-settings-section-card strong{display:block;font-size:13px;margin-bottom:6px}
+.aaa-settings-section-card small{display:block;font-size:11px;line-height:1.5;color:var(--muted)}
+.aaa-settings-section-card>svg{flex-shrink:0;color:var(--muted)}
+.aaa-settings-section-icon{flex-shrink:0;width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:var(--accent-soft);color:var(--accent-text)}
+.aaa-settings-panel{width:100%;max-width:730px;margin-top:28px;padding:26px;border:1px solid var(--border);border-radius:var(--ui-radius);background:var(--surface)}
+.aaa-settings-panel h2{font-size:16px;margin:0 0 12px}
+.aaa-settings-panel>p{font-size:12px;line-height:1.6;margin-bottom:18px}
+.aaa-settings-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:18px;margin-top:22px}
+.aaa-settings-fields label{font-size:12px;display:flex;flex-direction:column;gap:9px}
+.aaa-settings-fields select{width:100%;padding:11px;border:1px solid var(--border);border-radius:var(--ui-radius);background:var(--field);color:var(--text)}
+.aaa-settings-detail-row{display:flex;gap:15px;align-items:center;justify-content:space-between;padding:16px 0;border-top:1px solid var(--border);font-size:12px}
+.aaa-settings-detail-row strong{font-size:12px;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.aaa-settings-detail-row small{font-size:11px;color:var(--muted)}
+.aaa-settings-action{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:10px 13px;border-radius:var(--ui-radius);background:var(--accent-soft);color:var(--accent-text);font-size:12px}
+.aaa-settings-action:hover{background:var(--ui-hover)}
+@media(max-width:767px){.aaa-settings-panel{padding:18px}.aaa-settings-section-grid{grid-template-columns:1fr}.aaa-settings-section-card{min-height:78px}}
