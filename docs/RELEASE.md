@@ -2,7 +2,9 @@
 
 ## Current state — 14 October 2026
 
-Application code is on `feature/pr11-ui-sidebar`. Core UI/planning implementation: `6ba32afbd1b8aa3b019ac38f3040b5eab9d62556`; Vercel reported success. Main has not been merged.
+> Historical record. Since this was written, PR #14 and PR #15 were merged; `main` is at `fbc6cdb` and is the production deployment. Current plan: `docs/NEXT-BUILD-PLAN.md`.
+
+Application code was on `feature/pr11-ui-sidebar`. Core UI/planning implementation: `6ba32afbd1b8aa3b019ac38f3040b5eab9d62556`; Vercel reported success. Main had not been merged at that time.
 
 After the user's explicit approval at 20:23 Toronto time, the previously pending thought migration and the action-workspace migration were installed on the shared Supabase project `rpjeqbbvocgwomiavxqh`. A follow-up index migration addresses the foreign-key checks identified by the performance advisor. Do not reapply those files manually.
 
