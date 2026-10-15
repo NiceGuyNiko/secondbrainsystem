@@ -51,7 +51,7 @@ Rollback: prefer rolling back the application commit without removing data. Befo
 - `npm run typecheck`: passed.
 - `npm run build`: passed (Next.js 15).
 - `npm run lint`: no errors; remaining warnings are in pre-existing calendar/auth/config code.
-- Live site inspected: sign-in page only. No authenticated browser session was available. Authenticated desktop/mobile visual and end-to-end checks have NOT been completed.
+- Authenticated desktop browser testing completed for the core calendar, Agenda, goals, task execution and writing matrix/timeline flows. See `docs/BROWSER-TESTING-2026-10-14.md`; phone-width/mobile verification and the listed extended regression cases remain outstanding.
 - Live database activation completed after explicit approval. No Notion import or persistent test records were created. Main remains unchanged; application code is on the development branch.
 
 ## Explicit remaining scope

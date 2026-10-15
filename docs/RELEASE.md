@@ -19,7 +19,7 @@ See `docs/ACTION-IMPLEMENTATION.md` for the specification map, activation eviden
 
 ## Remaining release verification
 
-The preview shares production auth/data. Authenticated desktop/mobile UI tests remain unverified in this agent's browser. Verify capture/refresh, nested moves, collection conversion, typed properties, table/board consistency, backlinks, writing matrix/timeline, goal measurements, linked task execution and the preserved event editor before merging to main.
+The preview shares production auth/data. Authenticated desktop testing now covers the calendar shell, Agenda/filtering, preserved editor controls, goal measurements, canonical task execution and writing matrix/timeline. See `docs/BROWSER-TESTING-2026-10-14.md` for the verified flows and cleanup evidence. Phone-width/mobile testing and the untested regression combinations listed there remain outstanding before merging to main. Think About It changes and Notion import are deferred by the user.
 
 General arbitrary database-axis semantics and Notion import still require the unresolved product choices/source data identified in the handoff. No further live import is authorized by database activation alone.
 
