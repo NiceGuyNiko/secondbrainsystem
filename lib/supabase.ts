@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { environment } from "./environment";
-import { createDemoClient, DemoDatabase } from "./demo/client";
+import { environment, type Environment } from "./environment";
+import { createDemoClient, DemoDatabase, type DemoStorage } from "./demo/client";
 import { demoSeed } from "./demo/seed";
+import { installDemoNetworkGuard } from "./demo/network-guard";
 
 // When configuration is invalid the app renders a configuration error instead of the workspace,
 // so this placeholder is never used; it exists to make any accidental use fail loudly.
@@ -12,19 +13,27 @@ const unavailable = (reason: string) =>
     },
   });
 
+// Chooses the data client for an environment. Demo Mode never creates a real Supabase client,
+// so no request can reach any Supabase project. Exported for tests.
+export function clientFor(env: Environment, deps: { storage: DemoStorage | null; create: typeof createClient }) {
+  if (!env.ok) return { client: unavailable(env.reason), demo: null };
+  if (env.data === "demo") {
+    const demo = new DemoDatabase(deps.storage, () => demoSeed());
+    return { client: createDemoClient(demo), demo };
+  }
+  return { client: deps.create(env.url, env.key), demo: null };
+}
+
+const browser = typeof window !== "undefined";
 const browserStorage = () => {
   try {
-    return typeof window === "undefined" ? null : window.localStorage;
+    return browser ? window.localStorage : null;
   } catch {
     return null;
   }
 };
+if (browser && environment.ok && environment.data === "demo") installDemoNetworkGuard();
 
-// Demo Mode never creates a real Supabase client, so no request can reach any Supabase project.
-export const demoDatabase = environment.ok && environment.data === "demo" ? new DemoDatabase(browserStorage(), () => demoSeed()) : null;
-
-export const supabase: SupabaseClient = !environment.ok
-  ? unavailable(environment.reason)
-  : demoDatabase
-    ? createDemoClient(demoDatabase)
-    : createClient(environment.url, environment.key);
+const selected = clientFor(environment, { storage: browserStorage(), create: createClient });
+export const demoDatabase = selected.demo;
+export const supabase: SupabaseClient = selected.client;

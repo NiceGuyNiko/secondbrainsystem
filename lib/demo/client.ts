@@ -20,6 +20,8 @@ const primaryKeys: Record<string, string[]> = {
   thought_memberships: ["collection_id", "thought_id"],
   thought_connections: ["id"],
   planning_records: ["thought_id"],
+  account_preferences: ["user_id"],
+  test_profiles: ["id"],
 };
 const clone = <T>(value: T): T => (value === undefined ? value : JSON.parse(JSON.stringify(value)));
 const ok = (data: unknown, status = 200): Result => ({ data, error: null, count: null, status, statusText: "OK" });

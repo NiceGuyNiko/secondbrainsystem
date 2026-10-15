@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Check, Copy, RotateCcw } from "lucide-react";
+import Switch from "./switch";
 import {
   palettes,
   themeTokens,
@@ -201,14 +202,11 @@ export default function AppearanceSettings({
               </div>
             </fieldset>
           ))}
-          <label className="aaa-check">
-            <input
-              type="checkbox"
-              checked={value.softenEventColours}
-              onChange={(e) => patch({ softenEventColours: e.target.checked })}
-            />
-            Softer calendar event colours
-          </label>
+          <Switch
+            label="Softer calendar event colours"
+            checked={value.softenEventColours}
+            onChange={(softenEventColours) => patch({ softenEventColours })}
+          />
           <div className="aaa-options">
             <button onClick={() => void copy()}>
               <Copy size={15} />
