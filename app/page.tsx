@@ -5,6 +5,7 @@ import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import CalendarWorkspace from "@/components/calendar-workspace";
 import AppearanceSettings from "@/components/appearance-settings";
+import BasicSettings, { SETTINGS_TABS, type SettingsTab } from "@/components/basic-settings";
 import { type AgendaMode } from "@/components/agenda";
 import { useProfile } from "@/components/profile-context";
 import { thoughtStore } from "@/lib/thoughts";
@@ -73,6 +74,7 @@ function Workspace() {
     type: "new" | "calendars";
     task?: { id: string; title: string; workingId?: string };
   }>();
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>("General");
   const [appearance, setAppearance] = useState<Appearance>(appearanceDefaults),
     [mode, setMode] = useState<"dark" | "light" | "system">("dark"),
     [startDay, setStartDay] = useState("Monday"),
@@ -143,6 +145,7 @@ function Workspace() {
   );
   const nav = (s: Section) => {
     setSection(s);
+    if (s === "Settings") setSettingsTab("General");
     setContextId(undefined);
     setContext([]);
     setMobileOpen(false);
@@ -279,6 +282,7 @@ function Workspace() {
               { name: "Goals", icon: Target, badge: "NA" },
               { name: "Workspaces", icon: Layers3, badge: "NA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
+              { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
               { name: "Think About It", icon: LibraryBig, badge: "BETA" },
             ] as const
@@ -315,7 +319,7 @@ function Workspace() {
                 if (calendarSection) manage();
               }}
             >
-              {calendarSection ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection ? <Plus size={19} /> : section === "Settings" ? <Settings2 size={18} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
@@ -323,16 +327,19 @@ function Workspace() {
             {calendarSection ? (
               calendarControls
             ) : section === "Settings" ? (
-              <button
-                className="aaa-context-row"
-                title="Appearance"
-                onClick={() => nav("Settings")}
-              >
-                <span className="aaa-icon-slot">
-                  <Settings2 size={18} />
-                </span>
-                <span className="aaa-sidebar-label">Appearance</span>
-              </button>
+              SETTINGS_TABS.map(({ name, icon: Icon }) => (
+                <button
+                  key={name}
+                  className={"aaa-context-row aaa-settings-context-row" + (settingsTab === name ? " active" : "")}
+                  title={name}
+                  aria-label={name + " settings"}
+                  aria-current={settingsTab === name ? "page" : undefined}
+                  onClick={() => { setSettingsTab(name); setMobileOpen(false); }}
+                >
+                  <span className="aaa-icon-slot"><Icon size={18} /></span>
+                  <span className="aaa-sidebar-label">{name}</span>
+                </button>
+              ))
             ) : (
               contextual.map((c) => (
                 <button
@@ -351,16 +358,6 @@ function Workspace() {
             )}
           </div>
         </div>
-        <button
-          className={`aaa-nav-row aaa-settings-link ${section === "Settings" ? "active" : ""}`}
-          title="Settings"
-          onClick={() => nav("Settings")}
-        >
-          <span className="aaa-icon-slot">
-            <Settings2 size={20} />
-          </span>
-          <span className="aaa-sidebar-label">Settings</span>
-        </button>
         <div className="aaa-profile">
           <button
             className="aaa-profile-button"
@@ -448,17 +445,32 @@ function Workspace() {
                 </button>
               </div>
               {section === "Settings" ? (
-                <AppearanceSettings
-                  value={appearance}
-                  onChange={setAppearance}
-                  mode={mode}
-                  onMode={setMode}
-                  startDay={startDay}
-                  onStartDay={setStartDay}
-                  clock={clock}
-                  onClock={setClock}
-                  onBack={() => nav("Calendar")}
-                />
+                settingsTab === "Appearance" ? (
+                  <AppearanceSettings
+                    value={appearance}
+                    onChange={setAppearance}
+                    mode={mode}
+                    onMode={setMode}
+                    startDay={startDay}
+                    onStartDay={setStartDay}
+                    clock={clock}
+                    onClock={setClock}
+                    showCalendarPreferences={false}
+                    onBack={() => nav("Calendar")}
+                  />
+                ) : (
+                  <BasicSettings
+                    tab={settingsTab}
+                    onTab={setSettingsTab}
+                    startDay={startDay}
+                    onStartDay={setStartDay}
+                    clock={clock}
+                    onClock={setClock}
+                    displayName={displayName}
+                    email={email || ""}
+                    openProfile={openProfile}
+                  />
+                )
               ) : section === "Goals" || section === "Workspaces" ? (
                 <PlanningWorkspace
                   key={section}
