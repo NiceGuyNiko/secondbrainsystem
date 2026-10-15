@@ -4,10 +4,12 @@
 // Fluid Calendar and Think About It beta choices, theme and sidebar. Profiles hold configuration
 // only: every profile of an account sees the same calendar events, thoughts, goals and tasks.
 import type { AgendaPreference } from "@/lib/agenda-state";
-import { appearanceDefaults, parseAppearance, type Appearance } from "@/lib/appearance";
+import { appearanceDefaults, lightCounterpart, paletteFor, parseAppearance, type Appearance } from "@/lib/appearance";
 
 export type BetaFeatures = { fluidCalendar: boolean; thinkAboutIt: boolean };
-export type ThemeMode = "dark" | "light" | "system";
+// "manual": the theme alone decides light or dark (Phase 3 onwards). "dark" / "light" / "system" are
+// values saved by earlier builds; they are converted once by migrateThemeModes and never used again.
+export type ThemeMode = "manual" | "dark" | "light" | "system";
 export type ProfilePreferences = {
   betaFeatures: BetaFeatures;
   agendaPreference: AgendaPreference;
@@ -32,7 +34,7 @@ export const defaultPreferences: ProfilePreferences = {
   clock: "12-hour",
   hiddenCalendars: [],
   appearance: appearanceDefaults,
-  themeMode: "dark",
+  themeMode: "manual",
   sidebarCollapsed: false,
 };
 export const MAX_PROFILES = 12;
@@ -54,7 +56,7 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
     clock: pick(p.clock, ["12-hour", "24-hour"] as const, fallback.clock),
     hiddenCalendars: Array.isArray(p.hiddenCalendars) ? [...new Set(p.hiddenCalendars.filter((x): x is string => typeof x === "string"))] : [...fallback.hiddenCalendars],
     appearance: p.appearance && typeof p.appearance === "object" ? parseAppearance(p.appearance) : fallback.appearance,
-    themeMode: pick(p.themeMode, ["dark", "light", "system"] as const, fallback.themeMode),
+    themeMode: pick(p.themeMode, ["manual", "dark", "light", "system"] as const, fallback.themeMode),
     sidebarCollapsed: bool(p.sidebarCollapsed, fallback.sidebarCollapsed),
   };
 }
@@ -131,6 +133,24 @@ export function updateAccount(s: Settings, patch: Partial<Omit<AccountSettings, 
 export function updateActivePreferences(s: Settings, patch: (p: ProfilePreferences) => Partial<ProfilePreferences>, now = new Date().toISOString()): Settings {
   const active = activeProfile(s);
   return { ...s, profiles: s.profiles.map((p) => (p.id === active.id ? { ...p, preferences: parsePreferences({ ...p.preferences, ...patch(p.preferences) }), updatedAt: now } : p)) };
+}
+
+// One-time conversion of the old colour modes. Someone who saw the automatic light treatment
+// (Light, or System while the device was light) moves to the closest designed light theme; anyone
+// on Dark keeps exactly their theme. Afterwards every profile is "manual" and the device's
+// light/dark preference is never consulted again. Returns the same object when nothing changes.
+export function migrateThemeModes(s: Settings, deviceIsLight: boolean, now = new Date().toISOString()): Settings {
+  if (s.profiles.every((p) => p.preferences.themeMode === "manual")) return s;
+  return {
+    ...s,
+    profiles: s.profiles.map((p) => {
+      const { themeMode, appearance } = p.preferences;
+      if (themeMode === "manual") return p;
+      const wantsLight = themeMode === "light" || (themeMode === "system" && deviceIsLight);
+      const preset = wantsLight && paletteFor(appearance.preset).scheme === "dark" ? lightCounterpart[appearance.preset] ?? "porcelain-ink" : appearance.preset;
+      return { ...p, preferences: { ...p.preferences, themeMode: "manual" as const, appearance: { ...appearance, preset, ...(preset !== appearance.preset ? { primaryAccentOverride: null, highlightAccentOverride: null } : {}) } }, updatedAt: now };
+    }),
+  };
 }
 
 // Profile management. Every operation returns new settings or throws a ProfileError whose message

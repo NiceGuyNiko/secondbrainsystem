@@ -291,7 +291,7 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-calendar-host>.calendar-overlay{z-index:120}.aaa-nav-row .aaa-icon-slot,.aaa-collapsed .aaa-nav-row .aaa-icon-slot{width:52px}
 @media(max-width:767px){.aaa-sidebar .aaa-context{min-height:0}}
 /* Next settings build */
-.aaa-logo{background:#000!important;border:0!important;overflow:hidden}.aaa-logo img{width:35px;height:35px;object-fit:contain}.aaa-mobile-header img{object-fit:contain;flex:none}
+.aaa-logo{background:var(--ui-logo-backing,transparent)!important;border:0!important;overflow:hidden}.aaa-logo img{width:35px;height:35px;object-fit:contain}.aaa-mobile-header img{object-fit:contain;flex:none}
 .aaa-context-row.active{background:var(--ui-accent-soft);color:var(--accent-text);border-left:2px solid var(--accent-text)}
 .aaa-settings-page{max-width:1040px;margin:30px auto;width:100%}.aaa-preference-summary{font-size:12px;color:var(--muted);margin-top:20px}
 .aaa-settings-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px;margin-top:30px}.aaa-settings-cards>button{display:flex;align-items:center;gap:15px;background:var(--surface);border:1px solid var(--border);border-radius:var(--ui-radius);text-align:left;padding:18px;min-height:103px}.aaa-settings-cards>button:hover{border-color:var(--accent-text);background:var(--surface-2)}.aaa-settings-cards>button>span:nth-child(2){flex:1}.aaa-settings-cards strong{display:block;font-size:13px;margin-bottom:7px}.aaa-settings-cards small{display:block;font-size:11px;color:var(--muted);line-height:1.6}.aaa-card-icon{display:grid;place-items:center;width:42px;height:42px;flex:none;background:var(--ui-accent-soft);color:var(--accent-text);border-radius:10px}
@@ -383,3 +383,26 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-dialog input:focus-visible,.aaa-dialog select:focus-visible,.aaa-dialog button:focus-visible{outline:2px solid var(--ui-focus-ring,var(--accent));outline-offset:2px}
 .aaa-create-profile button{padding:10px 16px;border-radius:10px;font-weight:650}
 @media (max-width:767px){.aaa-dialog{padding-bottom:calc(48px + env(safe-area-inset-bottom))}}
+/* Phase 3 — adaptive emblem, manual themes, light-theme states */
+.aaa-brand-mark{position:relative;display:inline-block;flex:none;border-radius:22%;background:var(--ui-logo-backing,transparent)}
+.aaa-brand-ring,.aaa-brand-glyph{position:absolute;inset:0;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.aaa-brand-ring{-webkit-mask-image:url(/brand/aaa-mark-ring.png);mask-image:url(/brand/aaa-mark-ring.png);background:var(--ui-logo-border,#c6a15c)}
+.aaa-brand-glyph{-webkit-mask-image:url(/brand/aaa-mark-glyph.png);mask-image:url(/brand/aaa-mark-glyph.png);background:var(--ui-logo-glyph,#e8d39a)}
+.aaa-mobile-header strong{display:flex;align-items:center;gap:8px}
+.aaa-logo .aaa-brand-mark{width:30px!important;height:30px!important}
+.aaa-theme-group{margin-top:14px}
+.aaa-theme-group h3{margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ui-muted,var(--muted))}
+.aaa-active-theme{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aaa-switch{background:var(--ui-switch-off,color-mix(in srgb,var(--ui-subtle,#888) 45%,transparent))}
+.aaa-profile-menu,.aaa-toast{background:var(--ui-floating,var(--surface))}
+:root[data-theme='light'] .aaa-mini-shell b{border-color:#0000001a}
+:root[data-theme='light'] .aaa-swatches i{border-color:#00000026}
+:root[data-theme='light'] .aaa-badge-go{background:#d6efdf;color:#145232}
+:root[data-theme='light'] .aaa-badge-na{background:#f8dde2;color:#8a1c2d}
+:root[data-theme='light'] .aaa-badge-beta{background:#dbe8fa;color:#174a8b}
+:root[data-theme='light'] .aaa-profile-text small.aaa-profile-active{color:#1d5aa0}
+:root[data-theme='light'] .aaa-profile-dot{background:#1f6fd0}
+:root[data-theme='light'] .aaa-toast,:root[data-theme='light'] .aaa-profile-menu{box-shadow:0 8px 28px rgba(20,30,45,.18)}
+:root[data-theme='light'] .aaa-dialog{box-shadow:0 20px 60px rgba(20,30,45,.25)}
+:root[data-theme='light'] .aaa-dialog-backdrop{background:rgba(20,30,45,.35)}
+:root[data-theme='light'] .aaa-switch-thumb{box-shadow:0 1px 3px rgba(20,30,45,.35)}

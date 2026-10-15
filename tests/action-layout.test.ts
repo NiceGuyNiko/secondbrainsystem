@@ -81,7 +81,7 @@ test("Agenda uses lanes for overlapping and cross-midnight timed events", () => 
   assert.equal(positions[1].lane, 1);
   assert.equal(positions[2].lanes, 1);
 });
-test("all presets preserve dark black panels, separate canvas and readable foregrounds", () => {
+test("dark presets keep black side panels; every preset separates canvas and readable foregrounds", () => {
   for (const preset of palettes)
     for (const surface of ["flat", "layered", "defined"] as const) {
       const t = themeTokens({
@@ -89,8 +89,10 @@ test("all presets preserve dark black panels, separate canvas and readable foreg
         preset: preset.id,
         surface,
       });
-      assert.equal(t.sidebar, "#000000");
-      assert.equal(t.agenda, "#000000");
+      if (preset.scheme === "dark") {
+        assert.equal(t.sidebar, "#000000");
+        assert.equal(t.agenda, "#000000");
+      } else assert.notEqual(t.sidebar, "#000000", "light themes never use a black side panel");
       assert.notEqual(t.canvas, "#000000");
       assert.notEqual(t.canvas, t.calendar);
     }

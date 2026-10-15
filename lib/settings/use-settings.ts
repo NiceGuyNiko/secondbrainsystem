@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { environment } from "@/lib/environment";
 import { supabase } from "@/lib/supabase";
-import { activeProfile, defaultPreferences, defaultSettings, effectiveFeatures, type EffectiveFeatures, type ProfilePreferences, type Settings } from "./model";
+import { activeProfile, defaultPreferences, defaultSettings, effectiveFeatures, migrateThemeModes, type EffectiveFeatures, type ProfilePreferences, type Settings } from "./model";
 import { browserSettingsStore, tableSettingsStore } from "./store";
 
 const storage = () => {
@@ -30,11 +30,16 @@ export function useSettings(email: string, userId: string) {
     let live = true;
     writable.current = false;
     store.load().then(
-      (loaded) => {
+      (stored) => {
         if (!live) return;
+        // One-time conversion of the old Light/System colour modes (see migrateThemeModes). The
+        // device's preference is read only here, only for profiles still on the old "system" value.
+        const deviceIsLight = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: light)").matches;
+        const loaded = migrateThemeModes(stored, deviceIsLight);
         current.current = committed.current = loaded;
         writable.current = true;
         setSettings(loaded);
+        if (loaded !== stored) void store.save(loaded).catch(() => {});
       },
       (e) => {
         if (!live) return;

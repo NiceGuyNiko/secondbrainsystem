@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useLayoutEffect, useState, useCallback } from "react";
-import Image from "next/image";
+import BrandMark from "@/components/brand-mark";
+import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -66,7 +67,7 @@ function Workspace() {
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
-  const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, themeMode: mode, sidebarCollapsed: collapsed } = preferences;
+  const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
   const setLastPinned = useCallback((lastPinned: boolean) => setPreferences(() => ({ lastPinned })), [setPreferences]);
@@ -74,7 +75,6 @@ function Workspace() {
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
-  const setMode = (themeMode: "dark" | "light" | "system") => setPreferences(() => ({ themeMode }));
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
     [categories, setCategories] = useState<{ name: string; color: string }[]>(
       [],
@@ -101,19 +101,16 @@ function Workspace() {
   },[section,effective.fluidCalendar,effective.thinkAboutIt]);
   useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(""),6000);return()=>clearTimeout(t);},[notice]);
   // Applies the active profile's theme before paint, so switching profiles never shows the old theme.
-  // The values written here are a start-up cache for the next page load (see app/layout.tsx).
+  // Themes are manual: the device's light/dark setting is never consulted. The values written here
+  // are a start-up cache for the next page load (see app/layout.tsx).
   useLayoutEffect(() => {
     if (!settings) return;
-    const apply = () => applyAppearance(appearance, mode);
-    apply();
+    const tokens = applyAppearance(appearance);
+    void updateFavicon(tokens);
     try {
       localStorage.setItem(appearanceKey, JSON.stringify(appearance));
-      localStorage.setItem("think-theme", mode);
     } catch {}
-    const mq = matchMedia("(prefers-color-scheme: light)");
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [settings, appearance, mode]);
+  }, [settings, appearance]);
   useEffect(() => {
     if (!mobileOpen && !mobileCalendars) return;
     const close = (e: KeyboardEvent) => {
@@ -241,7 +238,7 @@ function Workspace() {
           <Menu size={21} />
         </button>
         <strong>
-          <Image src="/aaa-logo.png" width="30" height="30" alt="" />
+          <BrandMark size={28} />
           All About Action
         </strong>
         <button
@@ -265,7 +262,7 @@ function Workspace() {
             }}
           >
             <span className="aaa-logo">
-              <Image src="/aaa-logo.png" width="35" height="35" alt="All About Action" />
+              <BrandMark size={34} label="All About Action" />
             </span>
           </button>
           <div className="aaa-sidebar-label aaa-wordmark">
@@ -425,8 +422,6 @@ function Workspace() {
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}
-                  mode={mode}
-                  onMode={setMode}
                   startDay={startDay}
                   onStartDay={setStartDay}
                   clock={clock}

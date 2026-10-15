@@ -26,7 +26,7 @@ test("Profiles keep independent settings", () => {
   s = updateActivePreferences(theme(light.settings, "slate"), () => ({ themeMode: "light", agendaPreference: "column", sidebarCollapsed: true, hiddenCalendars: ["Work"], betaFeatures: { fluidCalendar: true, thinkAboutIt: false } }));
   const primary = primaryOf(s);
   assert.equal(primary.preferences.appearance.preset, "black-gold", "editing the test profile left Primary alone");
-  assert.equal(primary.preferences.themeMode, "dark");
+  assert.equal(primary.preferences.themeMode, "manual");
   assert.equal(primary.preferences.agendaPreference, "toggle");
   assert.deepEqual(primary.preferences.hiddenCalendars, []);
   assert.equal(effectiveFeatures(s).fluidCalendar, true);
