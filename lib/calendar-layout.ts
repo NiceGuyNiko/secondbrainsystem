@@ -7,6 +7,7 @@ export type CalendarTask = {
   workingId?: string;
 };
 export type CalendarEvent = {
+  holidayInfo?: string;
   thoughtId?: string;
   dbId?: string;
   id: number;

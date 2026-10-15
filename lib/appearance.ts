@@ -1,4 +1,6 @@
 export const palettes = [
+  {id:"midnight",name:"Midnight",description:"Deep blue and clear accents",surface:"#141D31",canvas:"#0B1021",accent:"#3556A2",highlight:"#91B4FF",text:"#F0F4FF"},
+  {id:"slate",name:"Slate",description:"Quiet charcoal neutrals",surface:"#222832",canvas:"#15191E",accent:"#526574",highlight:"#B9CCD9",text:"#F1F5F8"},
   {
     id: "midnight-forest",
     name: "Midnight Forest",
@@ -114,7 +116,7 @@ export function foreground(hex: string) {
     : "#FFFFFF";
 }
 export function themeTokens(p: Appearance, light = false) {
-  const v = palettes.find((v) => v.id === p.preset) || palettes[0],
+  const v = palettes.find((v) => v.id === p.preset) || palettes.find(x=>x.id==="midnight-forest")!,
     accent = p.primaryAccentOverride || v.accent,
     bright = p.highlightAccentOverride || v.highlight;
   const tokens: Record<string, string> = {

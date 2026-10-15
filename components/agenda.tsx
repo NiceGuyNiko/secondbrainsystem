@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Pin, Plus, X, LocateFixed, ExternalLink } from "lucide-react";
+import {canPin, type AgendaPreference} from "@/lib/agenda-state";
 import {
   timedLanes,
   occurrenceKey,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/calendar-layout";
 export type AgendaMode = "closed" | "overlay" | "pinned";
 export default function Agenda({
+  preference,
   mode,
   onMode,
   today,
@@ -22,6 +24,7 @@ export default function Agenda({
   onToggleTask,
   onOpenThought,
 }: {
+  preference: AgendaPreference;
   mode: AgendaMode;
   onMode: (m: AgendaMode) => void;
   today: string;
@@ -117,20 +120,21 @@ export default function Agenda({
         role={mode === "overlay" ? "dialog" : "complementary"}
         aria-modal={mode === "overlay" ? true : undefined}
       >
-        <header>
+        <header onPointerDown={e=>{if((e.target as HTMLElement).closest('button'))return;e.currentTarget.dataset.swipeX=String(e.clientX);e.currentTarget.setPointerCapture(e.pointerId)}} onPointerUp={e=>{const start=e.currentTarget.dataset.swipeX;delete e.currentTarget.dataset.swipeX;if(start&&e.clientX-Number(start)>65)onMode("closed")}}>
           <div className="aaa-agenda-heading">
             <span>THE AGENDA</span>
             <div>
-              <button
+              {canPin(preference, mode) && <button
+                data-desktop-pin
                 className={mode === "pinned" ? "aaa-pin-active" : ""}
-                aria-label="Pin The Agenda"
+                aria-label={mode === "pinned" ? "Unpin The Agenda" : "Pin The Agenda"}
                 aria-pressed={mode === "pinned"}
                 onClick={() => onMode(mode === "pinned" ? "overlay" : "pinned")}
               >
                 <Pin size={17} />
-              </button>
+              </button>}
               <button
-                className="aaa-close"
+                className={preference === "column" || mode === "pinned" ? "aaa-close aaa-mobile-only" : "aaa-close"}
                 aria-label="Close The Agenda"
                 onClick={() => onMode("closed")}
               >
@@ -226,6 +230,7 @@ export default function Agenda({
             <p>
               {time(active)} · {active.event.category}
             </p>
+            {active.event.holidayInfo && <p>{active.event.holidayInfo}</p>}
             {active.event.thoughtId && (
               <button
                 className="calendar-accent"

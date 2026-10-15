@@ -152,7 +152,7 @@ export default function MonthCalendar({
                           onClick={() => onDay(d)}
                           aria-label={`See all events for ${d}; ${hidden.length} hidden`}
                         >
-                          See more ({hidden.length}){" "}
+                          +{hidden.length} more{" "}
                           <span className="aaa-hidden-dots">
                             {[...new Set(hidden.map((o) => colour(o.event)))]
                               .slice(0, 3)

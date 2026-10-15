@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import CalendarWorkspace from "@/components/calendar-workspace";
-import AppearanceSettings from "@/components/appearance-settings";
+import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/components/settings-workspace";
+import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
 import { type AgendaMode } from "@/components/agenda";
 import { useProfile } from "@/components/profile-context";
 import { thoughtStore } from "@/lib/thoughts";
@@ -32,7 +34,6 @@ import {
   BookOpen,
   Layers3,
   Zap,
-  PanelRightOpen,
   ArrowLeft,
 } from "lucide-react";
 type Section =
@@ -61,6 +62,11 @@ function Workspace() {
     [activeThought, setActiveThought] = useState<string | undefined>(),
     [contextId, setContextId] = useState<string | undefined>(),
     [returnSection, setReturnSection] = useState<Section>("Calendar");
+  const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
+  const [developer,setDeveloper]=useState(false);
+  const [agendaPreference,setAgendaPreference]=useState<AgendaPreference>("toggle");
+  const [lastPinned,setLastPinned]=useState(false);
+  const preferenceKey="aaa-workspace-preferences-v2:"+email;
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
     [hidden, setHidden] = useState<string[]>([]),
     [categories, setCategories] = useState<{ name: string; color: string }[]>(
@@ -92,9 +98,23 @@ function Workspace() {
       if (raw) setAppearance(parseAppearance(JSON.parse(raw)));
       setStartDay(localStorage.getItem("aaa-week-start") || "Monday");
       setClock(localStorage.getItem("aaa-clock") || "12-hour");
+      const prefs=JSON.parse(localStorage.getItem(preferenceKey)||"{}");
+      setDeveloper(prefs.developer===true);
+      if(["column","pin","toggle"].includes(prefs.agendaPreference))setAgendaPreference(prefs.agendaPreference);
+      setLastPinned(prefs.lastPinned===true);
+      if(Array.isArray(prefs.hidden))setHidden(prefs.hidden.filter((x:unknown)=>typeof x==="string"));
+      if(["Monday","Sunday","Saturday"].includes(prefs.startDay))setStartDay(prefs.startDay);
+      if(["12-hour","24-hour"].includes(prefs.clock))setClock(prefs.clock);
     } catch {}
     setReady(true);
-  }, []);
+  }, [preferenceKey]);
+  useEffect(()=>{if(ready)localStorage.setItem(preferenceKey,JSON.stringify({developer,agendaPreference,lastPinned,startDay,clock,hidden}));},[ready,preferenceKey,developer,agendaPreference,lastPinned,startDay,clock,hidden]);
+  const changeAgenda=useCallback((next:AgendaMode)=>{
+    setAgendaMode(next=== "closed"?"closed":agendaPreference==="column"?"pinned":next);
+    if(next!=="closed"&&agendaPreference==="toggle")setLastPinned(next==="pinned");
+  },[agendaPreference]);
+  const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):"closed");
+  useEffect(()=>{setAgendaMode(m=>m==="closed"?m:openAgenda(agendaPreference,lastPinned));},[agendaPreference,lastPinned]);
   useEffect(() => {
     if (!ready) return;
     const apply = () => applyAppearance(appearance, mode);
@@ -142,6 +162,7 @@ function Workspace() {
     [],
   );
   const nav = (s: Section) => {
+    if(!developer&&(s==="Fluid Calendar"||s==="Think About It"))return;
     setSection(s);
     setContextId(undefined);
     setContext([]);
@@ -157,7 +178,7 @@ function Workspace() {
   const openThought = (id: string) => {
     setReturnSection(section);
     setActiveThought(id);
-    setSection("Think About It");
+    setSection(developer?"Think About It":"Resources");
   };
   const calendarSection =
     section === "Calendar" || section === "Fluid Calendar";
@@ -230,7 +251,7 @@ function Workspace() {
           <Menu size={21} />
         </button>
         <strong>
-          <Zap size={18} />
+          <Image src="/aaa-logo.png" width="30" height="30" alt="" />
           All About Action
         </strong>
         <button
@@ -254,7 +275,7 @@ function Workspace() {
             }}
           >
             <span className="aaa-logo">
-              <Zap size={22} />
+              <Image src="/aaa-logo.png" width="35" height="35" alt="All About Action" />
             </span>
           </button>
           <div className="aaa-sidebar-label aaa-wordmark">
@@ -279,10 +300,11 @@ function Workspace() {
               { name: "Goals", icon: Target, badge: "NA" },
               { name: "Workspaces", icon: Layers3, badge: "NA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
+              { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
               { name: "Think About It", icon: LibraryBig, badge: "BETA" },
             ] as const
-          ).map(({ name, icon: Icon, badge }) => (
+          ).filter(x=>developer||x.badge!=="BETA").map(({ name, icon: Icon, badge }) => (
             <button
               key={name}
               title={name}
@@ -323,16 +345,7 @@ function Workspace() {
             {calendarSection ? (
               calendarControls
             ) : section === "Settings" ? (
-              <button
-                className="aaa-context-row"
-                title="Appearance"
-                onClick={() => nav("Settings")}
-              >
-                <span className="aaa-icon-slot">
-                  <Settings2 size={18} />
-                </span>
-                <span className="aaa-sidebar-label">Appearance</span>
-              </button>
+              settingsSections.map(({name,icon:Icon})=><button key={name} className={`aaa-context-row ${settingsSection===name?'active':''}`} title={name} aria-pressed={settingsSection===name} onClick={()=>{setSettingsSection(name);setMobileOpen(false)}}><span className="aaa-icon-slot"><Icon size={18}/></span><span className="aaa-sidebar-label">{name}</span></button>)
             ) : (
               contextual.map((c) => (
                 <button
@@ -351,16 +364,6 @@ function Workspace() {
             )}
           </div>
         </div>
-        <button
-          className={`aaa-nav-row aaa-settings-link ${section === "Settings" ? "active" : ""}`}
-          title="Settings"
-          onClick={() => nav("Settings")}
-        >
-          <span className="aaa-icon-slot">
-            <Settings2 size={20} />
-          </span>
-          <span className="aaa-sidebar-label">Settings</span>
-        </button>
         <div className="aaa-profile">
           <button
             className="aaa-profile-button"
@@ -429,26 +432,23 @@ function Workspace() {
           onCategoriesChange={setCategories}
           command={command}
           agendaMode={agendaMode}
-          onAgendaMode={setAgendaMode}
+          onAgendaMode={changeAgenda}
+          agendaPreference={agendaPreference}
+          onToggleAgenda={toggleAgenda}
           onOpenThought={openThought}
         >
           {!calendarSection && (
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
-                <button
-                  onClick={() =>
-                    setAgendaMode(
-                      agendaMode === "closed" ? "overlay" : "closed",
-                    )
-                  }
-                >
-                  <PanelRightOpen size={17} />
-                  The Agenda
-                </button>
+
               </div>
               {section === "Settings" ? (
-                <AppearanceSettings
+                <SettingsWorkspace
+                  section={settingsSection} onSection={setSettingsSection}
+                  developer={developer} onDeveloper={setDeveloper}
+                  agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
+                  displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}
                   mode={mode}
@@ -488,7 +488,7 @@ function Workspace() {
                   </div>
                   <ThoughtWorkspace
                     key={section + String(activeThought)}
-                    collectionsOnly={section === "Resources"}
+                    collectionsOnly={section === "Resources" && !activeThought}
                     initialId={activeThought}
                     onNavigate={() => nav("Calendar")}
                   />
