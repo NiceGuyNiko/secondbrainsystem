@@ -17,6 +17,7 @@ export default function AppearanceSettings({
   onStartDay,
   clock,
   onClock,
+  showCalendarPreferences = true,
   onBack,
 }: {
   value: Appearance;
@@ -27,6 +28,7 @@ export default function AppearanceSettings({
   onStartDay: (s: string) => void;
   clock: string;
   onClock: (s: string) => void;
+  showCalendarPreferences?: boolean;
   onBack: () => void;
 }) {
   const [status, setStatus] = useState("");
@@ -219,25 +221,24 @@ export default function AppearanceSettings({
               Reset
             </button>
           </div>
-          <h2>Calendar preferences</h2>
-          <label>
-            Week starts on
-            <select
-              value={startDay}
-              onChange={(e) => onStartDay(e.target.value)}
-            >
-              {["Monday", "Sunday", "Saturday"].map((d) => (
-                <option key={d}>{d}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Clock format
-            <select value={clock} onChange={(e) => onClock(e.target.value)}>
-              <option>12-hour</option>
-              <option>24-hour</option>
-            </select>
-          </label>
+          {showCalendarPreferences && (
+            <>
+              <h2>Calendar preferences</h2>
+              <label>
+                Week starts on
+                <select value={startDay} onChange={(e) => onStartDay(e.target.value)}>
+                  {["Monday", "Sunday", "Saturday"].map((d) => <option key={d}>{d}</option>)}
+                </select>
+              </label>
+              <label>
+                Clock format
+                <select value={clock} onChange={(e) => onClock(e.target.value)}>
+                  <option>12-hour</option>
+                  <option>24-hour</option>
+                </select>
+              </label>
+            </>
+          )}
           <button className="calendar-primary" onClick={onBack}>
             Back to calendar
           </button>
