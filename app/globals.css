@@ -336,3 +336,50 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 @media (max-width:767px){.aaa-settings-card{padding:4px 16px 6px}.aaa-switch-row{gap:10px}}
 @media (max-width:767px){.aaa-environment-badge{top:auto;bottom:calc(10px + env(safe-area-inset-bottom));font-size:10px}}
 @media (max-width:767px){.aaa-toast{bottom:calc(44px + env(safe-area-inset-bottom))}}
+/* Phase 2 — Test Profiles in the profile control */
+.pr11-avatar{position:relative}
+.aaa-profile-dot{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;background:#4d9cff;border:2px solid var(--ui-sidebar,#000)}
+.aaa-profile-text small.aaa-profile-active{color:#9ccaff;font-weight:600}
+.aaa-profile-menu{min-width:250px;max-width:min(320px,calc(100vw - 20px));max-height:calc(100vh - 110px);overflow:auto}
+.aaa-menu-heading{display:flex;align-items:center;gap:8px;padding:8px 10px 4px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ui-muted,var(--muted))}
+.aaa-menu-heading .aaa-badge{margin:0}
+.aaa-profile-list button{align-items:center;border-radius:calc(var(--ui-radius,10px) - 2px)}
+.aaa-profile-list button[aria-checked="true"]{background:var(--ui-accent-soft,var(--accent-soft));font-weight:650}
+.aaa-menu-check{width:16px;display:grid;place-items:center;flex:none;color:var(--ui-accent-bright,var(--accent))}
+.aaa-menu-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aaa-profile-tag{font-size:10px;font-weight:650;padding:2px 7px;border-radius:999px;border:1px solid var(--ui-border,var(--border));color:var(--ui-muted,var(--muted));white-space:nowrap}
+.aaa-profile-tag.is-active{border-color:var(--ui-accent,var(--accent));color:var(--ui-text,var(--text))}
+.aaa-menu-separator{height:1px;margin:6px 4px;background:var(--ui-border,var(--border))}
+.aaa-profile-menu button:hover,.aaa-profile-menu button:focus-visible{background:var(--ui-hover,var(--surface-2))}
+.aaa-dialog-backdrop{position:fixed;inset:0;z-index:950;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.6)}
+.aaa-dialog{width:100%;max-width:560px;max-height:calc(100vh - 32px);overflow:auto;background:var(--ui-panel,var(--surface));color:var(--ui-text,var(--text));border:1px solid var(--ui-border,var(--border));border-radius:calc(var(--ui-radius,10px) + 6px);padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.aaa-dialog-header{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.aaa-dialog-header h2{margin:0;font-size:18px;display:flex;align-items:center;gap:8px}
+.aaa-dialog-header h2 .aaa-badge{margin:0}
+.aaa-dialog-header p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--ui-muted,var(--muted))}
+.aaa-dialog-header button{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;flex:none}
+.aaa-dialog-error{margin:12px 0 0;padding:8px 12px;border-radius:10px;border:1px solid #d9534f;font-size:13px}
+.aaa-profile-rows{list-style:none;margin:16px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.aaa-profile-rows li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px;padding:8px 10px 8px 14px;border:1px solid var(--ui-border,var(--border));border-radius:var(--ui-radius,10px);background:var(--ui-elevated,var(--surface-2))}
+.aaa-profile-rows li.is-active{border-color:var(--ui-accent,var(--accent))}
+.aaa-profile-row-name{flex:1;min-width:140px;display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.aaa-profile-row-name strong{font-size:14px;overflow-wrap:anywhere}
+.aaa-profile-row-actions{display:flex;align-items:center;gap:4px}
+.aaa-profile-row-actions button{min-width:36px;height:36px;padding:0 10px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:600}
+.aaa-profile-row-actions button:hover,.aaa-profile-row-actions button:focus-visible{background:var(--ui-hover,var(--surface-2))}
+.aaa-danger-icon:hover,.aaa-danger-icon:focus-visible{color:#ff8a8a}
+.aaa-inline-form{display:flex;gap:8px;flex:1;flex-wrap:wrap}
+.aaa-inline-form input{flex:1;min-width:140px}
+.aaa-inline-form button,.aaa-confirm button{height:36px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:600;border:1px solid var(--ui-border,var(--border))}
+.aaa-confirm{display:flex;flex-direction:column;gap:10px;width:100%;font-size:13px;line-height:1.5}
+.aaa-confirm>div{display:flex;gap:8px;flex-wrap:wrap}
+.aaa-danger{background:#b42332;border-color:#b42332!important;color:#fff}
+.aaa-create-profile{margin-top:18px;padding-top:16px;border-top:1px solid var(--ui-border,var(--border));display:grid;gap:10px}
+.aaa-create-profile h3{margin:0;font-size:14px}
+.aaa-create-profile label{display:grid;gap:6px;font-size:13px}
+.aaa-create-profile button{justify-self:start;display:inline-flex;align-items:center;gap:6px}
+@media (max-width:767px){.aaa-dialog-backdrop{align-items:flex-end;padding:0}.aaa-dialog{max-width:none;border-radius:18px 18px 0 0;max-height:92vh;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}.aaa-create-profile button{justify-self:stretch;justify-content:center}}
+.aaa-dialog input,.aaa-dialog select{height:38px;padding:0 10px;border-radius:9px;border:1px solid var(--ui-border,var(--border));background:var(--ui-canvas,var(--bg));color:var(--ui-text,var(--text));font:inherit}
+.aaa-dialog input:focus-visible,.aaa-dialog select:focus-visible,.aaa-dialog button:focus-visible{outline:2px solid var(--ui-focus-ring,var(--accent));outline-offset:2px}
+.aaa-create-profile button{padding:10px 16px;border-radius:10px;font-weight:650}
+@media (max-width:767px){.aaa-dialog{padding-bottom:calc(48px + env(safe-area-inset-bottom))}}

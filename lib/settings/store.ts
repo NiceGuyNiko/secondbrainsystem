@@ -7,7 +7,8 @@
 //   browserSettingsStore — this browser's storage, keyed by account. Used outside Demo Mode until
 //                          the settings tables exist in production.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { defaultSettings, parsePreferences, parseSettings, settingsFromLegacy, type Settings } from "./model";
+import { appearanceKey, parseAppearance } from "@/lib/appearance";
+import { defaultPreferences, defaultSettings, parseSettings, settingsFromLegacy, type ProfilePreferences, type Settings } from "./model";
 
 export interface SettingsStore {
   load(): Promise<Settings>;
@@ -18,20 +19,45 @@ type KeyValueStorage = Pick<Storage, "getItem" | "setItem">;
 export const settingsKey = (email: string) => `aaa-settings-v1:${email}`;
 export const legacyPreferencesKey = (email: string) => `aaa-workspace-preferences-v2:${email}`;
 
+// Preferences that existed before profiles (theme, colour mode, sidebar) were kept in their own
+// browser keys. They fill any field a stored profile does not have yet, so nothing visibly resets.
+export function legacyFallback(storage: KeyValueStorage | null): ProfilePreferences {
+  const read = (key: string) => {
+    try {
+      return storage?.getItem(key) ?? null;
+    } catch {
+      return null;
+    }
+  };
+  let appearance = defaultPreferences.appearance;
+  try {
+    const raw = read(appearanceKey);
+    if (raw) appearance = parseAppearance(JSON.parse(raw));
+  } catch {}
+  const mode = read("think-theme");
+  return {
+    ...defaultPreferences,
+    appearance,
+    themeMode: mode === "light" || mode === "system" || mode === "dark" ? mode : defaultPreferences.themeMode,
+    sidebarCollapsed: read("think-sidebar-collapsed") === "true",
+  };
+}
+
 function fromLegacy(storage: KeyValueStorage | null, email: string): Settings {
+  const fallback = legacyFallback(storage);
   try {
     const legacy = storage?.getItem(legacyPreferencesKey(email));
     if (legacy || storage?.getItem("aaa-week-start") || storage?.getItem("aaa-clock"))
-      return settingsFromLegacy(JSON.parse(legacy || "{}"), storage?.getItem("aaa-week-start"), storage?.getItem("aaa-clock"));
+      return settingsFromLegacy(JSON.parse(legacy || "{}"), storage?.getItem("aaa-week-start"), storage?.getItem("aaa-clock"), fallback);
   } catch {}
-  return defaultSettings();
+  return defaultSettings(fallback);
 }
 
 export function browserSettingsStore(storage: KeyValueStorage | null, email: string): SettingsStore {
   return {
     async load() {
       try {
-        const saved = parseSettings(JSON.parse(storage?.getItem(settingsKey(email)) || "null"));
+        const saved = parseSettings(JSON.parse(storage?.getItem(settingsKey(email)) || "null"), legacyFallback(storage));
         if (saved) return saved;
       } catch {}
       // First run of the new settings: transfer the old preferences once. Writing the new key only
@@ -67,8 +93,8 @@ export function tableSettingsStore(client: SupabaseClient, userId: string, legac
       const parsed = parseSettings({
         version: 1,
         account: { developerMode: account.developer_mode_enabled, testProfilesEnabled: account.test_profiles_enabled, activeProfileId: account.active_test_profile_id },
-        profiles: rows.map((r) => ({ id: r.id, name: r.name, isPrimary: r.is_primary, preferences: parsePreferences(r.preferences), createdAt: r.created_at, updatedAt: r.updated_at })),
-      });
+        profiles: rows.map((r) => ({ id: r.id, name: r.name, isPrimary: r.is_primary, preferences: r.preferences, createdAt: r.created_at, updatedAt: r.updated_at })),
+      }, legacyFallback(legacy.storage));
       if (!parsed) throw new Error("Saved settings could not be read.");
       return parsed;
     },

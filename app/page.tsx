@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback } from "react";
 import Image from "next/image";
 import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
@@ -9,6 +9,7 @@ import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/compo
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
 import { type AgendaMode } from "@/components/agenda";
 import { useProfile } from "@/components/profile-context";
+import ProfileMenu from "@/components/profile-menu";
 import { useSettings } from "@/lib/settings/use-settings";
 import { updateAccount, updateActivePreferences, type ProfilePreferences } from "@/lib/settings/model";
 import { ConfigurationError, isDemo } from "@/components/environment";
@@ -16,9 +17,7 @@ import { demoDatabase } from "@/lib/supabase";
 import { environment } from "@/lib/environment";
 import { thoughtStore } from "@/lib/thoughts";
 import {
-  appearanceDefaults,
   appearanceKey,
-  parseAppearance,
   applyAppearance,
   ownedPageTitle,
   type Appearance,
@@ -33,14 +32,10 @@ import {
   Check,
   Menu,
   X,
-  UserRound,
-  LogOut,
-  ChevronDown,
   BookOpen,
   Layers3,
   Zap,
   ArrowLeft,
-  RotateCcw,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -64,7 +59,6 @@ function Workspace() {
   const { settings, preferences, effective, update, error: settingsError, dismissError } = useSettings(email, userId);
   const [section, setSection] = useState<Section>("Calendar"),
     [mobileOpen, setMobileOpen] = useState(false),
-    [collapsed, setCollapsed] = useState(false),
     [profileMenu, setProfileMenu] = useState(false),
     [mobileCalendars, setMobileCalendars] = useState(false),
     [activeThought, setActiveThought] = useState<string | undefined>(),
@@ -72,13 +66,15 @@ function Workspace() {
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
-  const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden } = preferences;
+  const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, themeMode: mode, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
   const setLastPinned = useCallback((lastPinned: boolean) => setPreferences(() => ({ lastPinned })), [setPreferences]);
   const setStartDay = (startDay: string) => setPreferences(() => ({ startDay: startDay as ProfilePreferences["startDay"] }));
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
+  const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
+  const setMode = (themeMode: "dark" | "light" | "system") => setPreferences(() => ({ themeMode }));
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
     [categories, setCategories] = useState<{ name: string; color: string }[]>(
       [],
@@ -90,24 +86,6 @@ function Workspace() {
     type: "new" | "calendars";
     task?: { id: string; title: string; workingId?: string };
   }>();
-  const [appearance, setAppearance] = useState<Appearance>(appearanceDefaults),
-    [mode, setMode] = useState<"dark" | "light" | "system">("dark"),
-    [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem("think-sidebar-collapsed") === "true");
-      const savedMode = localStorage.getItem("think-theme");
-      if (
-        savedMode === "light" ||
-        savedMode === "system" ||
-        savedMode === "dark"
-      )
-        setMode(savedMode);
-      const raw = localStorage.getItem(appearanceKey);
-      if (raw) setAppearance(parseAppearance(JSON.parse(raw)));
-    } catch {}
-    setReady(true);
-  }, []);
   const changeAgenda=useCallback((next:AgendaMode)=>{
     setAgendaMode(next=== "closed"?"closed":agendaPreference==="column"?"pinned":next);
     if(next!=="closed"&&agendaPreference==="toggle")setLastPinned(next==="pinned");
@@ -122,16 +100,20 @@ function Workspace() {
     }
   },[section,effective.fluidCalendar,effective.thinkAboutIt]);
   useEffect(()=>{if(!notice)return;const t=setTimeout(()=>setNotice(""),6000);return()=>clearTimeout(t);},[notice]);
-  useEffect(() => {
-    if (!ready) return;
+  // Applies the active profile's theme before paint, so switching profiles never shows the old theme.
+  // The values written here are a start-up cache for the next page load (see app/layout.tsx).
+  useLayoutEffect(() => {
+    if (!settings) return;
     const apply = () => applyAppearance(appearance, mode);
     apply();
-    localStorage.setItem(appearanceKey, JSON.stringify(appearance));
-    localStorage.setItem("think-theme", mode);
+    try {
+      localStorage.setItem(appearanceKey, JSON.stringify(appearance));
+      localStorage.setItem("think-theme", mode);
+    } catch {}
     const mq = matchMedia("(prefers-color-scheme: light)");
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, [appearance, mode, ready]);
+  }, [settings, appearance, mode]);
   useEffect(() => {
     if (!mobileOpen && !mobileCalendars) return;
     const close = (e: KeyboardEvent) => {
@@ -175,11 +157,7 @@ function Workspace() {
     setMobileCalendars(false);
     setProfileMenu(false);
   };
-  const toggleSidebar = () =>
-    setCollapsed((v) => {
-      localStorage.setItem("think-sidebar-collapsed", String(!v));
-      return !v;
-    });
+  const toggleSidebar = () => setPreferences((p) => ({ sidebarCollapsed: !p.sidebarCollapsed }));
   const openThought = (id: string) => {
     setReturnSection(section);
     setActiveThought(id);
@@ -376,63 +354,28 @@ function Workspace() {
             )}
           </div>
         </div>
-        <div className="aaa-profile">
-          <button
-            className="aaa-profile-button"
-            aria-haspopup="menu"
-            aria-expanded={profileMenu}
-            onClick={() => setProfileMenu(!profileMenu)}
-            title={displayName}
-          >
-            <span className="aaa-icon-slot">
-              <span className="pr11-avatar">
-                <UserRound size={18} />
-              </span>
-            </span>
-            <span className="aaa-sidebar-label aaa-profile-text">
-              <strong>{displayName}</strong>
-              <small>{email}</small>
-            </span>
-            <ChevronDown className="aaa-sidebar-label" size={15} />
-          </button>
-          {profileMenu && (
-            <div className="aaa-profile-menu" role="menu">
-              <button
-                role="menuitem"
-                onClick={() => {
-                  openProfile();
-                  setProfileMenu(false);
-                  setMobileOpen(false);
-                }}
-              >
-                <UserRound size={16} />
-                Profile
-              </button>
-              <button role="menuitem" onClick={() => nav("Settings")}>
-                <Settings2 size={16} />
-                Settings
-              </button>
-              {isDemo ? (
-                <button
-                  role="menuitem"
-                  onClick={() => {
-                    if (!window.confirm("Reset all demo data on this device to the original sample data?")) return;
-                    demoDatabase?.reset();
-                    window.location.reload();
-                  }}
-                >
-                  <RotateCcw size={16} />
-                  Reset demo data
-                </button>
-              ) : (
-                <button role="menuitem" onClick={() => void signOut()}>
-                  <LogOut size={16} />
-                  Log out
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+        <ProfileMenu
+          displayName={displayName}
+          email={email}
+          settings={settings}
+          effective={effective}
+          open={profileMenu}
+          onOpenChange={setProfileMenu}
+          update={update}
+          onNotice={setNotice}
+          onAccount={() => {
+            openProfile();
+            setMobileOpen(false);
+          }}
+          onSettings={() => nav("Settings")}
+          demo={isDemo}
+          onResetDemo={() => {
+            if (!window.confirm("Reset all demo data on this device? Sample events, thoughts and settings return to the original Primary-only setup.")) return;
+            demoDatabase?.reset();
+            window.location.reload();
+          }}
+          onSignOut={() => void signOut()}
+        />
       </aside>
       {mobileCalendars && (
         <div className="aaa-mobile-calendars">
