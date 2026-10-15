@@ -4,7 +4,7 @@ Next.js, React, TypeScript and Supabase workspace with authenticated calendar an
 
 ## Development
 
-Node 20+; `npm ci`, then `npm run dev`. Supabase authentication and existing owner-scoped `user_items` persistence are preserved. `lib/supabase.ts` contains the existing public project URL and publishable key, which are not privileged credentials. Never put secret/service-role keys in client code.
+Node 20+; `npm ci`, copy `.env.example` to `.env.local` with the **staging** project's values, then `npm run dev`. The Supabase project is chosen only by environment variables: production deployments must use production, previews and local development must use staging, and anything missing or contradictory refuses to build (`lib/environment.ts`). Staging pages show a STAGING DATA badge. Only publishable keys belong in client configuration — never secret/service-role keys. Setup: `docs/STAGING-SETUP.md`.
 
 ## Checks
 

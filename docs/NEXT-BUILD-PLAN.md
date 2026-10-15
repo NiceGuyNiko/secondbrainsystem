@@ -1,6 +1,6 @@
 # Next build — decisions, architecture and plan
 
-**Status:** Phase 0. Decisions in §1 are approved by the owner (15 October 2026). The architecture in §4 and the phase/migration plan in §6–7 are **proposed, pending owner approval**.
+**Status:** Phase 0.5. Decisions in §1, the hybrid architecture in §4 (with the §4.4 refinement) and the revised phases in §6 are **approved by the owner (15 October 2026)**. Staging setup: `docs/STAGING-SETUP.md`.
 **Baseline:** `main` at `fbc6cdb1ca637c33ca6359d0a9e7937d3eb0a9c0` (PR #15), production deployment `dpl_2h6UBcapq7DLbB2k9BnTfRkwM3PD`.
 **Authority:** this document overrides conflicting instructions in `docs/ALL_ABOUT_ACTION_NEXT_BUILD_AGENT_SPEC.md` and `docs/ANTIGRAVITY_HANDOFF.md`. Everything else in the spec remains the product contract.
 
@@ -19,6 +19,11 @@
 7. **Logo:** transparency-mask treatment of the existing emblem is approved if accurate; no black backing on light themes; investigate a theme-aware favicon with static fallback.
 8. **Imports** (Notion, external calendars, other tools) are later phases and must use isolated test data or staging, never production. Test Profiles do not isolate data.
 9. **Safety:** no production schema change, merge to `main`, or production deploy without explicit approval. Additive schema only.
+10. **Records stay Thoughts.** Databases and records remain recognizable Thought pages that take part in connections, backlinks and search. Database membership is a relationship of the underlying Thought, not a replacement for its identity. Legacy lists may exclude them only where showing them would duplicate or confuse (§4.4).
+11. **"Existing" group is temporary.** The legacy section inside Databases is a compatibility arrangement until deliberate integration produces one unified database and workspace experience.
+12. **Staging is fail-closed.** Production uses explicitly configured production credentials; Preview uses explicitly configured staging credentials. Missing or invalid configuration fails safely and never falls back to production. Non-production builds show a STAGING DATA indicator. All new migrations go to staging first.
+13. **Database testing** must include a real Supabase/PostgreSQL environment (staging), including row-level security and permissions, in addition to PGlite tests.
+14. **Engine requirements before any AI work:** validation before execution, atomic changes, permission checks, consistent two-way relations, rejection of invalid or circular dependencies, version-conflict handling, idempotent retries, clear errors for missing or invalid calculated values. Formulas: an extensible defined subset. Table, board and gallery views before calendar and timeline.
 
 ## 2. Baseline (Phase 0)
 
@@ -104,27 +109,30 @@ The Goals template is a database with properties: Name, Goal Type (select: Visio
 ### 4.4 Coexistence with legacy records (no migration)
 
 - Engine tables are new. Legacy tables and rows are not altered.
-- Engine records are thought pages, so the legacy Think About It/Resources lists would otherwise show them. Those lists will exclude thoughts that belong to `db_records` (a client-side filter; no data change) until integration is approved.
+- Engine databases and records **remain Thoughts** (approved refinement). They appear in Thought search, connection and reference pickers, and backlinks, labelled with their database (e.g. "Goals · G12"). Opening one from anywhere shows the same page with its database properties. A record can be linked from any Thought without being copied.
+- Only where a legacy list would duplicate or confuse are they filtered out: the Resources collections list (it shows legacy collections only), and the Think About It inbox, which groups engine records under their database instead of mixing them into loose thoughts. This is a display rule; no data changes.
+- Membership is a relationship: `db_records.record_id` → the Thought. Removing a record from a database (archive membership) never deletes the Thought.
 - Legacy Goals/Projects/Tasks keep their screens, RPCs and Agenda behaviour. New-engine Goals are separate records; the UI labels the two systems distinctly (*Existing planning* vs the new databases).
 - Later integration (separate approval) would be a deliberate import through the same operation API: legacy record → engine record, keeping the same thought page ID, so no page content is copied.
 
 ## 5. Safe development and testing (proposal)
 
-Vercel previews currently use the production Supabase project because `lib/supabase.ts` hard-codes the URL/key. Proposal:
+On `main`, Vercel previews use the production Supabase project because `lib/supabase.ts` hard-codes the URL/key. Approved approach (details and owner steps in `docs/STAGING-SETUP.md`):
 
 1. **Automated tests on PGlite** (already in use): every new migration, trigger, RLS rule, operation and progress formula is tested against an in-memory Postgres with simulated users. No network.
-2. **Separate staging Supabase project** (free tier permits a second project; owner creates it — no credentials shared with the agent). New migrations are applied there first.
-3. **Environment-based client config:** `lib/supabase.ts` reads `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, falling back to the current production values so production behaviour is unchanged. The owner sets the staging values on Vercel's **Preview** environment only.
-4. **Visible environment banner:** previews display a "STAGING DATA" badge whenever the configured project is not production, so it is always clear where writes go. Any preview showing the production project is not used for write testing.
-5. **Datasets for future imports:** `db_databases.dataset` (default `primary`) lets import experiments use a labelled dataset on staging that can be listed and deleted as a unit. Production imports remain out of scope.
-6. Supabase Branching (a database per Git branch) is an alternative if a paid plan is acceptable later.
+2. **Separate staging Supabase project**, created by the owner; no credentials shared with the agent. New migrations are applied there first, through a guarded helper that refuses to target production.
+3. **Explicit environment configuration, no fallback:** production deployments require production values; Preview and local development require staging values. Missing or contradictory configuration fails the build, and the app renders a configuration error without creating a database client.
+4. **Visible environment indicator:** staging builds show an amber "STAGING DATA · ‹project ref›" badge and a `[Staging]` tab title, including on the sign-in screen.
+5. **Real-database permission checks:** `npm run staging:verify` signs in two staging users and checks anonymous access, owner read/write, cross-account isolation and cross-account link rejection.
+6. **Datasets for future imports:** `db_databases.dataset` (default `primary`) lets import experiments use a labelled dataset on staging that can be listed and deleted as a unit. Production imports remain out of scope.
+7. Supabase Branching (a database per Git branch) is an alternative if a paid plan is acceptable later.
 
 ## 6. Proposed phases (revised)
 
 | Phase | Scope | Database |
 |---|---|---|
 | 0 | Branch, docs (this file, spec, handoff), baseline tests, signed-in screenshots | none |
-| 0.5 | Staging environment: env-based Supabase config, environment banner, owner creates staging project and Vercel Preview variables | none on production |
+| 0.5 | Staging environment: fail-closed env config, STAGING DATA indicator, guarded migrate/verify scripts, base migrations committed from production history, owner creates staging project and Vercel variables, isolation verified | none on production |
 | 1 | Pill switch; Developer Mode and Beta Features cards; independent beta switches; settings persistence service; overwrite-on-load fix | **M1** on staging |
 | 2 | Test Profiles: create/duplicate/rename/switch/delete; Primary protected; Return to Primary always available; one-time browser settings transfer; flicker-free start-up cache | M1 |
 | 3 | 11 themes in Dark/Light groups; explicit light tokens; manual only; Light/System one-time mapping; mask logo; dynamic favicon with static fallback; contrast tests | none |

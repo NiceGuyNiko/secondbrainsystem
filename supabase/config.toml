@@ -1,0 +1,3 @@
+# Minimal Supabase CLI configuration so `supabase link` / `db push` can target the staging project.
+# Never link this repository to the production project from a development machine.
+project_id = "secondbrainsystem"

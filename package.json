@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "staging:migrate": "node --env-file=.env.staging.local --import tsx scripts/staging-migrate.ts",
+    "staging:verify": "node --env-file=.env.staging.local --import tsx scripts/staging-verify.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

@@ -9,6 +9,8 @@ import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/compo
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
 import { type AgendaMode } from "@/components/agenda";
 import { useProfile } from "@/components/profile-context";
+import { ConfigurationError } from "@/components/environment";
+import { environment } from "@/lib/environment";
 import { thoughtStore } from "@/lib/thoughts";
 import {
   appearanceDefaults,
@@ -46,6 +48,7 @@ type Section =
   | "Settings";
 type ContextItem = { id: string; title: string };
 export default function Home() {
+  if (!environment.ok) return <ConfigurationError reason={environment.reason} />;
   return (
     <AuthGate>
       <Workspace />
