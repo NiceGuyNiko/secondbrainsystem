@@ -77,8 +77,10 @@ test("additive Phase 2 SQL validates metadata, scalar values and owner RLS", asy
     for(const filename of readdirSync("supabase/migrations").filter(f=>f.endsWith(".sql")).sort())
       await db.exec(readFileSync("supabase/migrations/"+filename,"utf8"));
     await db.exec("set role authenticated; select set_config('request.jwt.claim.sub','"+ownerA+"',false);");
+    const workspaceId=crypto.randomUUID();
+    await db.query("select public.create_planning_record($1,'Fictional Workspace','workspace')",[workspaceId]);
     const id=crypto.randomUUID();
-    await db.query("select public.create_planning_record($1,'Fictional Character','character')",[id]);
+    await db.query("select public.create_planning_record($1,'Fictional Character','character',$2)",[id,workspaceId]);
     const created=await db.query<{id:string;version:number}>(
       "insert into database_property_definitions(database_key,label,type,config) values('Characters','Importance','select',$1) returning id,version",
       [JSON.stringify({options:["High","Low"]})],
