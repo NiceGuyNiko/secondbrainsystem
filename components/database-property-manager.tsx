@@ -68,6 +68,14 @@ export default function DatabasePropertyManager({
     finally { setBusy(false); }
   };
   const ordered = [...definitions].sort((a,b)=>a.position-b.position);
+  const move = (item: DatabaseProperty, direction: "up"|"down") => {
+    const index=ordered.findIndex((p)=>p.id===item.id);
+    if ((direction==="up" && index<=0) || (direction==="down" && index>=ordered.length-1)) return;
+    const position=direction==="up"
+      ? index===1 ? ordered[0].position-1 : (ordered[index-2].position+ordered[index-1].position)/2
+      : index===ordered.length-2 ? ordered[index+1].position+1 : (ordered[index+1].position+ordered[index+2].position)/2;
+    void update(item,{position});
+  };
   const relationProperties = definitions.filter((p) => p.type === "relation");
 
   return (
@@ -91,8 +99,8 @@ export default function DatabasePropertyManager({
                 <span>{prop.label}<small>{prop.type.replace("_"," ")}</small></span>
               </button>
               <button type="button" disabled={busy} title={prop.visible?"Hide column":"Show column"} aria-label={(prop.visible?"Hide ":"Show ")+prop.label} onClick={()=>void update(prop,{visible:!prop.visible})}>{prop.visible?<Eye size={15}/>:<EyeOff size={15}/>}</button>
-              <button type="button" disabled={busy||index===0} title="Move up" aria-label={"Move "+prop.label+" up"} onClick={()=>void update(prop,{position:ordered[index-1].position-1})}><ArrowUp size={14}/></button>
-              <button type="button" disabled={busy||index===ordered.length-1} title="Move down" aria-label={"Move "+prop.label+" down"} onClick={()=>void update(prop,{position:ordered[index+1].position+1})}><ArrowDown size={14}/></button>
+              <button type="button" disabled={busy||index===0} title="Move up" aria-label={"Move "+prop.label+" up"} onClick={()=>move(prop,"up")}><ArrowUp size={14}/></button>
+              <button type="button" disabled={busy||index===ordered.length-1} title="Move down" aria-label={"Move "+prop.label+" down"} onClick={()=>move(prop,"down")}><ArrowDown size={14}/></button>
             </div>
           ))}
           {!ordered.length && <p className="aaa-db-no-content">No custom properties in this database yet.</p>}
@@ -102,7 +110,7 @@ export default function DatabasePropertyManager({
           <h3>{active?"Edit property":"Create property"}</h3>
           <label>Property name<input autoFocus={false} value={draft.label} maxLength={80} placeholder="e.g. Narrative Importance" onChange={(e)=>patch({label:e.target.value})}/></label>
           <label>Type
-            <select disabled={Boolean(active && active.type !== draft.type && false)} value={draft.type} onChange={(e)=>{const type=e.target.value as PropertyType;patch({type,config:type==="relation"?{target_databases:["Characters"],cardinality:"many"}:type==="rollup"?{relation_path:[],target_property_id:"name",calculation:"show_original",filters:[]}:type==="select"||type==="multi_select"?{options:[]}: {}});setOptionText("");}}>
+            <select value={draft.type} onChange={(e)=>{const type=e.target.value as PropertyType;patch({type,config:type==="relation"?{target_databases:["Characters"],cardinality:"many"}:type==="rollup"?{relation_path:[],target_property_id:"name",calculation:"show_original",filters:[]}:type==="select"||type==="multi_select"?{options:[]}: {}});setOptionText("");}}>
               {PROPERTY_TYPES.map((type)=><option key={type.id} value={type.id}>{type.label}{type.phase!=="2"?" · configure now, enable later":""}</option>)}
             </select>
           </label>
