@@ -8,7 +8,7 @@ create table public.database_property_definitions (
   label text not null check (char_length(btrim(label)) between 1 and 80),
   type text not null check (type in ('text','long_text','number','date','checkbox','select','multi_select','relation','rollup')),
   config jsonb not null default '{}'::jsonb check (jsonb_typeof(config)='object'),
-  position integer not null default 0 check (position>=0),
+  position numeric not null default 0,
   visible boolean not null default true,
   is_system boolean not null default false check (is_system=false),
   archived_at timestamptz,
@@ -51,10 +51,20 @@ begin
     end loop;
     if (select count(*) from jsonb_array_elements_text(new.config->'options')) <>
        (select count(distinct lower(btrim(value))) from jsonb_array_elements_text(new.config->'options')) then raise exception 'Duplicate choices'; end if;
+    if tg_op='UPDATE' and old.type=new.type and new.config->'options' is distinct from old.config->'options'
+      and exists (
+        select 1 from public.planning_records r
+        where r.user_id=new.user_id and r.data->'databaseProperties' ? new.id::text
+          and r.data->'databaseProperties'->new.id::text <> 'null'::jsonb
+          and (
+            (new.type='select' and not (new.config->'options' @> jsonb_build_array(r.data->'databaseProperties'->new.id::text)))
+            or (new.type='multi_select' and not (new.config->'options' @> (r.data->'databaseProperties'->new.id::text)))
+          )
+      ) then raise exception 'Cannot remove select options used by existing records'; end if;
   elsif new.type='relation' then
     if jsonb_typeof(new.config->'target_databases') is distinct from 'array' or
        jsonb_array_length(new.config->'target_databases')=0 or
-       new.config->>'cardinality' not in ('one','many') then raise exception 'Invalid relation configuration'; end if;
+       coalesce(new.config->>'cardinality','') not in ('one','many') then raise exception 'Invalid relation configuration'; end if;
     for target in select value from jsonb_array_elements(new.config->'target_databases') loop
       if jsonb_typeof(target)<>'string' or target #>> '{}' not in
          ('Characters','Events','Groups','Locations','Perspectives','Scenes','Chapters','Books','Projects','Themes','Factions','Items','Species','Magic','Concepts','Notes')
