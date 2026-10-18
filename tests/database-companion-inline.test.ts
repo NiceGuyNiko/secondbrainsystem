@@ -4,7 +4,7 @@ import {
   databasePropertyStore, readDatabaseDemo, resetDatabaseDemo,
   type StoragePort,
 } from "../lib/database-property-store";
-import { recordProperties, type DatabaseProperty } from "../lib/database-property-model";
+import { recordProperties } from "../lib/database-property-model";
 
 const port = (): StoragePort => {
   const map = new Map<string,string>();
@@ -48,7 +48,7 @@ test("Phase 2 Companion and inline cells save to the exact same canonical browse
     assert.equal(edited.data.summary,"Edited directly in the Events table");
 
     const char=readDatabaseDemo(memory).records.find(r=>r.kind==="character")!;
-    const label:DatabaseProperty={...prop,id:crypto.randomUUID(),database_key:"Characters",label:"Vow"};
+    const label = await databasePropertyStore.create("Characters",{label:"Vow",type:"number",visible:true,config:{}},[]);
     const other=await databasePropertyStore.saveValue(char,label,3);
     assert.equal(other.kind,"character");
     assert.equal(recordProperties(readDatabaseDemo(memory).records.find(r=>r.thought_id===event.thought_id)!)[prop.id],9,
