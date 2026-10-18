@@ -453,6 +453,7 @@ function Workspace() {
                     setDatabaseCategory(target);
                     setDatabaseRecordId(id);
                   }}
+                  onOpenDocument={openThought}
                 />
               ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
