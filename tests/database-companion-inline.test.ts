@@ -4,7 +4,7 @@ import {
   databasePropertyStore, readDatabaseDemo, resetDatabaseDemo,
   type StoragePort,
 } from "../lib/database-property-store";
-import type { DatabaseProperty } from "../lib/database-property-model";
+import { recordProperties, type DatabaseProperty } from "../lib/database-property-model";
 
 const port = (): StoragePort => {
   const map = new Map<string,string>();
@@ -39,19 +39,19 @@ test("Phase 2 Companion and inline cells save to the exact same canonical browse
 
     const prop=await databasePropertyStore.create("Events",{label:"Tension",type:"number",visible:true,config:{}},[]);
     const newRecord=await databasePropertyStore.saveValue(updated,prop,9);
-    assert.equal(readDatabaseDemo(memory).records.find(r=>r.thought_id===event.thought_id)?.data.databaseProperties?.[prop.id],9);
+    assert.equal(recordProperties(readDatabaseDemo(memory).records.find(r=>r.thought_id===event.thought_id)!)[prop.id],9);
     await assert.rejects(databasePropertyStore.saveValue(updated,prop,11),/changed elsewhere/);
     await assert.rejects(databasePropertyStore.saveValue(newRecord,{...prop,database_key:"Characters"},7),/different databases/);
 
     const edited=await databasePropertyStore.saveBuiltin(newRecord,"status","canon");
-    assert.equal(edited.data.databaseProperties?.[prop.id],9,"built-in edits preserve custom property values");
+    assert.equal(recordProperties(edited)[prop.id],9,"built-in edits preserve custom property values");
     assert.equal(edited.data.summary,"Edited directly in the Events table");
 
     const char=readDatabaseDemo(memory).records.find(r=>r.kind==="character")!;
     const label:DatabaseProperty={...prop,id:crypto.randomUUID(),database_key:"Characters",label:"Vow"};
     const other=await databasePropertyStore.saveValue(char,label,3);
     assert.equal(other.kind,"character");
-    assert.equal(readDatabaseDemo(memory).records.find(r=>r.thought_id===event.thought_id)?.data.databaseProperties?.[prop.id],9,
+    assert.equal(recordProperties(readDatabaseDemo(memory).records.find(r=>r.thought_id===event.thought_id)!)[prop.id],9,
       "editing Character does not mutate Event");
 
     resetDatabaseDemo(memory);
