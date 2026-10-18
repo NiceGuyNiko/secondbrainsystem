@@ -234,7 +234,7 @@ export default function DatabasesWorkspace({
           :"Category placeholder · No records created"}</div>
       </div>}
 
-      <DatabaseCompanion record={active} thoughts={loaded.thoughts} definitions={properties}
+      <DatabaseCompanion record={active} thoughts={loaded.thoughts} records={loaded.records} definitions={properties}
         open={companionOpen} docked={companionDocked} onOpen={()=>setCompanionOpen(true)}
         onClose={()=>setCompanionOpen(false)} onDocked={setCompanionDocked}
         onFullPage={()=>{if(active)openPage(active.thought_id)}}
