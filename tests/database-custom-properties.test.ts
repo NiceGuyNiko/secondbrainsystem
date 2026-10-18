@@ -102,11 +102,13 @@ test("additive Phase 2 SQL validates metadata, scalar values and owner RLS", asy
     await db.query("insert into database_property_definitions(database_key,label,type,config) values('Characters','Derived Power','rollup',$1)",[JSON.stringify({relation_path:[],target_property_id:"name",calculation:"show_original",filters:[]})]);
     await db.exec("select set_config('request.jwt.claim.sub','"+ownerB+"',false);");
     assert.equal((await db.query("select * from database_property_definitions")).rows.length,0);
-    await assert.rejects(db.query("update planning_records set data=$2 where thought_id=$1",[id,JSON.stringify({databaseProperties:{[propId]:"Low"}})]).then(async()=>{
-      const found=await db.query<{data:{databaseProperties:Record<string,string>}}>("select data from planning_records where thought_id=$1",[id]);
-      if(!found.rows.length)throw Error("Owner B cannot access the record");
-    }));
-    await assert.rejects(db.query("insert into database_property_definitions(database_key,label,type,config) values('Characters','Other Account','text',$1)",["{}"]).then(async()=>db.query("select * from database_property_definitions where label='Story Significance'").then(r=>{if(r.rows.length)throw Error("Cross-owner leak");}))); // Owner B sees only their records.
+    const crossWrite=await db.query("update planning_records set data=$2 where thought_id=$1 returning thought_id",[id,JSON.stringify({databaseProperties:{[propId]:"Low"}})]);
+    assert.equal(crossWrite.rows.length,0,"Owner B cannot update Owner A's canonical record");
+    await db.query("insert into database_property_definitions(database_key,label,type,config) values('Characters','Other Account','text',$1)",["{}"]);
+    assert.equal((await db.query("select * from database_property_definitions")).rows.length,1,"Owner B sees only their own definitions");
+    await db.exec("select set_config('request.jwt.claim.sub','"+ownerA+"',false);");
+    assert.equal((await db.query("select * from database_property_definitions")).rows.length,3,"Owner A cannot see Owner B's definition");
+    assert.equal((await db.query<{data:{databaseProperties:Record<string,string>}}>("select data from planning_records where thought_id=$1",[id])).rows[0].data.databaseProperties[propId],"High");
   } finally {
     await db.close();
   }
