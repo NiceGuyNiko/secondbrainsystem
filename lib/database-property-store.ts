@@ -181,6 +181,8 @@ export const databasePropertyStore = {
     const next = withPropertyValue(record,property,value);
     if (demoMode) {
       const state = readDatabaseDemo();
+      const registered = state.definitions.find(p => p.id === property.id && p.database_key === property.database_key && !p.archived_at);
+      if (!registered || registered.type !== property.type) throw new Error("This custom property is no longer available. Reload the database.");
       const index = state.records.findIndex(r=>r.thought_id===record.thought_id && r.version===record.version);
       if(index<0) throw new Error("Record changed elsewhere. Reload before saving.");
       const result={...next,version:record.version+1};
