@@ -7,6 +7,7 @@ import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import { DATABASE_CATEGORIES, type DatabaseCategory } from "@/lib/database-categories";
+import { resetDatabaseDemo } from "@/lib/database-property-store";
 import CalendarWorkspace from "@/components/calendar-workspace";
 import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/components/settings-workspace";
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
@@ -384,6 +385,7 @@ function Workspace() {
           onResetDemo={() => {
             if (!window.confirm("Reset all demo data on this device? Sample events, thoughts and settings return to the original Primary-only setup.")) return;
             demoDatabase?.reset();
+            resetDatabaseDemo();
             window.location.reload();
           }}
           onSignOut={() => void signOut()}
