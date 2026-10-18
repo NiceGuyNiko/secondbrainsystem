@@ -2,7 +2,7 @@
 import { useState } from "react";
 import {
   ArrowUpRight, BookOpen, ChevronLeft, CircleHelp, Link2, LockKeyhole, Maximize2,
-  MessageSquare, PanelRightClose, Pin, PinOff, StickyNote, X,
+  MessageSquare, Pin, PinOff, StickyNote, X,
 } from "lucide-react";
 import { recordCode, recordTitle, type PlanningRecord } from "@/lib/planning";
 import { type Thought } from "@/lib/thoughts";
@@ -22,11 +22,12 @@ const tabs: { name: Tab; help: string }[] = [
 ];
 
 export default function DatabaseCompanion({
-  record, thoughts, definitions, open, docked, onOpen, onClose, onDocked,
+  record, thoughts, records, definitions, open, docked, onOpen, onClose, onDocked,
   onFullPage, onSaveField, onSaveValue, onNavigate,
 }: {
   record: PlanningRecord | null;
   thoughts: Thought[];
+  records: PlanningRecord[];
   definitions: DatabaseProperty[];
   open: boolean;
   docked: boolean;
@@ -99,14 +100,12 @@ export default function DatabaseCompanion({
           {tab==="Connections"&&<>
             {connections.map(([label,id])=>{
               const related=thoughts.find((item)=>item.id===id);
-              const linkedRecordId=related ? id : null;
+              const linkedRecord=records.find((item)=>item.thought_id===id);
+              const linkedCategory=linkedRecord?categoryForKind(linkedRecord.kind):null;
               return <div key={label+id} className="aaa-db-linkrow"><span>{label}</span>
-                {linkedRecordId && <button type="button" onClick={()=>{
-                  // Only supported canonical kinds should switch database views.
-                  const category=categoryForKind((record.kind==="perspective"&&label==="Event"?"event":record.kind==="perspective"&&label==="Character"?"character":record.kind) as PlanningRecord["kind"]);
-                  if(category)onNavigate(category,linkedRecordId);
-                }}><Link2 size={14}/>{related?.title||id.slice(0,8)}</button>}
-                {!linkedRecordId&&<small>{id.slice(0,8)}</small>}
+                {linkedRecord&&linkedCategory?<button type="button" onClick={()=>onNavigate(linkedCategory,id)}>
+                  <Link2 size={14}/>{related?.title||id.slice(0,8)}</button>
+                :<small>{related?.title||id.slice(0,8)} · {linkedRecord?"Open in Planning":"Source page"}</small>}
               </div>;
             })}
             {definitions.filter((p)=>p.type==="relation").map((p)=><div className="aaa-db-linkrow" key={p.id}>
