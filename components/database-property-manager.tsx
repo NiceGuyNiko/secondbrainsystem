@@ -7,6 +7,7 @@ import {
   type PropertyConfig, type PropertyType,
 } from "@/lib/database-property-model";
 import { databasePropertyStore, type PropertyDraft } from "@/lib/database-property-store";
+import HelpTip from "./database-help-tip";
 
 const defaultDraft = (): PropertyDraft => ({ label: "", type: "text", visible: true, config: {} });
 const choices = (p: PropertyDraft) => (p.config.options || []).join("\n");
@@ -81,7 +82,7 @@ export default function DatabasePropertyManager({
   return (
     <section className="aaa-db-property-manager" aria-label="Manage database properties">
       <header className="aaa-db-property-header">
-        <div><span>DATABASE SCHEMA</span><h2>Manage {category} properties</h2><p>Properties are specific to this database. Names may change; IDs remain permanent.</p></div>
+        <div><span>DATABASE SCHEMA</span><h2>Manage {category} properties</h2><p>Properties belong to this database. Renaming a field never changes its permanent ID. <HelpTip subject="Property IDs">Every property has a stable UUID. Renaming it keeps the values already stored on each record.</HelpTip></p></div>
         <button type="button" onClick={onClose} aria-label="Close property manager"><X size={19}/></button>
       </header>
       <div className="aaa-db-property-grid">
@@ -108,40 +109,40 @@ export default function DatabasePropertyManager({
         </div>
         <div className="aaa-db-property-edit">
           <h3>{active?"Edit property":"Create property"}</h3>
-          <label>Property name<input autoFocus={false} value={draft.label} maxLength={80} placeholder="e.g. Narrative Importance" onChange={(e)=>patch({label:e.target.value})}/></label>
-          <label>Type
+          <label>Property name <HelpTip subject="Property name">The name shown as a table column. It may change without affecting any saved values.</HelpTip><input autoFocus={false} value={draft.label} maxLength={80} placeholder="e.g. Narrative Importance" onChange={(e)=>patch({label:e.target.value})}/></label>
+          <label>Type <HelpTip subject="Property type">Choose how values are entered: text, date, number, checkbox, choice, or a future page relation or calculated Rollup.</HelpTip>
             <select value={draft.type} onChange={(e)=>{const type=e.target.value as PropertyType;patch({type,config:type==="relation"?{target_databases:["Characters"],cardinality:"many"}:type==="rollup"?{relation_path:[],target_property_id:"name",calculation:"show_original",filters:[]}:type==="select"||type==="multi_select"?{options:[]}: {}});setOptionText("");}}>
               {PROPERTY_TYPES.map((type)=><option key={type.id} value={type.id}>{type.label}{type.phase!=="2"?" · configure now, enable later":""}</option>)}
             </select>
           </label>
-          {(draft.type==="select"||draft.type==="multi_select")&&<label>Options (one per line)<textarea rows={5} value={optionText} onChange={(e)=>setOptionText(e.target.value)} placeholder={"High\nMedium\nLow"}/></label>}
+          {(draft.type==="select"||draft.type==="multi_select")&&<label>Options (one per line) <HelpTip subject="Select options">Enter the choices users can select. Existing saved choices are protected when you edit the list.</HelpTip><textarea rows={5} value={optionText} onChange={(e)=>setOptionText(e.target.value)} placeholder={"High\nMedium\nLow"}/></label>}
           {draft.type==="relation"&&<div className="aaa-db-property-extra">
-            <strong>Allowed destination databases</strong>
+            <strong>Allowed destination databases <HelpTip subject="Allowed relations">Only pages from the checked databases will be eligible to connect to this relation. The actual page picker arrives in Phase 3.</HelpTip></strong>
             <div className="aaa-db-targets">
               {DATABASE_CATEGORIES.map((category)=><label key={category.id}><input type="checkbox" checked={(draft.config.target_databases||[]).includes(category.id)} onChange={(e)=>{
                 const old=draft.config.target_databases||[];
                 config({target_databases:e.target.checked?[...old,category.id]:old.filter(x=>x!==category.id)});
               }}/>{category.label}</label>)}
             </div>
-            <label>Cardinality<select value={draft.config.cardinality||"many"} onChange={(e)=>config({cardinality:e.target.value as "one"|"many"})}><option value="one">Single page</option><option value="many">Multiple pages</option></select></label>
-            <label>Reciprocal label (optional)<input value={draft.config.inverse_label||""} onChange={(e)=>config({inverse_label:e.target.value})} placeholder="Appears In"/></label>
+            <label>Cardinality <HelpTip subject="Cardinality">How many pages one record may connect to: Single means exactly zero or one linked page; Multiple means any number of linked pages. For example, an Event can have many Characters.</HelpTip><select value={draft.config.cardinality||"many"} onChange={(e)=>config({cardinality:e.target.value as "one"|"many"})}><option value="one">Single page</option><option value="many">Multiple pages</option></select></label>
+            <label>Reciprocal label (optional) <HelpTip subject="Reciprocal relation">The name shown on the other page when a relation is mirrored. For example, Characters Involved on Events may appear as Appears In on Characters.</HelpTip><input value={draft.config.inverse_label||""} onChange={(e)=>config({inverse_label:e.target.value})} placeholder="Appears In"/></label>
             <p>Links will display the target page Name. Selecting and storing canonical links is activated in Phase 3.</p>
           </div>}
           {draft.type==="rollup"&&<div className="aaa-db-property-extra">
-            <strong>Rollup blueprint</strong>
-            <label>First relation in path
+            <strong>Rollup blueprint <HelpTip subject="Rollup">A Rollup reads properties of pages linked through Relations without copying their values. For example Event → Characters → Powers.</HelpTip></strong>
+            <label>First relation in path <HelpTip subject="Relation path">Choose which linked pages to follow. Multi-hop paths and filtered Rollups will become interactive in later phases.</HelpTip>
               <select value={draft.config.relation_path?.[0]||""} onChange={(e)=>config({relation_path:e.target.value?[e.target.value]:[]})}>
                 <option value="">Choose a relation (can be configured later)</option>
                 {relationProperties.filter((p)=>p.id!==activeId).map((p)=><option value={p.id} key={p.id}>{p.label}</option>)}
               </select>
             </label>
-            <label>Target property ID<input value={draft.config.target_property_id||"name"} onChange={(e)=>config({target_property_id:e.target.value})}/></label>
-            <label>Calculation<select value={draft.config.calculation||"show_original"} onChange={(e)=>config({calculation:e.target.value as PropertyConfig["calculation"]})}>
+            <label>Target property ID <HelpTip subject="Target property">The stable property ID to retrieve from the linked page. This becomes a guided property picker when the Rollup engine is enabled.</HelpTip><input value={draft.config.target_property_id||"name"} onChange={(e)=>config({target_property_id:e.target.value})}/></label>
+            <label>Calculation <HelpTip subject="Calculation">Choose whether to display original values, count linked records, or calculate sums, averages, minimums and maximums.</HelpTip><select value={draft.config.calculation||"show_original"} onChange={(e)=>config({calculation:e.target.value as PropertyConfig["calculation"]})}>
               {(["show_original","count_records","count_nonempty","count_unique","sum","average","min","max","earliest","latest"] as const).map((v)=><option key={v} value={v}>{v.replace(/_/g," ")}</option>)}
             </select></label>
             <p>Multi-hop paths, typed filtered Rollups and live calculations are implemented in Phases 3–4. This phase saves the blueprint only.</p>
           </div>}
-          <label className="aaa-db-checkbox"><input type="checkbox" checked={draft.visible} onChange={(e)=>patch({visible:e.target.checked})}/> Show as a table column</label>
+          <label className="aaa-db-checkbox"><input type="checkbox" checked={draft.visible} onChange={(e)=>patch({visible:e.target.checked})}/> Show as a table column <HelpTip subject="Column visibility">Hide a field from the table without deleting its definition or existing record values.</HelpTip></label>
           {error&&<p className="aaa-db-form-error" role="alert">{error}</p>}
           <div className="aaa-db-form-actions">
             <button type="button" className="aaa-db-save" disabled={busy} onClick={()=>void save()}><Save size={15}/>{busy?"Saving…":active?"Save changes":"Create property"}</button>
