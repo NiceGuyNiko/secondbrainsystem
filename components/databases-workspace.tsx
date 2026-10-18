@@ -45,9 +45,13 @@ export default function DatabasesWorkspace({
   const [pageId, setPageId] = useState<string | null>(initialId);
   const [properties, setProperties] = useState<DatabaseProperty[]>([]);
   const [managerOpen, setManagerOpen] = useState(false);
-  const [companionOpen, setCompanionOpen] = useState(true);
+  const [companionOpen, setCompanionOpen] = useState(false);
   const [companionDocked, setCompanionDocked] = useState(true);
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth > 1190) setCompanionOpen(true);
+  }, []);
 
   useEffect(() => {
     setSelectedId(initialId);
@@ -114,9 +118,9 @@ export default function DatabasesWorkspace({
     setNotice("Name saved");
   };
   const openPage=(id:string)=>{
-    setSelectedId(id);setPageId(id);setCompanionOpen(true);setNotice("");
+    setSelectedId(id);setPageId(id);setNotice("");
   };
-  const selectRow=(id:string)=>{setSelectedId(id);setCompanionOpen(true);};
+  const selectRow=(id:string)=>{setSelectedId(id);};
   const navigate=(target:DatabaseCategory,id:string)=>{
     if(target===category)openPage(id);else onOpenRecord(target,id);
   };
