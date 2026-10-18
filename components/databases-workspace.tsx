@@ -188,7 +188,7 @@ export default function DatabasesWorkspace({
           <h3>Page notes</h3>
           {pageThought?.content.blocks?.filter(b=>b.text.trim()).map(b=><p className="aaa-db-note" key={b.id}>{b.text}</p>)}
           {!pageThought?.content.blocks?.some(b=>b.text.trim())&&<p className="aaa-db-no-content">This page has no notes yet.</p>}
-          {onOpenDocument&&<button type="button" className="aaa-db-open-document" onClick={()=>onOpenDocument(page.thought_id)}>
+          {onOpenDocument&&!isDemo&&<button type="button" className="aaa-db-open-document" onClick={()=>onOpenDocument(page.thought_id)}>
             <BookOpen size={15}/> Open page in Think About It / Resources <ArrowUpRight size={14}/>
           </button>}
         </div>
