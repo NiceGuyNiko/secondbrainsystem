@@ -209,7 +209,7 @@ export default function DatabasesWorkspace({
             <td onClick={()=>selectRow(record.thought_id)}><InlineDatabaseCell label="Summary" type="long_text" condensed
               value={record.data.summary??""} onSave={v=>saveField(record,"summary",String(v??""))}/></td>
             {columns.map(p=><td key={p.id} onClick={()=>selectRow(record.thought_id)} className="aaa-db-summary">
-              {editable(p) ? <InlineDatabaseCell label={p.label} type={p.type} property={p}
+              {editable(p) ? <InlineDatabaseCell label={p.label} type={p.type as Exclude<DatabaseProperty["type"],"relation"|"rollup">} property={p}
                 options={p.config.options||[]} value={recordProperties(record)[p.id]}
                 onSave={v=>saveValue(record,p,v)}/>
                 : <button className="aaa-db-cell-pending" type="button" onClick={()=>{selectRow(record.thought_id);setCompanionOpen(true)}}>
