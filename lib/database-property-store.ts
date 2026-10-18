@@ -1,6 +1,7 @@
 import { environment } from "./environment";
 import { supabase } from "./supabase";
 import { planningStore, type PlanningRecord } from "./planning";
+import { thoughtStore } from "./thoughts";
 import type { Thought } from "./thoughts";
 import type { DatabaseCategory } from "./database-categories";
 import { databaseById } from "./database-categories";
@@ -137,6 +138,40 @@ export const databasePropertyStore = {
     if (error) throw new Error(error.message);
     if (!data) throw new Error("Property changed elsewhere. Reload before saving.");
     return data as DatabaseProperty;
+  },
+  async saveBuiltin(record: PlanningRecord, field: "summary" | "status", value: string): Promise<PlanningRecord> {
+    if (field === "summary" && value.length > 10000) throw new Error("Summary cannot exceed 10,000 characters.");
+    if (field === "status" && !["idea", "developing", "canon", "superseded"].includes(value))
+      throw new Error("Choose a valid story status.");
+    const next = { ...record, data: { ...record.data, [field]: value } };
+    if (demoMode) {
+      const state = readDatabaseDemo();
+      const index = state.records.findIndex(r => r.thought_id === record.thought_id && r.version === record.version);
+      if (index < 0) throw new Error("Record changed elsewhere. Reload before saving.");
+      const saved = { ...next, version: record.version + 1 };
+      state.records[index] = saved;
+      writeDatabaseDemo(state);
+      return saved;
+    }
+    await planningStore.save(next);
+    return { ...next, version: record.version + 1 };
+  },
+  async renameRecord(record: PlanningRecord, thought: Thought, title: string): Promise<Thought> {
+    const clean = title.trim();
+    if (!clean || clean.length > 160) throw new Error("The page Name must be 1–160 characters.");
+    if (record.kind === "perspective") throw new Error("Perspective names are generated from their Character and Event.");
+    if (demoMode) {
+      const state = readDatabaseDemo();
+      const index = state.thoughts.findIndex(t => t.id === record.thought_id && t.details.version === thought.details.version);
+      if (index < 0) throw new Error("Page changed elsewhere. Reload before saving.");
+      const updated = { ...thought, title: clean, updated_at: new Date().toISOString(),
+        details: { ...thought.details, version: thought.details.version + 1 } };
+      state.thoughts[index] = updated;
+      writeDatabaseDemo(state);
+      return updated;
+    }
+    await thoughtStore.save({ ...thought, title: clean });
+    return { ...thought, title: clean, details: { ...thought.details, version: thought.details.version + 1 } };
   },
   async saveValue(record: PlanningRecord, property: DatabaseProperty, value: PropertyValues[string]): Promise<PlanningRecord> {
     const category = record.kind === "character" ? "Characters" : record.kind === "event" ? "Events" :
