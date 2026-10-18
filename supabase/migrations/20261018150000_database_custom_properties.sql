@@ -89,7 +89,7 @@ begin
     when 'project' then 'Projects' else null end;
   if category is null and new.data->'databaseProperties'<>'{}'::jsonb then
     raise exception 'Record type cannot have database custom properties'; end if;
-  for entry in select key,value from jsonb_each(new.data->'databaseProperties') loop
+  for entry in select kv.key,kv.value from jsonb_each(new.data->'databaseProperties') as kv loop
     if entry.key !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       then raise exception 'Invalid custom property ID'; end if;
     select * into definition from public.database_property_definitions
