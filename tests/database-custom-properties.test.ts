@@ -87,7 +87,7 @@ test("additive Phase 2 SQL validates metadata, scalar values and owner RLS", asy
     );
     const propId=created.rows[0].id;
     assert.equal(created.rows[0].version,1);
-    await db.query("select public.save_planning_record($1,1,$2)",[id,JSON.stringify({summary:"Original summary",databaseProperties:{[propId]:"High"}})]);
+    await db.query("select public.save_planning_record($1,1,$2,$3)",[id,JSON.stringify({summary:"Original summary",databaseProperties:{[propId]:"High"}}),workspaceId]);
     const persisted=await db.query<{data:{summary:string;databaseProperties:Record<string,string>}}> ("select data from planning_records where thought_id=$1",[id]);
     assert.equal(persisted.rows[0].data.summary,"Original summary");
     assert.equal(persisted.rows[0].data.databaseProperties[propId],"High");
