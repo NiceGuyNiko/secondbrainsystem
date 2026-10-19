@@ -5,6 +5,9 @@ import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
+import DatabasesWorkspace from "@/components/databases-workspace";
+import { DATABASE_CATEGORIES, type DatabaseCategory } from "@/lib/database-categories";
+import { resetDatabaseDemo } from "@/lib/database-property-store";
 import CalendarWorkspace from "@/components/calendar-workspace";
 import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/components/settings-workspace";
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
@@ -28,6 +31,7 @@ import {
   CalendarDays,
   Target,
   LibraryBig,
+  Database,
   Plus,
   Settings2,
   Check,
@@ -42,6 +46,7 @@ type Section =
   | "Calendar"
   | "Goals"
   | "Workspaces"
+  | "Databases"
   | "Resources"
   | "Fluid Calendar"
   | "Think About It"
@@ -67,6 +72,8 @@ function Workspace() {
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
+  const [databaseCategory, setDatabaseCategory] = useState<DatabaseCategory>("Characters");
+  const [databaseRecordId, setDatabaseRecordId] = useState<string | null>(null);
   const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
@@ -150,6 +157,7 @@ function Workspace() {
     setSection(s);
     setContextId(undefined);
     setContext([]);
+    setDatabaseRecordId(null);
     setMobileOpen(false);
     setMobileCalendars(false);
     setProfileMenu(false);
@@ -164,11 +172,15 @@ function Workspace() {
     section === "Calendar" || section === "Fluid Calendar";
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
+    : section === "Databases"
+      ? DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
     : section === "Resources" || section === "Think About It"
       ? resources
       : context;
   const contextualTitle = calendarSection
     ? "Calendars"
+    : section === "Databases"
+      ? "Databases"
     : section === "Resources" || section === "Think About It"
       ? "Collections"
       : section === "Settings"
@@ -179,7 +191,10 @@ function Workspace() {
       setHidden((old) =>
         old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
       );
-    else if (section === "Resources" || section === "Think About It")
+    else if (section === "Databases") {
+      setDatabaseCategory(id as DatabaseCategory);
+      setDatabaseRecordId(null);
+    } else if (section === "Resources" || section === "Think About It")
       setActiveThought(id);
     else setContextId(id);
   };
@@ -286,6 +301,7 @@ function Workspace() {
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
               { name: "Goals", icon: Target, badge: "NA" },
               { name: "Workspaces", icon: Layers3, badge: "NA" },
+              { name: "Databases", icon: Database, badge: "BETA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
@@ -337,9 +353,9 @@ function Workspace() {
               contextual.map((c) => (
                 <button
                   key={c.id}
-                  className="aaa-context-row"
+                  className={"aaa-context-row " + (section === "Databases" && databaseCategory === c.id ? "active" : "")}
                   title={c.title}
-                  aria-pressed={contextId === c.id || activeThought === c.id}
+                  aria-pressed={section === "Databases" ? databaseCategory === c.id : contextId === c.id || activeThought === c.id}
                   onClick={() => contextClick(c.id)}
                 >
                   <span className="aaa-icon-slot">
@@ -369,6 +385,7 @@ function Workspace() {
           onResetDemo={() => {
             if (!window.confirm("Reset all demo data on this device? Sample events, thoughts and settings return to the original Primary-only setup.")) return;
             demoDatabase?.reset();
+            resetDatabaseDemo();
             window.location.reload();
           }}
           onSignOut={() => void signOut()}
@@ -427,6 +444,16 @@ function Workspace() {
                   clock={clock}
                   onClock={setClock}
                   onBack={() => nav("Calendar")}
+                />
+              ) : section === "Databases" ? (
+                <DatabasesWorkspace
+                  category={databaseCategory}
+                  initialId={databaseRecordId}
+                  onOpenRecord={(target, id) => {
+                    setDatabaseCategory(target);
+                    setDatabaseRecordId(id);
+                  }}
+                  onOpenDocument={openThought}
                 />
               ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
