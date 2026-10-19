@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   archiveRecord, createDatabase, createProperty, createRecord, editLab, freshLab, linkRecord,
   loadLab, renameRecord, saveLab, setValue, unlinkRecord, visibleRecords,
-  type LabDatabase, type LabProperty, type LabRecord, type LabState, type LabView,
+  type LabProperty, type LabRecord, type LabState, type LabView,
   type PropertyType, type ScalarValue,
 } from "@/lib/db-engine/lab";
 
@@ -162,7 +163,7 @@ export default function DatabaseEngineLab() {
 
   return <main className="db-lab">
     <header className="db-lab-header">
-      <div><a href="/" className="db-lab-back">← All About Action</a><span className="db-lab-kicker">DATABASE ENGINE · ACCEPTANCE PREVIEW</span>
+      <div><Link href="/" className="db-lab-back">← All About Action</Link><span className="db-lab-kicker">DATABASE ENGINE · ACCEPTANCE PREVIEW</span>
         <h1>Database Foundation Lab</h1><p>Build your Characters and test properties, records, and links before connecting a live backend.</p></div>
       <div className="db-lab-mode"><strong>ISOLATED DEMO DATA</strong><span>Saved in this browser only · Never sent to production Supabase</span></div>
     </header>
