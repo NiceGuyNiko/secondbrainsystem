@@ -133,7 +133,7 @@ export default function DatabasesWorkspace({
         <h1>{definition.label}</h1>
         <p>{definition.description}</p>
       </div>
-      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}</div>
+      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}{isDemo && <a href="/database-lab" style={{marginLeft:12,color:"var(--accent-text)"}}>Open Engine Lab ↗</a>}</div>
     </div>
 
     {page && <div className="aaa-db-record-navigation">
