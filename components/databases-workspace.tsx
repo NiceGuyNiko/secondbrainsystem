@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, ArrowUpDown, BookOpen, Database, Eye, LayoutGrid,
   Link2, LockKeyhole, Plus, Rows3, Search, SlidersHorizontal,
@@ -133,7 +134,7 @@ export default function DatabasesWorkspace({
         <h1>{definition.label}</h1>
         <p>{definition.description}</p>
       </div>
-      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}{isDemo && <a href="/database-lab" style={{marginLeft:12,color:"var(--accent-text)"}}>Open Engine Lab ↗</a>}</div>
+      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}{isDemo && <Link href="/database-lab" style={{marginLeft:12,color:"var(--accent-text)"}}>Open Engine Lab ↗</Link>}</div>
     </div>
 
     {page && <div className="aaa-db-record-navigation">
