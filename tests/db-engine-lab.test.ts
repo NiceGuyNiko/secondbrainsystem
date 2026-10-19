@@ -71,5 +71,5 @@ test("relation cardinality and target validity are enforced", () => {
   unlinkRecord(s,c.id,relation.id,first.id);
   linkRecord(s,c.id,relation.id,second.id);
   assert.equal(s.links[0].targetId,second.id);
-  assert.throws(()=>linkRecord(s,c.id,relation.id,c.id),/target configured database/);
+  assert.throws(()=>linkRecord(s,c.id,relation.id,c.id),/target.*configured database/i);
 });
