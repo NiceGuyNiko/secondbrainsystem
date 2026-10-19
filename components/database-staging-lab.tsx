@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
@@ -126,7 +127,7 @@ export default function StagingDatabaseLab(){
   ["Character/Event relation saved",links.length>0]
  ] as const;
  return <main className="db-lab">
-  <header className="db-lab-header"><div><a className="db-lab-back" href="/">← All About Action</a>
+  <header className="db-lab-header"><div><Link className="db-lab-back" href="/">← All About Action</Link>
    <span className="db-lab-kicker">DATABASE ENGINE · STAGING BACKEND</span><h1>Database Acceptance Lab</h1>
    <p>Real authenticated storage in your separate staging Supabase project.</p></div>
    <div className="db-lab-mode"><strong>STAGING SUPABASE · LIVE</strong><span>Saved to an isolated cloud database · Not production</span></div></header>
