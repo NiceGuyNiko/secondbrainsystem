@@ -23,7 +23,7 @@ const uuid = () => crypto.randomUUID();
 const iso = () => new Date().toISOString();
 const duplicate = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 const cleanName = (value: string) => value.trim();
-const need = (condition: unknown, message: string): asserts condition => { if (!condition) throw new Error(message); };
+const need: (condition: unknown, message: string) => asserts condition = (condition, message) => { if (!condition) throw new Error(message); };
 
 export function freshLab(): LabState {
   const characters = uuid(), events = uuid();
