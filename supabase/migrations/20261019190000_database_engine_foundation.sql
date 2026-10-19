@@ -272,8 +272,13 @@ declare link_id uuid;
 begin
   insert into public.db_relations(property_id,source_record_id,target_record_id)
     values(p_property_id,p_source,p_target)
-    on conflict(property_id,source_record_id,target_record_id) do update set position=public.db_relations.position
+    on conflict(property_id,source_record_id,target_record_id) do nothing
     returning id into link_id;
+  if link_id is null then
+    select id into link_id from public.db_relations
+      where property_id=p_property_id and source_record_id=p_source and target_record_id=p_target and user_id=auth.uid();
+  end if;
+  if link_id is null then raise exception 'Relation unavailable';end if;
   return link_id;
 end $$;
 
