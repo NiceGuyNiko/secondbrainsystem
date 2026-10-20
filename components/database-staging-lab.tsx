@@ -406,11 +406,23 @@ export default function StagingDatabaseLab(){
      <form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
       <button type="submit">+ New record</button></form>
+     {isEvents&&<section className="db-lab-snapshot-context">
+      <strong>New standalone Moment</strong>
+      <p>A small encounter, revelation, or conversation is still an Event. Leave its Parent event empty until it belongs under something bigger.</p>
+      <form className="db-lab-inline-form" onSubmit={e=>{e.preventDefault();createStandaloneMoment()}}>
+       <input aria-label="New standalone Moment title" value={momentName}
+         onChange={e=>setMomentName(e.target.value)} placeholder="e.g. Theodore meets Cammy after the Blackout"
+         maxLength={160} required/>
+       <button type="submit" disabled={!momentName.trim()||creatingMoment}>
+        {creatingMoment?"Creating…":"Create Moment"}
+       </button>
+      </form>
+     </section>}
      {isEvents&&<section className="db-lab-timeline">
-      <row style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
        <strong>World chronology · Events & Moments</strong>
        <button type="button" onClick={()=>setShowTimeline(v=>!v)}>{showTimeline?"Collapse":"Expand"}</button>
-      </row>
+      </div>
       <p>Every event can stand alone. Set its optional Chronology order to place it precisely; link Parent event only when appropriate. Snapshots are attached to the event they describe.</p>
       {showTimeline&&chronology.map(event=>{
        const eventsSnapshots=perspectives.filter(p=>p.event_id===event.record_id);
