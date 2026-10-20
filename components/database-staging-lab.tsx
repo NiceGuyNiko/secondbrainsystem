@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import {environment} from "@/lib/environment";
 import { Settings2 } from "lucide-react";
 import { showVerticalLines, withVerticalLines } from "@/lib/db-engine/table-appearance";
 import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
@@ -31,6 +32,8 @@ export type DatabaseSurface = "lab" | "database" | "writing-events";
 export default function StagingDatabaseLab({surface="lab",databaseName,onDatabasesChange}:{
  surface?:DatabaseSurface;databaseName?:string;onDatabasesChange?:()=>void;
 }){
+ const production=environment.ok&&environment.data==="production";
+ const cloudLabel=production?"production":"staging";
  const embedded=surface!=="lab";
  const writingEvents=surface==="writing-events";
  const lastRequested=useRef<string|null>(null);
@@ -89,7 +92,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
   setDbId(old=>(a.data||[]).some((x:{id:string})=>x.id===old)?old:(a.data?.[0]?.id||""));
  },[]);
  useEffect(()=>{let cancelled=false;void refresh().catch(e=>{if(!cancelled)setError(e instanceof Error?e.message:String(e))}).finally(()=>{if(!cancelled)setLoading(false)});return()=>{cancelled=true}},[refresh]);
- const run=async(fn:()=>Promise<void>,message="Saved to staging Supabase")=>{
+ const run=async(fn:()=>Promise<void>,message=`Saved to ${cloudLabel} Supabase`)=>{
   setError("");setInfo("");
   try{await fn();await refresh();setInfo(message)}catch(e){setError(e instanceof Error?e.message:String(e))}
  };
@@ -222,18 +225,18 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
   setDbId(nextDbId);setSelected(nextRecordId);setViewId("");
  };
  const addDatabase=()=>void run(async()=>{
-  const id=crypto.randomUUID();check(await supabase.rpc("db_create_database",{p_id:id,p_name:addDb.trim(),p_dataset:"acceptance"}));
+  const id=crypto.randomUUID();check(await supabase.rpc("db_create_database",{p_id:id,p_name:addDb.trim(),p_dataset:production?"primary":"acceptance"}));
   onDatabasesChange?.();
   setDbId(id);setAddDb("");
- },"Database created in staging");
+ },"Database created");
  const addRecord=()=>void run(async()=>{
   check(await supabase.rpc("db_create_record",{p_id:crypto.randomUUID(),p_database_id:dbId,p_name:addRec.trim()}));setAddRec("");
- },"Record created in staging");
+ },"Record created");
  const addProperty=()=>void run(async()=>{
   const config=propType==="select"?{options:options.split(",").map(s=>s.trim())}:propType==="relation"?{target_database_id:target,multi:true}:{};
   check(await supabase.from("db_properties").insert({database_id:dbId,name:addProp.trim(),type:propType,config,position:cols.length}));
   setAddProp("");
- },"Property added in staging");
+ },"Property added");
  const saveTitle=(id:string,title:string)=>void run(async()=>{
   const current=items.find(x=>x.id===id);if(!current||title.trim()===current.title)return;
   const details=check(await supabase.from("thought_details").select("version,parent_id,position,archived_at").eq("thought_id",id).single()) as {version:number;parent_id:string|null;position:number;archived_at:string|null};
@@ -241,7 +244,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  },"Record name saved");
  const saveValue=(r:Rec,p:Prop,v:string|number|boolean|null)=>void run(async()=>{
   check(await supabase.rpc("db_set_value",{p_record_id:r.record_id,p_version:r.version,p_property_id:p.id,p_value:v}));
- },"Value saved to staging");
+ },"Value saved");
  const selectNewOption=async(r:Rec,p:Prop,newOption:string)=>{
   setError("");setInfo("");
   try{
@@ -262,7 +265,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
 
  const saveRelation=(r:Rec,p:Prop,t:string)=>void run(async()=>{
   check(await supabase.rpc("db_link",{p_property_id:p.id,p_source:r.record_id,p_target:t}));
- },"Relation saved to staging");
+ },"Relation saved");
  const removeRelation=(id:string)=>void run(async()=>{
   check(await supabase.from("db_relations").delete().eq("id",id));
  },"Relation removed");
@@ -392,8 +395,8 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
   </aside>}<section className="db-lab-main">
    <div className="db-lab-db-head"><span className="db-lab-kicker">{writingEvents?"WRITING WORKSPACE · WORLD HISTORY":"CONNECTED DATABASE"}</span>
    <h2>{writingEvents?"Writing / Events":database?.name||"Create your first database"}</h2>
-   <p>{writingEvents?"Explore Eras, Major Events, Moments and Character Perspectives. Same underlying records as Databases → Events.":"Edit records, properties and linked pages in staging Supabase."}</p></div>
-   {loading&&<div className="db-lab-notice">Loading staging records…</div>}
+   <p>{writingEvents?"Explore Eras, Major Events, Moments and Character Perspectives. Same underlying records as Databases → Events.":`Edit records, properties and linked pages in ${cloudLabel} Supabase.`}</p></div>
+   {loading&&<div className="db-lab-notice">Loading records…</div>}
    {error&&<div role="alert" className="db-lab-error">{error}<button onClick={()=>setError("")}>Dismiss</button></div>}
    {info&&<div role="status" className="db-lab-notice">{info}</div>}
    {database&&<>
@@ -532,6 +535,6 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
      {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
      </>}
    </>}
-   <footer className="db-lab-footer">Connected to staging Supabase only · Sign-in required · No production database changes</footer>
+   <footer className="db-lab-footer">Connected to {cloudLabel} Supabase · Sign-in required · Saved to your signed-in account</footer>
   </section></div></main>;
 }
