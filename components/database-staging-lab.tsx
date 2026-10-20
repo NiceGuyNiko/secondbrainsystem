@@ -11,7 +11,7 @@ import InlineSelectPicker from "@/components/db-inline-select";
 import InlineRelationPicker from "@/components/db-inline-relation";
 import ViewRulesMenu from "@/components/db-view-rules";
 import EventChronologyTree from "@/components/db-chronology-tree";
-import {applyViewRules,readViewConfig,type ViewFilter,type ViewSort,type QueryMode} from "@/lib/db-engine/view-operators";
+import {applyViewRules,readViewConfig,activeViewConfig,type ViewFilter,type ViewSort,type QueryMode} from "@/lib/db-engine/view-operators";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;version:number;archived_at:string|null;
  config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
@@ -94,7 +94,7 @@ export default function StagingDatabaseLab(){
   const pair=perspectives.find(p=>p.record_id===id);
   return pair?rawLabel(pair.character_id)+" during "+rawLabel(pair.event_id):rawLabel(id);
  };
- const activeRuleConfig=rulesDraft!==null&&view!==undefined&&rulesDraft.id===view.id?rulesDraft.config:view?.config;
+ const activeRuleConfig=activeViewConfig(view,rulesDraft);
  const savedRules=readViewConfig(activeRuleConfig);
  const selectionFields=[{id:"name",name:"Name",type:"text"},{id:"creation",name:"ID",type:"number"},
   ...cols.map(p=>({id:p.id,name:p.name,type:p.type,options:p.config.options}))];
