@@ -18,7 +18,7 @@ revoke all on public.db_perspectives from public,anon;
 grant select,insert on public.db_perspectives to authenticated;
 
 create function public.db_validate_perspective()
-returns trigger language plpgsql security invoker set search_path='' as $
+returns trigger language plpgsql security invoker set search_path='' as $$
 begin
  if new.user_id is distinct from auth.uid() then raise exception 'Perspective owner unavailable';end if;
  if not exists(
@@ -35,7 +35,7 @@ begin
    and d.user_id=auth.uid() and lower(btrim(d.name))='events'
  ) then raise exception 'Perspective links must use your Character, Event and Perspective records';end if;
  return new;
-end $;
+end $$;
 create trigger db_validate_perspective before insert on public.db_perspectives
  for each row execute function public.db_validate_perspective();
 revoke all on function public.db_validate_perspective() from public,anon;
