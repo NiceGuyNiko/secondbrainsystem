@@ -96,7 +96,7 @@ function Workspace() {
   useEffect(()=>{
     if(!production)return;
     let live=true;
-    void supabase.rpc("db_engine_ready").then(({data,error})=>{
+    void Promise.resolve(supabase.rpc("db_engine_ready")).then(({data,error})=>{
       if(!live)return;
       const status=classifyDatabaseEngineProbe(data,error);
       setProductionEngineState(status);
