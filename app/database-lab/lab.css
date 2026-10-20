@@ -221,3 +221,21 @@
 .db-chrono-snapshot:hover{background:var(--surface-2)}
 .db-chrono-hint{margin-top:13px}
 @media(max-width:800px){.db-lab-toolbar-clean{align-items:stretch}.db-lab-toolbar-left,.db-lab-toolbar-right{width:100%;justify-content:flex-start}.db-rules-popover{left:-8px;right:auto;min-width:min(400px,85vw)}.db-rule-line{flex-wrap:wrap}.db-chrono{margin:8px;padding:12px}.db-chrono-item small{display:none}}
+
+/* Compact database-first experience: onboarding/setup tools stay available but out of the way. */
+.db-lab-tools{margin:22px 0 0;border-top:1px solid var(--border);padding:14px 0}
+.db-lab-tools>summary{cursor:pointer;color:var(--muted);font-size:12px;font-weight:650;padding:8px;border-radius:6px}
+.db-lab-tools>summary:hover{background:var(--surface-2);color:var(--text)}
+.db-lab-tools[open]>summary{color:var(--text)}
+.db-lab-tools .db-lab-import{margin-top:13px}
+.db-lab-header{padding:0 0 16px;margin:0 0 16px}
+.db-lab-header h1{font-size:23px;margin:5px 0}
+.db-lab-header p{font-size:12px}
+.db-lab-mode{padding:8px 12px;max-width:250px;min-width:200px}
+.db-lab-mode span{font-size:10px}
+.db-lab-sidebar{padding:12px;min-height:530px}
+.db-lab-main{min-height:580px}
+.db-lab-sidebar-heading{margin-bottom:8px}
+.db-lab-nav{padding:9px 9px;margin:1px 0;font-size:13px}
+.db-lab-checklist{margin-top:14px;padding-top:10px}
+@media(max-width:700px){.db-lab-header{gap:8px}.db-lab-mode{max-width:none;min-width:0}.db-lab-toolbar-clean{gap:6px}}
