@@ -392,7 +392,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
      <div className="db-lab-toolbar-left">
       <select aria-label="Saved view" value={view?.id||""} onChange={e=>setViewId(e.target.value)}>
        {activeViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select>
-      {isEvents&&<button className="db-lab-outline-toggle" type="button"
+      {isEvents&&surface==="lab"&&<button className="db-lab-outline-toggle" type="button"
        aria-pressed={eventOutline}
        onClick={()=>updateView({config:{...view?.config,eventPresentation:eventOutline?"table":"outline"}})}>
        {eventOutline?"▾ Chronology":"▸ Chronology"}</button>}
