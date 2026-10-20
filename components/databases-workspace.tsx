@@ -31,12 +31,13 @@ function valueText(value: unknown): string {
 }
 
 export default function DatabasesWorkspace({
-  category, initialId, onOpenRecord, onOpenDocument,
+  category, initialId, onOpenRecord, onOpenDocument, creationUnavailable=false,
 }: {
   category: DatabaseCategory;
   initialId: string | null;
   onOpenRecord: (category: DatabaseCategory, id: string) => void;
   onOpenDocument?: (id: string) => void;
+  creationUnavailable?: boolean;
 }) {
   const definition = databaseById(category);
   const { userId } = useProfile();
@@ -177,7 +178,9 @@ export default function DatabasesWorkspace({
       <div className="aaa-db-actions">
         <button type="button" disabled title="Available in Phase 4"><SlidersHorizontal size={16}/> Filter</button>
         <button type="button" disabled title="Available in Phase 4"><ArrowUpDown size={16}/> Sort</button>
-        <button type="button" disabled={!definition.kind||loading} onClick={()=>setManagerOpen(v=>!v)} aria-expanded={managerOpen}><Eye size={16}/> Properties</button>
+        <button type="button" disabled={!definition.kind||loading||creationUnavailable}
+         title={creationUnavailable?"New database schema is awaiting a production migration":undefined}
+         onClick={()=>setManagerOpen(v=>!v)} aria-expanded={managerOpen}><Eye size={16}/> Properties</button>
         <button type="button" disabled title="Record creation comes in Phase 3" className="aaa-db-create"><Plus size={17}/> New</button>
       </div>
     </div>}
