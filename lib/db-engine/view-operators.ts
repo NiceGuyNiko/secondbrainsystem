@@ -70,3 +70,14 @@ export function applyViewRules<T extends RecordLike>(
   return a.sequence_no-b.sequence_no;
  });
 }
+
+/** Initial render has neither a saved view nor a draft. Never compare two
+ * optional IDs: undefined===undefined is true, but the draft remains null. */
+export function activeViewConfig(
+ view:{id:string;config:Record<string,unknown>}|undefined|null,
+ draft:{id:string;config:Record<string,unknown>}|undefined|null,
+):Record<string,unknown>|undefined {
+ return draft!==null&&draft!==undefined&&view!==null&&view!==undefined&&draft.id===view.id
+  ?draft.config
+  :view?.config;
+}
