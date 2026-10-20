@@ -25,7 +25,13 @@ const check=<T,>(response:{data:T;error:{message:string}|null}):T=>{
   if(response.error)throw new Error(response.error.message);
   return response.data;
 };
-export default function StagingDatabaseLab(){
+export type DatabaseSurface = "lab" | "database" | "writing-events";
+export default function StagingDatabaseLab({surface="lab",databaseName,onDatabasesChange}:{
+ surface?:DatabaseSurface;databaseName?:string;onDatabasesChange?:()=>void;
+}){
+ const embedded=surface!=="lab";
+ const writingEvents=surface==="writing-events";
+ const lastRequested=useRef<string|null>(null);
  const [dbs,setDbs]=useState<DB[]>([]);
  const [props,setProps]=useState<Prop[]>([]);
  const [archivedProps,setArchivedProps]=useState<Prop[]>([]);
@@ -85,6 +91,14 @@ export default function StagingDatabaseLab(){
   setError("");setInfo("");
   try{await fn();await refresh();setInfo(message)}catch(e){setError(e instanceof Error?e.message:String(e))}
  };
+ useEffect(()=>{
+  const requested=writingEvents?"Events":databaseName;
+  if(!requested||!dbs.length)return;
+  const match=dbs.find(d=>d.name.toLowerCase()===requested.toLowerCase());
+  if(match&&(lastRequested.current!==requested||!dbId)){
+   lastRequested.current=requested;setDbId(match.id);setSelected("");setViewId("");
+  }
+ },[databaseName,writingEvents,dbs,dbId]);
  const database=dbs.find(x=>x.id===dbId);
  const cols=props.filter(x=>x.database_id===dbId);
  const activeViews=views.filter(x=>x.database_id===dbId);
@@ -121,7 +135,7 @@ export default function StagingDatabaseLab(){
  const perspectivesDatabase=dbs.find(d=>d.name.toLowerCase()==="perspectives");
  const snapshotPair=record?perspectives.find(p=>p.record_id===record.record_id):undefined;
  const isEvents=database?.name.toLowerCase()==="events";
- const eventOutline=isEvents&&view?.config?.eventPresentation!=="table";
+ const eventOutline=isEvents&&(writingEvents||(surface==="lab"&&view?.config?.eventPresentation!=="table"));
  const isCharacters=database?.name.toLowerCase()==="characters";
  const eventProperties=props.filter(p=>p.database_id===eventsDatabase?.id);
  const orderProperty=eventProperties.find(p=>p.name.toLowerCase()==="chronology order");
@@ -200,6 +214,7 @@ export default function StagingDatabaseLab(){
  };
  const addDatabase=()=>void run(async()=>{
   const id=crypto.randomUUID();check(await supabase.rpc("db_create_database",{p_id:id,p_name:addDb.trim(),p_dataset:"acceptance"}));
+  onDatabasesChange?.();
   setDbId(id);setAddDb("");
  },"Database created in staging");
  const addRecord=()=>void run(async()=>{
@@ -283,7 +298,7 @@ export default function StagingDatabaseLab(){
   setSettingUpWorld(true);setSetupProgress("Preparing worldbuilding databases");setError("");setInfo("");
   try{
    const result=await setupWorldbuildingDatabases(supabase,setSetupProgress);
-   await refresh();
+   await refresh();onDatabasesChange?.();
    setInfo(`Worldbuilding foundation ready: ${result.databasesCreated} databases created, ${result.databasesReused} reused, ${result.propertiesCreated} relation/metadata properties added and ${result.selectOptionsExpanded} select property sets expanded. No existing records were replaced.`);
   }catch(e){
    setError("Worldbuilding setup stopped: "+(e instanceof Error?e.message:String(e))+
@@ -332,12 +347,12 @@ export default function StagingDatabaseLab(){
   ["An Event stored",records.some(r=>dbs.find(d=>d.id===r.database_id)?.name==="Events")],
   ["Character/Event relation saved",links.length>0]
  ] as const;
- return <main className="db-lab">
-  <header className="db-lab-header"><div><Link className="db-lab-back" href="/">← All About Action</Link>
+ return <main className={`db-lab ${embedded?"db-lab-embedded":""} ${writingEvents?"db-lab-writing":""}`}>
+  {!embedded&&<header className="db-lab-header"><div><Link className="db-lab-back" href="/">← All About Action</Link>
    <span className="db-lab-kicker">DATABASE ENGINE · STAGING BACKEND</span><h1>Database Acceptance Lab</h1>
    <p>Real authenticated storage in your separate staging Supabase project.</p></div>
-   <div className="db-lab-mode"><strong>STAGING SUPABASE · LIVE</strong><span>Saved to an isolated cloud database · Not production</span></div></header>
-  <div className="db-lab-workspace"><aside className="db-lab-sidebar">
+   <div className="db-lab-mode"><strong>STAGING SUPABASE · LIVE</strong><span>Saved to an isolated cloud database · Not production</span></div></header>}
+  <div className="db-lab-workspace">{!embedded&&<aside className="db-lab-sidebar">
    <div className="db-lab-sidebar-heading"><strong>Databases</strong></div>
    {dbs.filter(d=>d.name.toLowerCase()!=="perspectives").map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
     <span>🗃️</span><span>{d.name}</span><small>{records.filter(r=>r.database_id===d.id).length}</small></button>)}
@@ -365,14 +380,15 @@ export default function StagingDatabaseLab(){
    </section>
    <button className="db-lab-reset" onClick={()=>void run(refresh,"Synced from Supabase")}>Reload from Supabase</button>
    </details>
-  </aside><section className="db-lab-main">
-   <div className="db-lab-db-head"><span className="db-lab-kicker">CLOUD BACKED DATABASE</span>
-   <h2>{database?.name||"Create your first database"}</h2><p>Every record has its own permanent ID and page identity.</p></div>
+  </aside>}<section className="db-lab-main">
+   <div className="db-lab-db-head"><span className="db-lab-kicker">{writingEvents?"WRITING WORKSPACE · WORLD HISTORY":"CONNECTED DATABASE"}</span>
+   <h2>{writingEvents?"Writing / Events":database?.name||"Create your first database"}</h2>
+   <p>{writingEvents?"Explore Eras, Major Events, Moments and Character Perspectives. Same underlying records as Databases → Events.":"Edit records, properties and linked pages in staging Supabase."}</p></div>
    {loading&&<div className="db-lab-notice">Loading staging records…</div>}
    {error&&<div role="alert" className="db-lab-error">{error}<button onClick={()=>setError("")}>Dismiss</button></div>}
    {info&&<div role="status" className="db-lab-notice">{info}</div>}
    {database&&<>
-    <div className="db-lab-toolbar db-lab-toolbar-clean">
+    {!writingEvents&&<div className="db-lab-toolbar db-lab-toolbar-clean">
      <div className="db-lab-toolbar-left">
       <select aria-label="Saved view" value={view?.id||""} onChange={e=>setViewId(e.target.value)}>
        {activeViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select>
@@ -393,8 +409,8 @@ export default function StagingDatabaseLab(){
       <input className="db-lab-search-input" aria-label="Search this database" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
       <button onClick={()=>setShowProperties(v=>!v)}>+ Property</button>
      </div>
-    </div>
-    {showProperties&&<div className="db-lab-editor"><strong>Create a property</strong><div className="db-lab-form-grid">
+    </div>}
+    {!writingEvents&&showProperties&&<div className="db-lab-editor"><strong>Create a property</strong><div className="db-lab-form-grid">
      <label>Name<input value={addProp} placeholder="e.g. Motivation" onChange={e=>setAddProp(e.target.value)}/></label>
      <label>Type<select value={propType} onChange={e=>setPropType(e.target.value)}>{types.map(t=><option key={t} value={t}>{t}</option>)}</select></label>
      {propType==="select"&&<label>Options<input value={options} onChange={e=>setOptions(e.target.value)}/></label>}
@@ -462,9 +478,9 @@ export default function StagingDatabaseLab(){
         </div>}
      </section>
      <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}</div></div>:<>
-     <form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
+     {!writingEvents&&<form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
-      <button type="submit">+ New record</button></form>
+      <button type="submit">+ New record</button></form>}
      {isEvents&&<section className="db-lab-snapshot-context">
       <strong>New standalone Moment</strong>
       <p>A small encounter, revelation, or conversation is still an Event. Leave its Parent event empty until it belongs under something bigger.</p>
@@ -477,12 +493,14 @@ export default function StagingDatabaseLab(){
        </button>
       </form>
      </section>}
-     {eventOutline&&<EventChronologyTree
+     {eventOutline&&<details className="db-lab-workspace-outline" open>
+      <summary>World history · Eras, Major Events, Moments & Perspectives</summary>
+      <EventChronologyTree
       events={list} links={links} pairs={perspectives}
       scalePropertyId={scaleProperty?.id} parentPropertyId={parentProperty?.id}
       orderPropertyId={orderProperty?.id} label={label}
       onOpenEvent={id=>openRelatedRecord(eventsDatabase!.id,id)}
-      onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/>}
+      onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/></details>}
      {!eventOutline&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
