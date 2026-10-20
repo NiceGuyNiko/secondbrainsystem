@@ -642,3 +642,18 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-context-create input{width:100%;min-width:0;flex:1;font-size:11px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px}
 .aaa-context-create button{font-size:11px;background:var(--accent);color:var(--on-accent);border-radius:6px;padding:7px 8px}
 .aaa-context-create button:disabled{opacity:.6;cursor:wait}
+
+/* Settings are available on legacy planning-backed database tables too. */
+.aaa-db-table.aaa-db-table-dividers th:not(:last-child),
+.aaa-db-table.aaa-db-table-dividers td:not(:last-child){border-right:1px solid var(--border)}
+.aaa-db-table:not(.aaa-db-table-dividers) th,
+.aaa-db-table:not(.aaa-db-table-dividers) td{border-right:0}
+.aaa-db-view-settings{position:relative;flex:0 0 auto}
+.aaa-db-view-settings summary{display:flex;align-items:center;gap:7px;padding:8px 11px;color:var(--muted);border-radius:8px;cursor:pointer;font-size:12px;list-style:none;border:1px solid var(--border)}
+.aaa-db-view-settings summary::-webkit-details-marker{display:none}
+.aaa-db-view-settings summary:hover,.aaa-db-view-settings[open] summary{background:var(--surface-2);color:var(--text)}
+.aaa-db-view-settings-panel{z-index:30;position:absolute;top:calc(100% + 7px);left:0;width:265px;max-width:calc(100vw - 35px);padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px #0005}
+.aaa-db-view-settings-panel strong{display:block;font-size:12px;margin-bottom:12px}
+.aaa-db-view-settings-panel label{display:flex;align-items:center;gap:9px;font-size:12px;cursor:pointer;color:var(--text)}
+.aaa-db-view-settings-panel input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0}
+.aaa-db-view-settings-panel small{display:block;margin-top:10px;color:var(--muted);font-size:11px;line-height:1.5}
