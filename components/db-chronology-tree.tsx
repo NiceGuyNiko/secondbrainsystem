@@ -73,11 +73,11 @@ export default function EventChronologyTree({events,links,pairs,scalePropertyId,
  const loose=roots.filter(n=>n.tier!=="Era");
  return <section className="db-chrono">
   <header><div><span className="db-lab-kicker">WORLD HISTORY</span><h3>Chronology</h3>
-   <p>Explore eras, major events, moments and each character's perspective. Parent links are optional.</p></div>
+   <p>Explore eras, major events, moments and each character’s perspective. Parent links are optional.</p></div>
    <span className="db-chrono-counter">{events.length} events</span>
   </header>
   <div className="db-chrono-section"><span className="db-chrono-section-title">Eras</span>
-   {eras.length?eras.map(n=>render(n,0,[])):<p className="db-chrono-empty">No Eras yet. Give an event the Era scale when you're ready.</p>}
+   {eras.length?eras.map(n=>render(n,0,[])):<p className="db-chrono-empty">No Eras yet. Give an event the Era scale when you are ready.</p>}
   </div>
   {!!loose.length&&<div className="db-chrono-section">
    <button className="db-chrono-section-toggle" type="button" aria-expanded={showUnassigned}
