@@ -18,7 +18,7 @@ import {applyViewRules,readViewConfig,activeViewConfig,type ViewFilter,type View
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;version:number;archived_at:string|null;
  config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
-type Rec={record_id:string;database_id:string;sequence_no:number;version:number;values_json:Record<string,string|number|boolean|null>;archived_at:string|null};
+type Rec={record_id:string;database_id:string;sequence_no:number;position:number;version:number;values_json:Record<string,string|number|boolean|null>;archived_at:string|null};
 type View={id:string;database_id:string;name:string;layout:string;config:Record<string,unknown>};
 type Link={id:string;property_id:string;source_record_id:string;target_record_id:string};
 type Item={id:string;title:string};
@@ -58,6 +58,9 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  const [options,setOptions]=useState("Idea, Developing, Canon");
  const [target,setTarget]=useState("");
  const [showProperties,setShowProperties]=useState(false);
+ const [archivedRecords,setArchivedRecords]=useState<Rec[]>([]);
+ const [dragRecord,setDragRecord]=useState<string|null>(null);
+ const [dragProperty,setDragProperty]=useState<string|null>(null);
  const [search,setSearch]=useState("");
  const [sort,setSort]=useState("creation");
  const [reverse,setReverse]=useState(false);
@@ -73,21 +76,22 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  const [rulesDraft,setRulesDraft]=useState<{id:string;config:Record<string,unknown>}|null>(null);
  const rulesSaveTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const refresh=useCallback(async()=>{
-  const [a,b,c,d,e,f,g]=await Promise.all([
+  const [a,b,c,d,e,f,g,h]=await Promise.all([
    supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
    supabase.from("db_properties").select("id,database_id,name,type,config,position,version,archived_at").order("position"),
-   supabase.from("db_records").select("record_id,database_id,sequence_no,version,values_json,archived_at").is("archived_at",null),
+   supabase.from("db_records").select("record_id,database_id,sequence_no,position,version,values_json,archived_at").is("archived_at",null),
    supabase.from("db_views").select("id,database_id,name,layout,config"),
    supabase.from("db_relations").select("id,property_id,source_record_id,target_record_id"),
    supabase.from("user_items").select("id,title").eq("item_type","thought"),
-   supabase.from("db_perspectives").select("record_id,character_id,event_id")
+   supabase.from("db_perspectives").select("record_id,character_id,event_id"),
+   supabase.from("db_records").select("record_id,database_id,sequence_no,position,version,values_json,archived_at").not("archived_at","is",null)
   ]);
   setDbs(check(a) as DB[]);
   const allProperties=check(b) as Prop[];
   setProps(allProperties.filter(p=>!p.archived_at));
   setArchivedProps(allProperties.filter(p=>Boolean(p.archived_at)));
   setPerspectives(check(g) as PerspectivePair[]);
-  setRecords(check(c) as Rec[]);
+  setRecords(check(c) as Rec[]);setArchivedRecords(check(h) as Rec[]);
   setViews(check(d) as View[]);setLinks(check(e) as Link[]);setItems(check(f) as Item[]);
   setDbId(old=>(a.data||[]).some((x:{id:string})=>x.id===old)?old:(a.data?.[0]?.id||""));
  },[]);
@@ -105,7 +109,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
   }
  },[databaseName,writingEvents,dbs,dbId]);
  const database=dbs.find(x=>x.id===dbId);
- const cols=props.filter(x=>x.database_id===dbId);
+ const cols=props.filter(x=>x.database_id===dbId).sort((a,b)=>Number(a.position)-Number(b.position));
  const activeViews=views.filter(x=>x.database_id===dbId);
  const view=activeViews.find(x=>x.id===viewId)||activeViews[0];
  const rawLabel=(id:string)=>items.find(x=>x.id===id)?.title||"Untitled";
@@ -141,6 +145,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
    name:(id:string)=>label(id),
    relationTargets:(recordId:string,propertyId:string)=>links.filter(l=>l.source_record_id===recordId&&l.property_id===propertyId).map(l=>label(l.target_record_id)),
  },search);
+ if(!savedRules.sorts.length)list.sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no);
  const record=records.find(x=>x.record_id===selected && x.database_id===dbId);
  const charactersDatabase=dbs.find(d=>d.name.toLowerCase()==="characters");
  const eventsDatabase=dbs.find(d=>d.name.toLowerCase()==="events");
@@ -232,6 +237,46 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  const addRecord=()=>void run(async()=>{
   check(await supabase.rpc("db_create_record",{p_id:crypto.randomUUID(),p_database_id:dbId,p_name:addRec.trim()}));setAddRec("");
  },"Record created");
+ const archiveRecord=(id:string)=>void run(async()=>{
+  if(!window.confirm("Move this record to the archive? It will disappear from the current view but can be restored later. Existing relationships stay stored."))return;
+  const r=records.find(x=>x.record_id===id);
+  if(!r)throw new Error("Record not found");
+  const {data,error}=await supabase.from("db_records").update({archived_at:new Date().toISOString()})
+   .eq("record_id",id).eq("version",r.version).select("record_id").maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error("Record changed elsewhere; reload");
+  setSelected("");
+ },"Record archived");
+ const reorderRecords=(recordIds:string[])=>void run(async()=>{
+  check(await supabase.rpc("db_reorder_records",{p_database_id:dbId,p_record_ids:recordIds}));
+ },"Record order saved");
+ const reorderProperties=(ids:string[])=>void run(async()=>{
+  check(await supabase.rpc("db_reorder_properties",{p_database_id:dbId,p_property_ids:ids}));
+ },"Column order saved");
+ const moveRecordTo=(id:string,targetId:string)=>{
+  const ids=[...records.filter(r=>r.database_id===dbId)].sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no).map(r=>r.record_id);
+  const from=ids.indexOf(id),to=ids.indexOf(targetId);if(from<0||to<0||from===to)return;
+  ids.splice(from,1);ids.splice(to,0,id);reorderRecords(ids);
+ };
+ const moveRecord=(id:string,direction:-1|1)=>{
+  const ids=[...records.filter(r=>r.database_id===dbId)].sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no).map(r=>r.record_id);
+  const n=ids.indexOf(id);if(n<0||!ids[n+direction])return;moveRecordTo(id,ids[n+direction]);
+ };
+ const movePropertyTo=(id:string,targetId:string)=>{
+  const ids=cols.map(p=>p.id);const from=ids.indexOf(id),to=ids.indexOf(targetId);
+  if(from<0||to<0||from===to)return;ids.splice(from,1);ids.splice(to,0,id);reorderProperties(ids);
+ };
+ const moveProperty=(id:string,direction:-1|1)=>{
+  const n=cols.findIndex(p=>p.id===id);if(n<0||!cols[n+direction])return;movePropertyTo(id,cols[n+direction].id);
+ };
+ const restoreRecord=(id:string)=>void run(async()=>{
+  const previous=archivedRecords.find(x=>x.record_id===id&&x.database_id===dbId);
+  if(!previous)throw new Error("Record not found in archive");
+  const {data,error}=await supabase.from("db_records").update({archived_at:null})
+   .eq("record_id",id).eq("version",previous.version).select("record_id").maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error("Record changed elsewhere; reload");
+ },"Record restored");
  const addProperty=()=>void run(async()=>{
   const config=propType==="select"?{options:options.split(",").map(s=>s.trim())}:propType==="relation"?{target_database_id:target,multi:true}:{};
   check(await supabase.from("db_properties").insert({database_id:dbId,name:addProp.trim(),type:propType,config,position:cols.length}));
@@ -486,6 +531,9 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
       </section>}
      <div className="db-lab-detail-grid">{cols.map(p=><div key={p.id} className="db-lab-detail-field">
       <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
+       <div className="db-lab-order-buttons"><span draggable tabIndex={0} role="button" aria-label={"Drag "+p.name+" column"}
+ onDragStart={e=>{e.dataTransfer.effectAllowed="move";setDragProperty(p.id)}} onDragEnd={()=>setDragProperty(null)}>⠿</span>
+ <button type="button" title="Move column left" onClick={()=>moveProperty(p.id,-1)}>←</button><button type="button" title="Move column right" onClick={()=>moveProperty(p.id,1)}>→</button></div>
       {renderCell(record,p)}</div>)}</div>
      <section className="db-lab-backlinks">
        <strong>Referenced by other records</strong>
@@ -500,7 +548,9 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
          </button>)}
         </div>}
      </section>
-     <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}</div></div>:<>
+     <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}
+      <button type="button" className="db-lab-delete-record" onClick={()=>archiveRecord(record.record_id)}>Archive record</button>
+     </div></div>:<>
      {!writingEvents&&<form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
       <button type="submit">+ New record</button></form>}
@@ -527,12 +577,25 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
      {!eventOutline&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
-     <SyncedScrollTable><table className={"db-lab-table "+(verticalLines?"db-lab-table-dividers":"")}><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
+     <SyncedScrollTable><table className={"db-lab-table "+(verticalLines?"db-lab-table-dividers":"")}><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id} onDragOver={e=>e.preventDefault()}
+ onDrop={e=>{e.preventDefault();if(dragProperty)movePropertyTo(dragProperty,p.id);setDragProperty(null)}}>
        <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       </th>)}</tr></thead>
-      <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
-       <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
-     {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
+      <tbody>{list.map(r=><tr key={r.record_id} onDragOver={e=>e.preventDefault()}
+ onDrop={e=>{e.preventDefault();if(dragRecord)moveRecordTo(dragRecord,r.record_id);setDragRecord(null)}}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
+       <td className="db-lab-id">{r.sequence_no}<div className="db-lab-row-actions">
+ <span draggable tabIndex={0} role="button" aria-label={"Drag "+label(r.record_id)+" record"}
+ onDragStart={e=>{e.dataTransfer.effectAllowed="move";setDragRecord(r.record_id)}} onDragEnd={()=>setDragRecord(null)}>⠿</span>
+        <button type="button" title="Move record up" onClick={()=>moveRecord(r.record_id,-1)}>↑</button>
+        <button type="button" title="Move record down" onClick={()=>moveRecord(r.record_id,1)}>↓</button>
+        <button type="button" title="Archive record" onClick={()=>archiveRecord(r.record_id)}>×</button>
+       </div></td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
+     {!list.length&&<div className="db-lab-empty">No records yet. Create one above to get started.</div>}
+     {archivedRecords.some(r=>r.database_id===dbId)&&<details className="db-lab-archive-panel">
+       <summary>Archived records ({archivedRecords.filter(r=>r.database_id===dbId).length})</summary>
+       {archivedRecords.filter(r=>r.database_id===dbId).map(r=><div key={r.record_id}>
+        <span>{label(r.record_id)}</span><button type="button" onClick={()=>restoreRecord(r.record_id)}>Restore</button></div>)}
+      </details>}</>}
      </>}
    </>}
    <footer className="db-lab-footer">Connected to {cloudLabel} Supabase · Sign-in required · Saved to your signed-in account</footer>
