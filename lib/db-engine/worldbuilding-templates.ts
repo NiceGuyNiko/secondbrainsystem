@@ -5,7 +5,7 @@
 // not a duplicate database or a claim that an in-world entity isn't real.
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type BaseType = "text"|"long_text"|"select"|"relation";
+type BaseType = "text"|"long_text"|"number"|"select"|"relation";
 export type WorldPropertyTemplate = {
   readonly name:string;
   readonly type:BaseType;
@@ -36,6 +36,8 @@ export const WORLD_DATABASE_TEMPLATES:readonly WorldDatabaseTemplate[]=[
     editorialStatus,
     {name:"Scale",type:"select",options:["Era","Major Event","Event","Moment"],
       help:"Categorization of the event, not a separate database."},
+    {name:"Chronology order",type:"number",
+      help:"Optional relative story order across all Events and standalone Moments, including those without a parent."},
     {name:"Parent event",type:"relation",target:"Events",multi:false,hierarchy:true,
       help:"Link to an umbrella era or event. Parents cannot form cycles."},
     {name:"Locations",type:"relation",target:"Locations",multi:true},
