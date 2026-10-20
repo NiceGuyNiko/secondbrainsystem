@@ -351,7 +351,7 @@ function Workspace() {
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
               { name: "Goals", icon: Target, badge: "NA" },
-              { name: "Workspaces", icon: Layers3, badge: "NA" },
+              { name: "Workspaces", icon: Layers3, badge: staging ? "BETA" : "NA" },
               { name: "Databases", icon: Database, badge: "BETA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
