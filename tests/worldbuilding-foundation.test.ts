@@ -6,8 +6,8 @@ import {WORLD_DATABASE_TEMPLATES,worldDbKey} from "../lib/db-engine/worldbuildin
 
 test("worldbuilding templates: identities, typed relations, status and hierarchy are generic",()=>{
  const names=WORLD_DATABASE_TEMPLATES.map(d=>d.name);
- assert.deepEqual(names,["Characters","Events","Groups","Locations","Power Systems","Abilities","Lore"]);
- assert.equal(new Set(names.map(worldDbKey)).size,7);
+ assert.deepEqual(names,["Characters","Events","Groups","Locations","Power Systems","Abilities","Perspectives","Lore"]);
+ assert.equal(new Set(names.map(worldDbKey)).size,8);
  for(const d of WORLD_DATABASE_TEMPLATES){
   assert.ok(d.properties.find(p=>p.name==="Development status"&&p.type==="select"));
   for(const p of d.properties){
