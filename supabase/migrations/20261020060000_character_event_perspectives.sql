@@ -14,6 +14,8 @@ create index db_perspectives_event_lookup on public.db_perspectives(user_id,even
 alter table public.db_perspectives enable row level security;
 create policy db_perspectives_owner on public.db_perspectives for select to authenticated
   using(user_id=(select auth.uid()));
+create policy db_perspectives_owner_insert on public.db_perspectives for insert to authenticated
+  with check(user_id=(select auth.uid()));
 revoke all on public.db_perspectives from public,anon;
 grant select,insert on public.db_perspectives to authenticated;
 
