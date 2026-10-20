@@ -140,7 +140,7 @@ function Workspace() {
     if(!window.confirm("Create the worldbuilding database templates and their linked properties? Existing data will remain untouched. No sample records will be imported."))return;
     setSettingUpDatabases(true);
     try{
-      const result=await setupWorldbuildingDatabases(supabase,()=>{});
+      const result=await setupWorldbuildingDatabases(supabase,()=>{},production?"primary":"acceptance");
       await refreshStagingDatabases();
       setNotice(result.databasesCreated+" databases and "+result.propertiesCreated+" properties created. Existing records preserved.");
     }catch(err){setNotice(err instanceof Error?err.message:String(err))}
