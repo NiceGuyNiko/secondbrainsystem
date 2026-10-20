@@ -33,7 +33,7 @@ test("relationships use only stated facts and resolve to existing fixture Charac
 test("power status, affiliations, descriptions and the existing Gender field stay separate",()=>{
  assert.equal(CHARACTER_FIELD_DEFINITIONS.length,7);
  assert.equal(CHARACTER_FIELD_DEFINITIONS.find(p=>p.name==="Power status")?.type,"select");
- assert.ok(!CHARACTER_FIELD_DEFINITIONS.some(p=>p.name==="Gender"),
+ assert.ok(!CHARACTER_FIELD_DEFINITIONS.some(p=>String(p.name)==="Gender"),
   "The existing Gender field must never be overwritten by the import");
  assert.ok(FIRST_CHARACTERS.some(c=>c.name==="Daniel Crump"&&c.affiliation?.includes("secretly Church")));
 });
