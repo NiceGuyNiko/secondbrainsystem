@@ -90,3 +90,12 @@
 .db-lab-import button{width:100%;background:var(--accent);color:var(--on-accent);border:1px solid var(--accent);border-radius:8px;padding:10px;font-weight:700}
 .db-lab-import button:disabled{opacity:.6;cursor:wait}
 .db-lab-import small{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:10px}
+
+.db-lab-backlinks{margin-top:25px;padding-top:17px;border-top:1px solid var(--border)}
+.db-lab-backlinks>strong{display:block;font-size:14px;font-weight:750}
+.db-lab-backlinks>p,.db-lab-backlinks>small{display:block;margin:6px 0 10px;color:var(--muted);font-size:12px}
+.db-lab-backlink-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.db-lab-backlink-list button{border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--text);text-align:left;padding:12px;display:flex;flex-direction:column;gap:5px}
+.db-lab-backlink-list button:hover{border-color:var(--accent)}
+.db-lab-backlink-list small{color:var(--muted);font-size:11px}
+.db-lab-backlink-detail{color:var(--accent-text);font-size:11px}
