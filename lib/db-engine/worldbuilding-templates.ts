@@ -134,9 +134,10 @@ function propertyConfiguration(property:WorldPropertyTemplate,ids:Record<string,
 export async function setupWorldbuildingDatabases(
   client:SupabaseClient,
   onProgress:(message:string)=>void=()=>{},
+  dataset:"primary"|"acceptance"="acceptance",
 ):Promise<WorldSetupResult>{
   const {data:session,error}=await client.auth.getUser();
-  if(error||!session.user)throw new Error("Sign in to staging first.");
+  if(error||!session.user)throw new Error("Sign in first.");
   const existing=checked(await client.from("db_databases")
     .select("id,name").is("archived_at",null).limit(1000)) as RowDb[];
   const seen=new Map<string,RowDb>();
@@ -153,7 +154,7 @@ export async function setupWorldbuildingDatabases(
     const found=seen.get(key);
     if(found){ids[key]=found.id;databasesReused++;continue;}
     const id=crypto.randomUUID();
-    checked(await client.rpc("db_create_database",{p_id:id,p_name:d.name,p_dataset:"acceptance"}));
+    checked(await client.rpc("db_create_database",{p_id:id,p_name:d.name,p_dataset:dataset}));
     ids[key]=id;databasesCreated++;
   }
   // Second pass: all target IDs are now available, including self-relations.
