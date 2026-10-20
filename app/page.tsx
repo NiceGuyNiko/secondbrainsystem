@@ -6,6 +6,9 @@ import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
+import StagingDatabaseLab from "@/components/database-staging-lab";
+import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
+import { supabase } from "@/lib/supabase";
 import { DATABASE_CATEGORIES, type DatabaseCategory } from "@/lib/database-categories";
 import { resetDatabaseDemo } from "@/lib/database-property-store";
 import CalendarWorkspace from "@/components/calendar-workspace";
@@ -41,6 +44,9 @@ import {
   Layers3,
   Zap,
   ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  PenLine,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -74,6 +80,23 @@ function Workspace() {
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
   const [databaseCategory, setDatabaseCategory] = useState<DatabaseCategory>("Characters");
   const [databaseRecordId, setDatabaseRecordId] = useState<string | null>(null);
+  const [stagingDatabases,setStagingDatabases]=useState<{id:string;name:string}[]>([]);
+  const [stagingDatabaseId,setStagingDatabaseId]=useState("");
+  const [writingExpanded,setWritingExpanded]=useState(true);
+  const staging=environment.ok&&environment.data==="staging";
+  const stagingDatabaseName=stagingDatabases.find(d=>d.id===stagingDatabaseId)?.name||"Characters";
+  const refreshStagingDatabases=useCallback(async()=>{
+    const {data,error}=await supabase.from("db_databases").select("id,name")
+      .is("archived_at",null).order("name").limit(150);
+    if(error)throw new Error(error.message);
+    const rows=(data??[]).filter(d=>d.name.toLowerCase()!=="perspectives");
+    setStagingDatabases(rows);
+    setStagingDatabaseId(id=>rows.some(x=>x.id===id)?id:(rows.find(x=>x.name.toLowerCase()==="characters")??rows[0])?.id??"");
+  },[]);
+  useEffect(()=>{
+    if(!staging||section!=="Databases")return;
+    void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
+  },[staging,section,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
@@ -155,7 +178,8 @@ function Workspace() {
   const nav = (s: Section) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
     setSection(s);
-    setContextId(undefined);
+    setContextId(s==="Workspaces"&&staging?"writing":undefined);
+    if(s==="Workspaces"&&staging)setWritingExpanded(true);
     setContext([]);
     setDatabaseRecordId(null);
     setMobileOpen(false);
@@ -173,7 +197,9 @@ function Workspace() {
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
     : section === "Databases"
-      ? DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
+      ? staging?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
+    : section==="Workspaces"&&staging
+      ? [{id:"writing",title:"Writing"},...(writingExpanded?[{id:"writing-events",title:"Events"}]:[]),...context.filter(c=>c.id!=="writing"&&c.id!=="writing-events")]
     : section === "Resources" || section === "Think About It"
       ? resources
       : context;
@@ -192,11 +218,14 @@ function Workspace() {
         old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
       );
     else if (section === "Databases") {
-      setDatabaseCategory(id as DatabaseCategory);
+      if(staging)setStagingDatabaseId(id);
+      else setDatabaseCategory(id as DatabaseCategory);
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
       setActiveThought(id);
-    else setContextId(id);
+    else if(section==="Workspaces"&&staging&&id==="writing"){
+      setWritingExpanded(open=>!open);setContextId("writing");
+    } else setContextId(id);
   };
   const manage = () => {
     setCommand({ id: Date.now(), type: "calendars" });
@@ -353,13 +382,18 @@ function Workspace() {
               contextual.map((c) => (
                 <button
                   key={c.id}
-                  className={"aaa-context-row " + (section === "Databases" && databaseCategory === c.id ? "active" : "")}
+                  className={"aaa-context-row " + (
+                    (section==="Databases"&&(staging?stagingDatabaseId===c.id:databaseCategory===c.id))||
+                    (section==="Workspaces"&&contextId===c.id)?"active":""
+                  ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={c.title}
-                  aria-pressed={section === "Databases" ? databaseCategory === c.id : contextId === c.id || activeThought === c.id}
+                  aria-pressed={section === "Databases"?(staging?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
                   onClick={() => contextClick(c.id)}
                 >
                   <span className="aaa-icon-slot">
-                    <BookOpen size={18} />
+                    {c.id==="writing"?(writingExpanded?<ChevronDown size={18}/>:<ChevronRight size={18}/>)
+                     :c.id==="writing-events"?<CalendarDays size={17}/>
+                     :section==="Databases"?<Database size={17}/>:<BookOpen size={18}/>}
                   </span>
                   <span className="aaa-sidebar-label">{c.title}</span>
                 </button>
@@ -445,6 +479,29 @@ function Workspace() {
                   onClock={setClock}
                   onBack={() => nav("Calendar")}
                 />
+              ) : section === "Databases" && staging ? (
+                <DatabaseLabErrorBoundary>
+                  <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
+                    databaseName={stagingDatabaseName}
+                    onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))}/>
+                </DatabaseLabErrorBoundary>
+              ) : section==="Workspaces" && staging && contextId==="writing-events" ? (
+                <DatabaseLabErrorBoundary>
+                  <StagingDatabaseLab key="writing-events" surface="writing-events" databaseName="Events"/>
+                </DatabaseLabErrorBoundary>
+              ) : section==="Workspaces" && staging && contextId==="writing" ? (
+                <section className="aaa-writing-home">
+                  <div className="aaa-writing-eyebrow"><PenLine size={15}/> WRITING WORKSPACE</div>
+                  <h1>Writing</h1>
+                  <p>Build your world history in Events. Eras, major events, moments and
+                    their character perspectives are organized chronologically without duplicating the database.</p>
+                  <button type="button" className="aaa-writing-link"
+                    onClick={()=>{setContextId("writing-events");setWritingExpanded(true);}}>
+                    <span><CalendarDays size={22}/><strong>Events</strong>
+                    <small>World chronology · Eras → Events → Moments → Perspectives</small></span>
+                    <ChevronRight size={18}/>
+                  </button>
+                </section>
               ) : section === "Databases" ? (
                 <DatabasesWorkspace
                   category={databaseCategory}
