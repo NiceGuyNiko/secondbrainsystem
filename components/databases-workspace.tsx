@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowLeft, ArrowUpRight, ArrowUpDown, BookOpen, Database, Eye, LayoutGrid,
-  Link2, LockKeyhole, Plus, Rows3, Search, SlidersHorizontal,
+  Link2, LockKeyhole, Plus, Rows3, Search, SlidersHorizontal, Settings2,
 } from "lucide-react";
 import { isDemo } from "./environment";
+import { useProfile } from "./profile-context";
+import { legacyGridKey } from "@/lib/db-engine/table-appearance";
 import DatabasePropertyManager from "./database-property-manager";
 import DatabasePropertyEditor from "./database-property-editor";
 import DatabaseCompanion from "./database-companion";
@@ -36,6 +39,18 @@ export default function DatabasesWorkspace({
   onOpenDocument?: (id: string) => void;
 }) {
   const definition = databaseById(category);
+  const { userId } = useProfile();
+  const [verticalLines,setVerticalLines]=useState(true);
+  useEffect(()=>{
+    try{
+      setVerticalLines(localStorage.getItem(legacyGridKey(userId,category))!=="false");
+    }catch{setVerticalLines(true)}
+  },[userId,category]);
+  const changeVerticalLines=(show:boolean)=>{
+    setVerticalLines(show);
+    try{localStorage.setItem(legacyGridKey(userId,category),String(show))}
+    catch{setNotice("Column display preference could not be saved in this browser.")}
+  };
   const [loaded, setLoaded] = useState<Loaded>({ records: [], thoughts: [] });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -133,7 +148,7 @@ export default function DatabasesWorkspace({
         <h1>{definition.label}</h1>
         <p>{definition.description}</p>
       </div>
-      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}</div>
+      <div className="aaa-db-phase"><LockKeyhole size={14}/> Phase 2 · Inline editing + Companion {isDemo?"· Demo":""}{isDemo && <Link href="/database-lab" style={{marginLeft:12,color:"var(--accent-text)"}}>Open Engine Lab ↗</Link>}</div>
     </div>
 
     {page && <div className="aaa-db-record-navigation">
@@ -146,6 +161,18 @@ export default function DatabasesWorkspace({
         <button type="button" className={layout==="table"?"active":""} aria-pressed={layout==="table"} onClick={()=>setLayout("table")}><Rows3 size={16}/> Table</button>
         <button type="button" className={layout==="gallery"?"active":""} aria-pressed={layout==="gallery"} onClick={()=>setLayout("gallery")}><LayoutGrid size={16}/> Gallery</button>
       </div>
+      <details className="aaa-db-view-settings">
+        <summary><Settings2 size={15}/> View settings</summary>
+        <div className="aaa-db-view-settings-panel">
+          <strong>Table appearance</strong>
+          <label>
+            <input type="checkbox" checked={verticalLines}
+              onChange={e=>changeVerticalLines(e.target.checked)}/>
+            Show vertical column lines
+          </label>
+          <small>Saved for this database on this device.</small>
+        </div>
+      </details>
       <label className="aaa-db-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search records" aria-label={"Search "+definition.label}/></label>
       <div className="aaa-db-actions">
         <button type="button" disabled title="Available in Phase 4"><SlidersHorizontal size={16}/> Filter</button>
@@ -200,7 +227,7 @@ export default function DatabasesWorkspace({
         <div className="aaa-db-list-heading"><strong>{definition.label}</strong>
           <span>{loading?"Loading…":rows.length+" records"} <HelpTip subject="Editable database cells">Click a Name to open its page. Click a Summary, Status or custom value to edit it here. Changes save back to the same record.</HelpTip></span>
         </div>
-        {layout==="table" ? <div className="aaa-db-table-scroll"><table className="aaa-db-table">
+        {layout==="table" ? <div className="aaa-db-table-scroll"><table className={"aaa-db-table "+(verticalLines?"aaa-db-table-dividers":"")}>
           <thead><tr><th scope="col">Name</th><th scope="col">ID</th><th scope="col">Status</th><th scope="col">Summary</th>
             {columns.map(p=><th key={p.id} scope="col">{p.label}</th>)}</tr></thead>
           <tbody>{rows.map(record=><tr key={record.thought_id} className={selectedId===record.thought_id?"selected":""}>

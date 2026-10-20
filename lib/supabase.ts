@@ -21,7 +21,15 @@ export function clientFor(env: Environment, deps: { storage: DemoStorage | null;
     const demo = new DemoDatabase(deps.storage, () => demoSeed());
     return { client: createDemoClient(demo), demo };
   }
-  return { client: deps.create(env.url, env.key), demo: null };
+  // Real accounts keep their existing local Supabase session and refresh tokens.
+  // Do not customize storageKey: the SDK's project-scoped default preserves
+  // existing logins when this branch is accessed from its stable Vercel alias.
+  // Never replace this with hard-coded credentials or skip RLS in developer mode.
+  return { client: deps.create(env.url, env.key, { auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  } }), demo: null };
 }
 
 const browser = typeof window !== "undefined";

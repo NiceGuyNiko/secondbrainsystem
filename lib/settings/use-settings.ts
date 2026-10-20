@@ -4,6 +4,7 @@ import { environment } from "@/lib/environment";
 import { supabase } from "@/lib/supabase";
 import { activeProfile, defaultPreferences, defaultSettings, effectiveFeatures, migrateThemeModes, type EffectiveFeatures, type ProfilePreferences, type Settings } from "./model";
 import { browserSettingsStore, tableSettingsStore } from "./store";
+import {makeStagingSlate,stagingSlateKey} from "./staging";
 
 const storage = () => {
   try {
@@ -30,16 +31,35 @@ export function useSettings(email: string, userId: string) {
     let live = true;
     writable.current = false;
     store.load().then(
-      (stored) => {
+      async (stored) => {
         if (!live) return;
-        // One-time conversion of the old Light/System colour modes (see migrateThemeModes). The
-        // device's preference is read only here, only for profiles still on the old "system" value.
+        // One-time conversion of older theme modes. No automatic theme selection afterwards.
         const deviceIsLight = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: light)").matches;
-        const loaded = migrateThemeModes(stored, deviceIsLight);
+        let loaded = migrateThemeModes(stored, deviceIsLight);
+        let persisted = false;
+        // An existing staging account should open in Slate on this stable preview
+        // address, then retain its manually chosen theme on later visits.
+        // Never change a production account or its appearance defaults.
+        if (environment.ok && environment.data === "staging") {
+          const local = storage();
+          const key = stagingSlateKey(userId);
+          if (!local?.getItem(key)) {
+            const slate = makeStagingSlate(loaded);
+            try {
+              await store.save(slate);
+              local?.setItem(key, "1");
+              loaded = slate;
+              persisted = true;
+            } catch (e) {
+              if (live) setError(`Slate could not be saved (${message(e)}). Your existing settings were kept.`);
+            }
+          }
+        }
+        if (!live) return;
         current.current = committed.current = loaded;
         writable.current = true;
         setSettings(loaded);
-        if (loaded !== stored) void store.save(loaded).catch(() => {});
+        if (loaded !== stored && !persisted) void store.save(loaded).catch(() => {});
       },
       (e) => {
         if (!live) return;

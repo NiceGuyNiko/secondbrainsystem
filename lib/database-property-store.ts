@@ -88,6 +88,16 @@ function check<T>(result: { data: T; error: { message: string } | null }): T {
   return result.data;
 }
 
+/** Old production projects may not have received the Phase 2 custom-property
+ * definitions migration. Keep existing planning records visible while the new
+ * generic engine is still staging-only. Never swallow network or RLS errors. */
+export function missingLegacyPropertyTable(error:{code?:string;message:string}|null|undefined):boolean{
+  if(!error)return false;
+  return (error.code==="PGRST205"||error.code==="42P01"||
+    /Could not find the table .*database_property_definitions.*schema cache/i.test(error.message))&&
+    /database_property_definitions/i.test(error.message);
+}
+
 export const databasePropertyStore = {
   async loadRecords(): Promise<DatabaseRecords> {
     if (demoMode) {
@@ -99,8 +109,9 @@ export const databasePropertyStore = {
   },
   async load(category: DatabaseCategory): Promise<DatabaseProperty[]> {
     if (demoMode) return readDatabaseDemo().definitions.filter((p) => p.database_key === category && !p.archived_at).sort((a,b) => a.position - b.position);
-    const rows = check((await supabase.from("database_property_definitions").select("*").eq("database_key",category).is("archived_at",null).order("position")) as {data:DatabaseProperty[];error:{message:string}|null});
-    return rows || [];
+    const result=await supabase.from("database_property_definitions").select("*").eq("database_key",category).is("archived_at",null).order("position");
+    if(missingLegacyPropertyTable(result.error))return [];
+    return check(result as {data:DatabaseProperty[];error:{message:string}|null})||[];
   },
   async create(category: DatabaseCategory, draft: PropertyDraft, existing: DatabaseProperty[]): Promise<DatabaseProperty> {
     if (!databaseById(category).kind) throw new Error("This category is not yet backed by canonical planning records.");

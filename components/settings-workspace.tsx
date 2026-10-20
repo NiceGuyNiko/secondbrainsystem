@@ -7,6 +7,7 @@ import Switch from "./switch";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
 import { activeProfile } from "@/lib/settings/model";
 import { networkGuard } from "@/lib/demo/network-guard";
+import {environment} from "@/lib/environment";
 export const settingsSections = [
   {name:"General",icon:SlidersHorizontal,description:"A quick overview of your workspace preferences."},
   {name:"Appearance",icon:Palette,description:"Themes, colours and how your workspace feels."},
@@ -68,6 +69,15 @@ function DeveloperSettings(p:Props){
       <Switch label="Think About It" badge={beta} checked={saved.thinkAboutIt} disabled={!dev} onChange={v=>p.onBetaFeature("thinkAboutIt",v)} description={off??"Thought editor. Adds Think About It to the sidebar."}/>
       <Switch label="Test Profiles" badge={beta} checked={p.settings.account.testProfilesEnabled} disabled={!dev} onChange={p.onTestProfiles} description={off??"Interface profiles for trying different settings. Applies to your whole account. Profile management arrives in the next preview."}/>
     </section>
+    {environment.ok&&environment.data==="staging"&&
+      <section className="aaa-settings-card">
+       <h2>Your permanent Developer Preview</h2>
+       <p>Use this same address for new builds. Supabase remembers the signed-in staging account on this address and refreshes its session without asking for your password on every deployment.</p>
+       <a href="https://secondbrainsystem-git-feature-database-engin-824c27-niceguyniko.vercel.app/database-lab">
+        Open the permanent Database Lab ↗
+       </a>
+       <p>Slate is your saved starting theme on this staging account. Signing out or clearing site data will still require signing in again.</p>
+      </section>}
     {p.demoIsolation&&<p className="aaa-isolation" role="status">Demo Mode: this preview uses sample data stored only in this browser. No connection to your real account is made. Supabase requests blocked on this page: {networkGuard.blocked}.</p>}
   </>;
 }
