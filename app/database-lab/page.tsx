@@ -3,6 +3,7 @@ import { environment } from "@/lib/environment";
 import AuthGate from "@/components/auth-gate";
 import DatabaseEngineLab from "@/components/database-engine-lab";
 import StagingDatabaseLab from "@/components/database-staging-lab";
+import StagingLabTheme from "@/components/staging-lab-theme";
 import "./lab.css";
 
 export default function DatabaseLabPage() {
@@ -13,6 +14,6 @@ export default function DatabaseLabPage() {
       <Link href="/">Return to All About Action</Link>
     </main>;
   }
-  if(environment.data === "staging") return <AuthGate><StagingDatabaseLab/></AuthGate>;
+  if(environment.data === "staging") return <StagingLabTheme><AuthGate><StagingDatabaseLab/></AuthGate></StagingLabTheme>;
   return <DatabaseEngineLab />;
 }
