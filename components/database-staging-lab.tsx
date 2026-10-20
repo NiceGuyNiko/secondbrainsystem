@@ -94,7 +94,7 @@ export default function StagingDatabaseLab(){
   const pair=perspectives.find(p=>p.record_id===id);
   return pair?rawLabel(pair.character_id)+" during "+rawLabel(pair.event_id):rawLabel(id);
  };
- const activeRuleConfig=rulesDraft?.id===view?.id?rulesDraft.config:view?.config;
+ const activeRuleConfig=rulesDraft!==null&&view!==undefined&&rulesDraft.id===view.id?rulesDraft.config:view?.config;
  const savedRules=readViewConfig(activeRuleConfig);
  const selectionFields=[{id:"name",name:"Name",type:"text"},{id:"creation",name:"ID",type:"number"},
   ...cols.map(p=>({id:p.id,name:p.name,type:p.type,options:p.config.options}))];
