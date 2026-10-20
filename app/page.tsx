@@ -9,6 +9,8 @@ import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
 import { supabase } from "@/lib/supabase";
+import { classifyDatabaseEngineProbe,type DatabaseEngineState } from "@/lib/db-engine/production-readiness";
+import {setupWorldbuildingDatabases} from "@/lib/db-engine/worldbuilding-templates";
 import { DATABASE_CATEGORIES, type DatabaseCategory } from "@/lib/database-categories";
 import { resetDatabaseDemo } from "@/lib/database-property-store";
 import CalendarWorkspace from "@/components/calendar-workspace";
@@ -87,6 +89,24 @@ function Workspace() {
   const [newDatabaseName,setNewDatabaseName]=useState("");
   const [creatingDatabase,setCreatingDatabase]=useState(false);
   const staging=environment.ok&&environment.data==="staging";
+  const production=environment.ok&&environment.data==="production";
+  const [productionEngineState,setProductionEngineState]=useState<DatabaseEngineState>("checking");
+  const [engineProbeError,setEngineProbeError]=useState("");
+  const [settingUpDatabases,setSettingUpDatabases]=useState(false);
+  useEffect(()=>{
+    if(!production)return;
+    let live=true;
+    void supabase.rpc("db_engine_ready").then(({data,error})=>{
+      if(!live)return;
+      const status=classifyDatabaseEngineProbe(data,error);
+      setProductionEngineState(status);
+      if(status==="error")setEngineProbeError(error?.message||"Unable to check the database backend.");
+    }).catch(err=>{
+      if(live){setProductionEngineState("error");setEngineProbeError(err instanceof Error?err.message:String(err))}
+    });
+    return()=>{live=false};
+  },[production]);
+  const engineEnabled=staging||(production&&productionEngineState==="ready");
   const stagingDatabaseName=stagingDatabases.find(d=>d.id===stagingDatabaseId)?.name||"Characters";
   const refreshStagingDatabases=useCallback(async()=>{
     const {data,error}=await supabase.from("db_databases").select("id,name")
@@ -105,20 +125,31 @@ function Workspace() {
     setCreatingDatabase(true);
     try{
       const id=crypto.randomUUID();
-      const {error}=await supabase.rpc("db_create_database",{p_id:id,p_name:name,p_dataset:"acceptance"});
+      const {error}=await supabase.rpc("db_create_database",{p_id:id,p_name:name,p_dataset:production?"primary":"acceptance"});
       if(error)throw error;
       await refreshStagingDatabases();
       setStagingDatabaseId(id);
       setNewDatabaseName("");
       setNewDatabaseOpen(false);
-      setNotice(name+" database created in staging.");
+      setNotice(name+" database created.");
     }catch(e){setNotice(e instanceof Error?e.message:"Could not create database.");}
     finally{setCreatingDatabase(false)}
   };
+  const setupMissingWorldbuilding=async()=>{
+    if(!engineEnabled||settingUpDatabases)return;
+    if(!window.confirm("Create the worldbuilding database templates and their linked properties? Existing data will remain untouched. No sample records will be imported."))return;
+    setSettingUpDatabases(true);
+    try{
+      const result=await setupWorldbuildingDatabases(supabase,()=>{});
+      await refreshStagingDatabases();
+      setNotice(result.databasesCreated+" databases and "+result.propertiesCreated+" properties created. Existing records preserved.");
+    }catch(err){setNotice(err instanceof Error?err.message:String(err))}
+    finally{setSettingUpDatabases(false)}
+  };
   useEffect(()=>{
-    if(!staging||section!=="Databases")return;
+    if(!engineEnabled||section!=="Databases")return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
-  },[staging,section,refreshStagingDatabases]);
+  },[engineEnabled,section,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
@@ -200,7 +231,7 @@ function Workspace() {
   const nav = (s: Section) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
     setSection(s);
-    setContextId(s==="Workspaces"&&staging?"writing":undefined);
+    setContextId(s==="Workspaces"&&engineEnabled?"writing":undefined);
     if(s==="Workspaces"&&staging)setWritingExpanded(true);
     setContext([]);
     setDatabaseRecordId(null);
@@ -219,8 +250,8 @@ function Workspace() {
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
     : section === "Databases"
-      ? staging?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
-    : section==="Workspaces"&&staging
+      ? engineEnabled?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
+    : section==="Workspaces"&&engineEnabled
       ? [{id:"writing",title:"Writing"},...(writingExpanded?[{id:"writing-events",title:"Events"}]:[]),...context.filter(c=>c.id!=="writing"&&c.id!=="writing-events")]
     : section === "Resources" || section === "Think About It"
       ? resources
@@ -240,7 +271,7 @@ function Workspace() {
         old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
       );
     else if (section === "Databases") {
-      if(staging)setStagingDatabaseId(id);
+      if(engineEnabled)setStagingDatabaseId(id);
       else setDatabaseCategory(id as DatabaseCategory);
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
@@ -351,7 +382,7 @@ function Workspace() {
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
               { name: "Goals", icon: Target, badge: "NA" },
-              { name: "Workspaces", icon: Layers3, badge: staging ? "BETA" : "NA" },
+              { name: "Workspaces", icon: Layers3, badge: engineEnabled ? "BETA" : "NA" },
               { name: "Databases", icon: Database, badge: "BETA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
@@ -389,14 +420,14 @@ function Workspace() {
               }
               onClick={() => {
                 if (calendarSection) manage();
-                else if(staging&&section==="Databases")setNewDatabaseOpen(open=>!open);
+                else if(engineEnabled&&section==="Databases")setNewDatabaseOpen(open=>!open);
               }}
             >
-              {calendarSection||staging&&section==="Databases" ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection||engineEnabled&&section==="Databases" ? <Plus size={19} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
-          {staging&&section==="Databases"&&newDatabaseOpen&&
+          {engineEnabled&&section==="Databases"&&newDatabaseOpen&&
            <form className="aaa-context-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
             <input value={newDatabaseName} autoFocus maxLength={80}
               placeholder="New database name…" aria-label="New database name"
@@ -404,6 +435,11 @@ function Workspace() {
             <button type="submit" disabled={!newDatabaseName.trim()||creatingDatabase}>
               {creatingDatabase?"Saving…":"Create"}</button>
            </form>}
+          {engineEnabled&&section==="Databases"&&stagingDatabases.length===0&&
+            <button type="button" className="aaa-context-setup" disabled={settingUpDatabases}
+              onClick={()=>void setupMissingWorldbuilding()}>
+              {settingUpDatabases?"Setting up databases…":"Set up worldbuilding databases"}
+            </button>}
           <div className="aaa-context-scroll">
             {calendarSection ? (
               calendarControls
@@ -414,11 +450,11 @@ function Workspace() {
                 <button
                   key={c.id}
                   className={"aaa-context-row " + (
-                    (section==="Databases"&&(staging?stagingDatabaseId===c.id:databaseCategory===c.id))||
+                    (section==="Databases"&&(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id))||
                     (section==="Workspaces"&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={c.title}
-                  aria-pressed={section === "Databases"?(staging?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
+                  aria-pressed={section === "Databases"?(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
                   onClick={() => contextClick(c.id)}
                 >
                   <span className="aaa-icon-slot">
@@ -510,13 +546,13 @@ function Workspace() {
                   onClock={setClock}
                   onBack={() => nav("Calendar")}
                 />
-              ) : section === "Databases" && staging ? (
+              ) : section === "Databases" && engineEnabled ? (
                 <DatabaseLabErrorBoundary>
                   <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
                     databaseName={stagingDatabaseName}
                     onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))}/>
                 </DatabaseLabErrorBoundary>
-              ) : section==="Workspaces" && staging && contextId==="writing-events" ? (
+              ) : section==="Workspaces" && engineEnabled && contextId==="writing-events" ? (
                 <DatabaseLabErrorBoundary>
                   <StagingDatabaseLab key="writing-events" surface="writing-events" databaseName="Events"/>
                 </DatabaseLabErrorBoundary>
@@ -532,6 +568,20 @@ function Workspace() {
                     <small>World chronology · Eras → Events → Moments → Perspectives</small></span>
                     <ChevronRight size={18}/>
                   </button>
+                </section>
+              ) : section === "Databases" && production && productionEngineState!=="ready" ? (
+                <section className="aaa-db-backend-wait">
+                  <strong>{productionEngineState==="checking"?"Checking database backend…":
+                    "Database creation is not enabled on production yet"}</strong>
+                  <p>{productionEngineState==="missing"?
+                    "The live Supabase project is missing the new database schema. Existing planning records remain available below, but creating new database files, records and properties requires the approved production migration.":
+                    productionEngineState==="error"?engineProbeError:
+                    "Checking your authenticated database configuration."}</p>
+                  {productionEngineState!=="checking"&&<DatabasesWorkspace
+                    category={databaseCategory} onOpenRecord={(category,id)=>{setDatabaseCategory(category);setDatabaseRecordId(id);}}
+                    initialRecordId={databaseRecordId}
+                    onOpenDocument={openThought}
+                    creationUnavailable/>}
                 </section>
               ) : section === "Databases" ? (
                 <DatabasesWorkspace
