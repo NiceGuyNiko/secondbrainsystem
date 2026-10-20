@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
@@ -58,6 +58,8 @@ export default function StagingDatabaseLab(){
  const [momentName,setMomentName]=useState("");
  const [creatingMoment,setCreatingMoment]=useState(false);
  const [showTimeline,setShowTimeline]=useState(true);
+ const [rulesDraft,setRulesDraft]=useState<{id:string;config:Record<string,unknown>}|null>(null);
+ const rulesSaveTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const refresh=useCallback(async()=>{
   const [a,b,c,d,e,f,g]=await Promise.all([
    supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
@@ -91,12 +93,22 @@ export default function StagingDatabaseLab(){
   const pair=perspectives.find(p=>p.record_id===id);
   return pair?rawLabel(pair.character_id)+" during "+rawLabel(pair.event_id):rawLabel(id);
  };
- const savedRules=readViewConfig(view?.config);
+ const activeRuleConfig=rulesDraft?.id===view?.id?rulesDraft.config:view?.config;
+ const savedRules=readViewConfig(activeRuleConfig);
  const selectionFields=[{id:"name",name:"Name",type:"text"},{id:"creation",name:"ID",type:"number"},
   ...cols.map(p=>({id:p.id,name:p.name,type:p.type,options:p.config.options}))];
  const changeRules=(filters:ViewFilter[],filterMode:QueryMode,sorts:ViewSort[])=>{
   if(!view)return;
-  updateView({config:{...view.config,filters,filterMode,sorts}});
+  const next={...(rulesDraft?.id===view.id?rulesDraft.config:view.config),filters,filterMode,sorts};
+  setRulesDraft({id:view.id,config:next});
+  // Keep typing and filtering instantaneous. Persist once editing pauses.
+  // A stable view ID means a delayed save won't apply to a different view.
+  if(rulesSaveTimer.current)clearTimeout(rulesSaveTimer.current);
+  const targetView=view.id,targetDb=dbId;
+  rulesSaveTimer.current=setTimeout(async()=>{
+   const {error}=await supabase.from("db_views").update({config:next}).eq("id",targetView).eq("database_id",targetDb);
+   if(error)setError("View settings could not be saved: "+error.message);
+  },550);
  };
  const list=applyViewRules(records.filter(x=>x.database_id===dbId),savedRules,{
    name:(id:string)=>label(id),
