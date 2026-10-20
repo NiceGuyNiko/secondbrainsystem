@@ -657,3 +657,12 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-db-view-settings-panel label{display:flex;align-items:center;gap:9px;font-size:12px;cursor:pointer;color:var(--text)}
 .aaa-db-view-settings-panel input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);flex-shrink:0}
 .aaa-db-view-settings-panel small{display:block;margin-top:10px;color:var(--muted);font-size:11px;line-height:1.5}
+
+/* Preserve canonical legacy records while the production database engine
+   has not yet received its separately-approved database migration. */
+.aaa-db-backend-wait{width:100%;min-width:0;display:flex;flex-direction:column;gap:9px;padding:17px 12px}
+.aaa-db-backend-wait>strong{display:block;font-size:14px;color:var(--text);font-weight:700}
+.aaa-db-backend-wait>p{margin:0 4px 8px 0;padding:13px 15px;border:1px solid var(--border);border-radius:9px;color:var(--muted);background:var(--surface-2);font-size:12px;line-height:1.6}
+.aaa-context-setup{margin:8px 11px;padding:10px 8px;width:calc(100% - 22px);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:11px;font-weight:700;background:var(--surface-2);color:var(--accent-text)}
+.aaa-context-setup:hover{background:var(--accent-soft)}
+.aaa-context-setup:disabled{opacity:.6;cursor:wait}
