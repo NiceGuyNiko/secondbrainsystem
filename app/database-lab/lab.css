@@ -82,3 +82,11 @@
 .db-lab-disabled h1{font-size:24px}
 @media(max-width:900px){.db-lab-workspace{grid-template-columns:1fr}.db-lab-sidebar{min-height:auto}.db-lab-header{align-items:start;flex-direction:column}.db-lab-mode{max-width:none;width:100%}}
 @media(max-width:580px){.db-lab{padding:14px 10px}.db-lab-header h1{font-size:23px}.db-lab-db-head{padding:18px}.db-lab-db-head h2{font-size:23px}.db-lab-toolbar,.db-lab-editor,.db-lab-new-record{padding:12px}.db-lab-toolbar .db-lab-query{width:100%;margin-left:0}.db-lab-query input{width:100%}.db-lab-new-record button{white-space:nowrap}.db-lab-detail{padding:15px}}
+
+/* Authenticated, opt-in import of author-supplied Characters into staging only. */
+.db-lab-import{border:1px solid var(--border);border-radius:10px;background:var(--surface-2);padding:13px;margin-top:19px}
+.db-lab-import strong{display:block;font-size:12px}
+.db-lab-import p{color:var(--muted);font-size:12px;line-height:1.5;margin:9px 0}
+.db-lab-import button{width:100%;background:var(--accent);color:var(--on-accent);border:1px solid var(--accent);border-radius:8px;padding:10px;font-weight:700}
+.db-lab-import button:disabled{opacity:.6;cursor:wait}
+.db-lab-import small{display:block;color:var(--muted);font-size:11px;line-height:1.45;margin-top:10px}
