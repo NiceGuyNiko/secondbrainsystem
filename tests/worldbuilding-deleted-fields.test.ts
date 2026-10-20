@@ -12,7 +12,7 @@ test("reapplying worldbuilding templates never resurrects a deleted property", a
   {id:"removed-parent",name:"Parent event",type:"relation",database_id:ids.get("Events")!,
    config:{target_database_id:ids.get("Events"),multi:false,hierarchy:true},position:0,version:2,archived_at:"2026-10-20T00:00:00Z"},
  ];
- type Row=(typeof removed)[number];
+ type Row={id:string;name:string;type:string;database_id:string;config:Record<string,unknown>;position:number;version:number;archived_at:string|null};
  const props:Row[]=[...removed];
  const inserted:string[]=[];
  const client={
@@ -33,7 +33,7 @@ test("reapplying worldbuilding templates never resurrects a deleted property", a
      single:async()=>{
       inserted.push(data.database_id+"|"+data.name);
       const result={...data,id:"insert-"+inserted.length,version:1,archived_at:null};
-      props.push(result as Row);
+      props.push(result);
       return {data:result,error:null};
      },
     }),
