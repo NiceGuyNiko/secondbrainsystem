@@ -9,6 +9,7 @@ export default function InlineSelectPicker({name,value,options,onChoose,onCreate
  onCreate:(newOption:string)=>Promise<void>;
 }){
  const [open,setOpen]=useState(false),[query,setQuery]=useState(""),[busy,setBusy]=useState(false);
+ const [failure,setFailure]=useState("");
  const trigger=useRef<HTMLButtonElement>(null),input=useRef<HTMLInputElement>(null);
  const [pos,setPos]=useState({top:0,left:0,width:270});
  useEffect(()=>{
@@ -35,12 +36,13 @@ export default function InlineSelectPicker({name,value,options,onChoose,onCreate
  const create=async()=>{
   if(!canCreateOption(options,query)||busy)return;
   setBusy(true);
-  try{await onCreate(query.trim());setQuery("");setOpen(false)}
+  try{await onCreate(query.trim());setQuery("");setFailure("");setOpen(false)}
+  catch(err){setFailure(err instanceof Error?err.message:"Could not create option. Try again.")}
   finally{setBusy(false)}
  };
  return <>
    <button type="button" ref={trigger} aria-label={"Choose "+name} aria-expanded={open} className="db-option-trigger"
-    onClick={()=>{setOpen(v=>!v);setQuery("")}}>
+    onClick={()=>{setOpen(v=>!v);setQuery("");setFailure("")}}>
     {value?<span className="db-option-pill">{value}</span>:<span className="db-option-placeholder">Select</span>}
     <ChevronDown size={13}/>
    </button>
@@ -63,6 +65,7 @@ export default function InlineSelectPicker({name,value,options,onChoose,onCreate
        </button>)}
        {!matches.length&&<p>No matching options</p>}
      </div>
+     {failure&&<p role="alert" className="db-option-error">{failure}</p>}
      {canCreateOption(options,query)&&<button type="button" className="db-option-create" disabled={busy}
        onClick={()=>void create()}><Plus size={14}/> Create <strong>{query.trim()}</strong></button>}
     </div>,document.body)}
