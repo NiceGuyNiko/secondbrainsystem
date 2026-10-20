@@ -232,7 +232,7 @@ function Workspace() {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
     setSection(s);
     setContextId(s==="Workspaces"&&engineEnabled?"writing":undefined);
-    if(s==="Workspaces"&&staging)setWritingExpanded(true);
+    if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
     setContext([]);
     setDatabaseRecordId(null);
     setMobileOpen(false);
@@ -276,7 +276,7 @@ function Workspace() {
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
       setActiveThought(id);
-    else if(section==="Workspaces"&&staging&&id==="writing"){
+    else if(section==="Workspaces"&&engineEnabled&&id==="writing"){
       setWritingExpanded(open=>!open);setContextId("writing");
     } else setContextId(id);
   };
@@ -556,7 +556,7 @@ function Workspace() {
                 <DatabaseLabErrorBoundary>
                   <StagingDatabaseLab key="writing-events" surface="writing-events" databaseName="Events"/>
                 </DatabaseLabErrorBoundary>
-              ) : section==="Workspaces" && staging && contextId==="writing" ? (
+              ) : section==="Workspaces" && engineEnabled && contextId==="writing" ? (
                 <section className="aaa-writing-home">
                   <div className="aaa-writing-eyebrow"><PenLine size={15}/> WRITING WORKSPACE</div>
                   <h1>Writing</h1>
@@ -579,7 +579,7 @@ function Workspace() {
                     "Checking your authenticated database configuration."}</p>
                   {productionEngineState!=="checking"&&<DatabasesWorkspace
                     category={databaseCategory} onOpenRecord={(category,id)=>{setDatabaseCategory(category);setDatabaseRecordId(id);}}
-                    initialRecordId={databaseRecordId}
+                    initialId={databaseRecordId}
                     onOpenDocument={openThought}
                     creationUnavailable/>}
                 </section>
