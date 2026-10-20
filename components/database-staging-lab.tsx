@@ -120,6 +120,7 @@ export default function StagingDatabaseLab(){
  const perspectivesDatabase=dbs.find(d=>d.name.toLowerCase()==="perspectives");
  const snapshotPair=record?perspectives.find(p=>p.record_id===record.record_id):undefined;
  const isEvents=database?.name.toLowerCase()==="events";
+ const eventOutline=isEvents&&view?.config?.eventPresentation!=="table";
  const isCharacters=database?.name.toLowerCase()==="characters";
  const eventProperties=props.filter(p=>p.database_id===eventsDatabase?.id);
  const orderProperty=eventProperties.find(p=>p.name.toLowerCase()==="chronology order");
@@ -373,9 +374,9 @@ export default function StagingDatabaseLab(){
       <select aria-label="Saved view" value={view?.id||""} onChange={e=>setViewId(e.target.value)}>
        {activeViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select>
       {isEvents&&<button className="db-lab-outline-toggle" type="button"
-       aria-pressed={view?.config?.eventPresentation==="outline"}
-       onClick={()=>updateView({config:{...view?.config,eventPresentation:view?.config?.eventPresentation==="outline"?"table":"outline"}})}>
-       {view?.config?.eventPresentation==="outline"?"▾ Chronology":"▸ Chronology"}</button>}
+       aria-pressed={eventOutline}
+       onClick={()=>updateView({config:{...view?.config,eventPresentation:eventOutline?"table":"outline"}})}>
+       {eventOutline?"▾ Chronology":"▸ Chronology"}</button>}
       <select aria-label="Database layout" value={view?.layout||"table"} onChange={e=>updateView({layout:e.target.value,config:{...view?.config,eventPresentation:"table"}})}>
        <option value="table">Table</option><option value="gallery">Gallery</option>
       </select>
@@ -473,13 +474,13 @@ export default function StagingDatabaseLab(){
        </button>
       </form>
      </section>}
-     {isEvents&&view?.config?.eventPresentation==="outline"&&<EventChronologyTree
+     {eventOutline&&<EventChronologyTree
       events={list} links={links} pairs={perspectives}
       scalePropertyId={scaleProperty?.id} parentPropertyId={parentProperty?.id}
       orderPropertyId={orderProperty?.id} label={label}
       onOpenEvent={id=>openRelatedRecord(eventsDatabase!.id,id)}
       onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/>}
-     {view?.config?.eventPresentation!=="outline"&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
+     {!eventOutline&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
      <SyncedScrollTable><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
