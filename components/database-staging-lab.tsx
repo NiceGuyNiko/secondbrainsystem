@@ -465,7 +465,7 @@ export default function StagingDatabaseLab(){
       orderPropertyId={orderProperty?.id} label={label}
       onOpenEvent={id=>openRelatedRecord(eventsDatabase!.id,id)}
       onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/>}
-     {view?.config?.eventPresentation!=="outline"&&(     {view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
+     {view?.config?.eventPresentation!=="outline"&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
      <SyncedScrollTable><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
@@ -473,7 +473,7 @@ export default function StagingDatabaseLab(){
       </th>)}</tr></thead>
       <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
        <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
-     {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>]}
+     {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
      </>}
    </>}
    <footer className="db-lab-footer">Connected to staging Supabase only · Sign-in required · No production database changes</footer>
