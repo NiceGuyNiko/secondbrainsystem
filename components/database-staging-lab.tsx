@@ -7,6 +7,10 @@ import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody
 import { WORLD_DATABASE_TEMPLATES, setupWorldbuildingDatabases } from "@/lib/db-engine/worldbuilding-templates";
 import {DatabasePropertyHeading,RestoreDatabaseProperties} from "@/components/db-property-heading";
 import SyncedScrollTable from "@/components/synced-scroll-table";
+import InlineSelectPicker from "@/components/db-inline-select";
+import ViewRulesMenu from "@/components/db-view-rules";
+import EventChronologyTree from "@/components/db-chronology-tree";
+import {applyViewRules,readViewConfig,type ViewFilter,type ViewSort,type QueryMode} from "@/lib/db-engine/view-operators";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;version:number;archived_at:string|null;
  config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
@@ -87,11 +91,17 @@ export default function StagingDatabaseLab(){
   const pair=perspectives.find(p=>p.record_id===id);
   return pair?rawLabel(pair.character_id)+" during "+rawLabel(pair.event_id):rawLabel(id);
  };
- const list=records.filter(x=>x.database_id===dbId&&(!search||[label(x.record_id),...Object.values(x.values_json)].join(" ").toLowerCase().includes(search.toLowerCase())))
- .sort((a,b)=>{const av=sort==="creation"?a.sequence_no:sort==="name"?label(a.record_id):a.values_json[sort];
- const bv=sort==="creation"?b.sequence_no:sort==="name"?label(b.record_id):b.values_json[sort];
- const n=typeof av==="number"&&typeof bv==="number"?av-bv:String(av??"").localeCompare(String(bv??""),undefined,{numeric:true});
- return reverse?-n:n;});
+ const savedRules=readViewConfig(view?.config);
+ const selectionFields=[{id:"name",name:"Name",type:"text"},{id:"creation",name:"ID",type:"number"},
+  ...cols.map(p=>({id:p.id,name:p.name,type:p.type,options:p.config.options}))];
+ const changeRules=(filters:ViewFilter[],filterMode:QueryMode,sorts:ViewSort[])=>{
+  if(!view)return;
+  updateView({config:{...view.config,filters,filterMode,sorts}});
+ };
+ const list=applyViewRules(records.filter(x=>x.database_id===dbId),savedRules,{
+   name:(id:string)=>label(id),
+   relationTargets:(recordId:string,propertyId:string)=>links.filter(l=>l.source_record_id===recordId&&l.property_id===propertyId).map(l=>label(l.target_record_id)),
+ },search);
  const record=records.find(x=>x.record_id===selected && x.database_id===dbId);
  const charactersDatabase=dbs.find(d=>d.name.toLowerCase()==="characters");
  const eventsDatabase=dbs.find(d=>d.name.toLowerCase()==="events");
@@ -194,6 +204,24 @@ export default function StagingDatabaseLab(){
  const saveValue=(r:Rec,p:Prop,v:string|number|boolean|null)=>void run(async()=>{
   check(await supabase.rpc("db_set_value",{p_record_id:r.record_id,p_version:r.version,p_property_id:p.id,p_value:v}));
  },"Value saved to staging");
+ const selectNewOption=async(r:Rec,p:Prop,newOption:string)=>{
+  setError("");setInfo("");
+  try{
+   const next=newOption.trim();
+   const before=p.config.options||[];
+   if(!next||next.length>80||before.some(o=>o.toLowerCase()===next.toLowerCase())||before.length>=60)
+    throw new Error("Option is already present or the select limit has been reached.");
+   const {data,error}=await supabase.from("db_properties")
+    .update({config:{...p.config,options:[...before,next]}})
+    .eq("id",p.id).eq("database_id",p.database_id).eq("version",p.version)
+    .select("id").maybeSingle();
+   if(error)throw error;
+   if(!data)throw new Error("Another user updated the options. Refresh and try again.");
+   check(await supabase.rpc("db_set_value",{p_record_id:r.record_id,p_version:r.version,p_property_id:p.id,p_value:next}));
+   await refresh();setInfo("Created “"+next+"” and selected it.");
+  }catch(e){const err=e instanceof Error?e.message:String(e);setError(err);throw e}
+ };
+
  const saveRelation=(r:Rec,p:Prop,t:string)=>void run(async()=>{
   check(await supabase.rpc("db_link",{p_property_id:p.id,p_source:r.record_id,p_target:t}));
  },"Relation saved to staging");
@@ -220,8 +248,9 @@ export default function StagingDatabaseLab(){
   }
   const value=r.values_json[p.id];
   if(p.type==="checkbox")return <input type="checkbox" aria-label={p.name} checked={value===true} onChange={e=>saveValue(r,p,e.target.checked)}/>;
-  if(p.type==="select")return <select aria-label={p.name} value={String(value??"")} onChange={e=>saveValue(r,p,e.target.value||null)}>
-    <option value="">—</option>{(p.config.options||[]).map(o=><option key={o} value={o}>{o}</option>)}</select>;
+  if(p.type==="select")return <InlineSelectPicker name={p.name} value={String(value??"")} options={p.config.options||[]}
+    onChoose={value=>saveValue(r,p,value)}
+    onCreate={newOption=>selectNewOption(r,p,newOption)}/>;
   return <input key={r.record_id+":"+p.id+":"+r.version} aria-label={p.name} type={p.type==="number"?"number":p.type==="date"?"date":"text"}
    defaultValue={value===undefined||value===null?"":String(value)}
    onBlur={e=>{const t=e.target.value;if(t===String(value??""))return;saveValue(r,p,t===""?null:p.type==="number"?Number(t):t)}}
@@ -325,16 +354,28 @@ export default function StagingDatabaseLab(){
    {error&&<div role="alert" className="db-lab-error">{error}<button onClick={()=>setError("")}>Dismiss</button></div>}
    {info&&<div role="status" className="db-lab-notice">{info}</div>}
    {database&&<>
-    <div className="db-lab-toolbar"><label>Saved view <select value={view?.id||""} onChange={e=>setViewId(e.target.value)}>
-     {activeViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
-    <label>Layout <select value={view?.layout||"table"} onChange={e=>updateView({layout:e.target.value})}>
-     <option value="table">Table</option><option value="gallery">Gallery</option></select></label>
-    <button onClick={createView}>+ Save view</button><button onClick={()=>setShowProperties(v=>!v)}>+ Property</button>
-    <label>Sort <select value={sort} onChange={e=>setSort(e.target.value)}>
-     <option value="creation">Creation order</option><option value="name">Name</option>
-     {cols.filter(p=>p.type!=="relation").map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
-    <button onClick={()=>setReverse(v=>!v)}>{reverse?"Descending":"Ascending"}</button>
-    <label className="db-lab-query">Search <input value={search} onChange={e=>setSearch(e.target.value)}/></label></div>
+    <div className="db-lab-toolbar db-lab-toolbar-clean">
+     <div className="db-lab-toolbar-left">
+      <select aria-label="Saved view" value={view?.id||""} onChange={e=>setViewId(e.target.value)}>
+       {activeViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select>
+      {isEvents&&<button className="db-lab-outline-toggle" type="button"
+       aria-pressed={view?.config?.eventPresentation==="outline"}
+       onClick={()=>updateView({config:{...view?.config,eventPresentation:view?.config?.eventPresentation==="outline"?"table":"outline"}})}>
+       {view?.config?.eventPresentation==="outline"?"▾ Chronology":"▸ Chronology"}</button>}
+      <select aria-label="Database layout" value={view?.layout||"table"} onChange={e=>updateView({layout:e.target.value,config:{...view?.config,eventPresentation:"table"}})}>
+       <option value="table">Table</option><option value="gallery">Gallery</option>
+      </select>
+      <button onClick={createView}>+ View</button>
+     </div>
+     <div className="db-lab-toolbar-right">
+      <ViewRulesMenu fields={selectionFields} filters={savedRules.filters} filterMode={savedRules.filterMode}
+       sorts={savedRules.sorts}
+       onFilters={(filters,mode)=>changeRules(filters,mode,savedRules.sorts)}
+       onSorts={sorts=>changeRules(savedRules.filters,savedRules.filterMode,sorts)}/>
+      <input className="db-lab-search-input" aria-label="Search this database" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      <button onClick={()=>setShowProperties(v=>!v)}>+ Property</button>
+     </div>
+    </div>
     {showProperties&&<div className="db-lab-editor"><strong>Create a property</strong><div className="db-lab-form-grid">
      <label>Name<input value={addProp} placeholder="e.g. Motivation" onChange={e=>setAddProp(e.target.value)}/></label>
      <label>Type<select value={propType} onChange={e=>setPropType(e.target.value)}>{types.map(t=><option key={t} value={t}>{t}</option>)}</select></label>
@@ -418,31 +459,13 @@ export default function StagingDatabaseLab(){
        </button>
       </form>
      </section>}
-     {isEvents&&<section className="db-lab-timeline">
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-       <strong>World chronology · Events & Moments</strong>
-       <button type="button" onClick={()=>setShowTimeline(v=>!v)}>{showTimeline?"Collapse":"Expand"}</button>
-      </div>
-      <p>Every event can stand alone. Set its optional Chronology order to place it precisely; link Parent event only when appropriate. Snapshots are attached to the event they describe.</p>
-      {showTimeline&&chronology.map(event=>{
-       const eventsSnapshots=perspectives.filter(p=>p.event_id===event.record_id);
-       const parentLink=parentProperty?links.find(l=>l.property_id===parentProperty.id&&l.source_record_id===event.record_id):undefined;
-       const order=orderProperty?.id?event.values_json[orderProperty.id]:undefined;
-       const scale=scaleProperty?.id?event.values_json[scaleProperty.id]:undefined;
-       return <div key={event.record_id} className="db-lab-moment-row">
-        <button type="button" onClick={()=>openRelatedRecord(eventsDatabase!.id,event.record_id)}>{label(event.record_id)} ↗</button>
-        <small> · {scale||"Event"}{order!==undefined&&order!==null?" · Order "+order:" · Order not set"}</small>
-        {parentLink&&<p>Within {label(parentLink.target_record_id)}</p>}
-        {eventsSnapshots.length>0&&<div className="db-lab-moment-snapshots">
-         {eventsSnapshots.map(p=><button key={p.record_id} type="button"
-           onClick={()=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,p.record_id)}>
-           {label(p.record_id)} ↗
-          </button>)}
-        </div>}
-       </div>;
-      })}
-     </section>}
-     {view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
+     {isEvents&&view?.config?.eventPresentation==="outline"&&<EventChronologyTree
+      events={list} links={links} pairs={perspectives}
+      scalePropertyId={scaleProperty?.id} parentPropertyId={parentProperty?.id}
+      orderPropertyId={orderProperty?.id} label={label}
+      onOpenEvent={id=>openRelatedRecord(eventsDatabase!.id,id)}
+      onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/>}
+     {view?.config?.eventPresentation!=="outline"&&(     {view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
      <SyncedScrollTable><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
@@ -450,7 +473,8 @@ export default function StagingDatabaseLab(){
       </th>)}</tr></thead>
       <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
        <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
-     {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
+     {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>]}
+     </>}
    </>}
    <footer className="db-lab-footer">Connected to staging Supabase only · Sign-in required · No production database changes</footer>
   </section></div></main>;
