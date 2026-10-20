@@ -128,6 +128,8 @@ export async function importFirstCharactersToStaging(client:SupabaseClient,notif
     const from=byTitle.get(storyKey(edge.from));
     const to=byTitle.get(storyKey(edge.to));
     if(!property||!from||!to)throw new Error("Missing relation endpoints in import.");
+    // Removing a relation column is a user decision, not a request to refill it.
+    if(property.archived_at)continue;
     const key=[property.id,from.record_id,to.record_id].join("|");
     if(has.has(key))continue;
     notify("Linking "+edge.from+" → "+edge.to);
@@ -138,7 +140,7 @@ export async function importFirstCharactersToStaging(client:SupabaseClient,notif
   // Reuse The Blackout event and the existing Experienced relation, if present.
   // Do not fabricate an event or overwrite links a user already curated.
   const events=dbs.find(d=>storyKey(d.name)==="events");
-  const experienced=definitions.find(p=>storyKey(p.name)==="experienced"&&p.type==="relation"
+  const experienced=definitions.find(p=>storyKey(p.name)==="experienced"&&!p.archived_at&&p.type==="relation"
     &&p.config.target_database_id===events?.id);
   if(events&&experienced) {
     const eventRecords=must(await client.from("db_records").select("record_id").eq("database_id",events.id).is("archived_at",null)) as Array<{record_id:string}>;
