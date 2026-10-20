@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {applyViewRules,readViewConfig} from "../lib/db-engine/view-operators";
+import {applyViewRules,readViewConfig,activeViewConfig} from "../lib/db-engine/view-operators";
 import {canCreateOption,optionMatches} from "../lib/db-engine/select-options";
 
 const rows=[
@@ -42,4 +42,19 @@ test("multi-sort honors priority of sort rows and deterministic creation tie-bre
  assert.deepEqual(applyViewRules(rows,config,ctx).map(r=>r.record_id),["c","a","b"]);
  assert.deepEqual(applyViewRules(rows,readViewConfig({}),ctx,"fina").map(r=>r.record_id),["c"]);
  assert.deepEqual(readViewConfig({filters:[{field:123}],sorts:[null,{}]}).filters,[]);
+});
+
+test("first client render without a saved view or filter draft is safe",()=>{
+ const before=activeViewConfig(undefined,null);
+ assert.equal(before,undefined,"no draft is accessed during unauthenticated/loading render");
+ assert.deepEqual(readViewConfig(before),{filters:[],sorts:[],filterMode:"all"});
+ const saved={id:"view-1",config:{filterMode:"any",filters:[],sorts:[]}};
+ assert.equal(activeViewConfig(saved,null),saved.config);
+ const draft={id:"view-1",config:{filterMode:"all",filters:[],sorts:[]}};
+ assert.equal(activeViewConfig(saved,draft),draft.config);
+ const unrelated={id:"view-2",config:{}};
+ assert.equal(activeViewConfig(saved,unrelated),saved.config,
+  "draft from another view must never override the active view");
+ assert.equal(activeViewConfig(null,null),undefined,
+  "both optional IDs being absent must never dereference null");
 });
