@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
 import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody-special-characters";
+import { WORLD_DATABASE_TEMPLATES, setupWorldbuildingDatabases } from "@/lib/db-engine/worldbuilding-templates";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
 type Rec={record_id:string;database_id:string;sequence_no:number;version:number;values_json:Record<string,string|number|boolean|null>;archived_at:string|null};
@@ -40,6 +41,8 @@ export default function StagingDatabaseLab(){
  const [reverse,setReverse]=useState(false);
  const [importing,setImporting]=useState(false);
  const [importProgress,setImportProgress]=useState("");
+ const [settingUpWorld,setSettingUpWorld]=useState(false);
+ const [setupProgress,setSetupProgress]=useState("");
  const refresh=useCallback(async()=>{
   const [a,b,c,d,e,f]=await Promise.all([
    supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
@@ -69,6 +72,15 @@ export default function StagingDatabaseLab(){
  const n=typeof av==="number"&&typeof bv==="number"?av-bv:String(av??"").localeCompare(String(bv??""),undefined,{numeric:true});
  return reverse?-n:n;});
  const record=records.find(x=>x.record_id===selected && x.database_id===dbId);
+ const incomingLinks=record?links.filter(l=>l.target_record_id===record.record_id).map(link=>{
+  const property=props.find(p=>p.id===link.property_id);
+  const origin=records.find(r=>r.record_id===link.source_record_id);
+  if(!property||!origin)return null;
+  return {link,property,origin,database:dbs.find(d=>d.id===origin.database_id)};
+ }).filter((v):v is NonNullable<typeof v>=>v!==null):[];
+ const openRelatedRecord=(nextDbId:string,nextRecordId:string)=>{
+  setDbId(nextDbId);setSelected(nextRecordId);setViewId("");
+ };
  const addDatabase=()=>void run(async()=>{
   const id=crypto.randomUUID();check(await supabase.rpc("db_create_database",{p_id:id,p_name:addDb.trim(),p_dataset:"acceptance"}));
   setDbId(id);setAddDb("");
@@ -110,7 +122,7 @@ export default function StagingDatabaseLab(){
    return <div className="db-lab-relations"><div className="db-lab-relations-chips">{assigned.map(l=><button type="button" className="db-lab-chip" key={l.id} onClick={()=>removeRelation(l.id)} title="Remove link">{label(l.target_record_id)} ×</button>)}</div>
    <select aria-label={"Link "+p.name} value="" onChange={e=>{if(e.target.value)saveRelation(r,p,e.target.value)}}>
     <option value="">+ Link record</option>
-    {records.filter(x=>x.database_id===p.config.target_database_id&&x.record_id!==r.record_id&&!assigned.some(l=>l.target_record_id===x.record_id)).map(x=><option key={x.record_id} value={x.record_id}>{label(x.record_id)}</option>)}
+    {(p.config.multi!==false||assigned.length===0) && records.filter(x=>x.database_id===p.config.target_database_id&&x.record_id!==r.record_id&&!assigned.some(l=>l.target_record_id===x.record_id)).map(x=><option key={x.record_id} value={x.record_id}>{label(x.record_id)}</option>)}
    </select></div>;
   }
   const value=r.values_json[p.id];
@@ -125,6 +137,21 @@ export default function StagingDatabaseLab(){
  const characterDb=dbs.find(d=>d.name.toLowerCase()==="characters");
  const characterIds=new Set(records.filter(r=>r.database_id===characterDb?.id).map(r=>r.record_id));
  const missingCharacters=countMissingCharacters(items.filter(i=>characterIds.has(i.id)).map(i=>i.title));
+ const worldSetupMissing=WORLD_DATABASE_TEMPLATES.filter(template=>
+  !dbs.some(d=>d.name.trim().toLowerCase()===template.name.toLowerCase())).length;
+ const startWorldSetup=async()=>{
+  if(settingUpWorld||loading)return;
+  if(!window.confirm("Add the seven linked worldbuilding databases and missing relation properties to your staging account? Existing Characters, Events, IDs, properties, values and links will be preserved."))return;
+  setSettingUpWorld(true);setSetupProgress("Preparing worldbuilding databases");setError("");setInfo("");
+  try{
+   const result=await setupWorldbuildingDatabases(supabase,setSetupProgress);
+   await refresh();
+   setInfo(`Worldbuilding foundation ready: ${result.databasesCreated} databases created, ${result.databasesReused} reused, ${result.propertiesCreated} relation/metadata properties added and ${result.selectOptionsExpanded} select property sets expanded. No existing records were replaced.`);
+  }catch(e){
+   setError("Worldbuilding setup stopped: "+(e instanceof Error?e.message:String(e))+
+     ". Existing records remain unchanged. You can safely retry the setup.");
+  }finally{setSettingUpWorld(false);setSetupProgress("");}
+ };
  const startCharacterImport=async()=>{
   if(importing||loading)return;
   if(!window.confirm("Import the 23 starter Characters into your signed-in staging account? Existing Characters, IDs, and nonempty fields will be preserved. Only missing records and fields will be added."))return;
@@ -154,6 +181,13 @@ export default function StagingDatabaseLab(){
    {dbs.map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
     <span>🗃️</span><span>{d.name}</span><small>{records.filter(r=>r.database_id===d.id).length}</small></button>)}
    <div className="db-lab-inline-form"><input aria-label="Database name" placeholder="New database name" value={addDb} onChange={e=>setAddDb(e.target.value)}/><button onClick={addDatabase} disabled={!addDb.trim()}>+ Create</button></div>
+   <section className="db-lab-import"><strong>Worldbuilding foundation</strong>
+    <p>Seven linked databases: Characters, Events, Groups, Locations, Power Systems, Abilities and Lore.</p>
+    <p>{worldSetupMissing===0?"All seven databases exist.":worldSetupMissing+" databases need to be added."} Creates typed relationships and parent hierarchies without duplicating your records.</p>
+    <button type="button" disabled={loading||settingUpWorld||importing} onClick={()=>void startWorldSetup()}>{settingUpWorld?"Setting up…":"Set up linked databases"}</button>
+    {settingUpWorld&&<p role="status">{setupProgress}</p>}
+    <small>Opt-in and repeatable · No sample locations, abilities or lore records will be invented.</small>
+   </section>
    <section className="db-lab-import"><strong>Nobody Special starter dataset</strong><p>{FIRST_CHARACTERS.length} Characters · {missingCharacters} missing from your staging account. Adds structured story fields and only explicitly described connections.</p><button type="button" disabled={loading||importing} onClick={()=>void startCharacterImport()}>{importing?"Importing…":"Import 23 Characters"}</button>{importing&&<p role="status">{importProgress}</p>}<small>Review before importing. Existing names, IDs, genders, descriptions, and links are preserved.</small></section>
    <section className="db-lab-checklist"><strong>Real backend acceptance</strong><p>{checklist.filter(x=>x[1]).length} / {checklist.length} steps completed</p>
     {checklist.map(([s,done])=><div key={s} className="db-lab-check"><span>{done?"✓":"○"}</span>{s}</div>)}
@@ -189,6 +223,19 @@ export default function StagingDatabaseLab(){
      <label className="db-lab-detail-title">Name<input key={record.record_id} defaultValue={label(record.record_id)} onBlur={e=>saveTitle(record.record_id,e.target.value)}
        onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/></label>
      <div className="db-lab-detail-grid">{cols.map(p=><div key={p.id} className="db-lab-detail-field"><label>{p.name}<small>{p.type}</small></label>{renderCell(record,p)}</div>)}</div>
+     <section className="db-lab-backlinks">
+       <strong>Referenced by other records</strong>
+       <p>Automatic backlinks from shared relationships. These aren't copied records.</p>
+       {incomingLinks.length===0?<small>No incoming relationships yet.</small>:
+        <div className="db-lab-backlink-list">
+        {incomingLinks.map(({link,property,origin,database})=>
+         <button type="button" key={link.id}
+           onClick={()=>openRelatedRecord(origin.database_id,origin.record_id)}>
+           <span>{label(origin.record_id)} <small>({database?.name??"Database"})</small></span>
+           <span className="db-lab-backlink-detail">via {property.name} →</span>
+         </button>)}
+        </div>}
+     </section>
      <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}</div></div>:<>
      <form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
