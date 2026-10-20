@@ -6,6 +6,7 @@ import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-cha
 import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody-special-characters";
 import { WORLD_DATABASE_TEMPLATES, setupWorldbuildingDatabases } from "@/lib/db-engine/worldbuilding-templates";
 import {DatabasePropertyHeading,RestoreDatabaseProperties} from "@/components/db-property-heading";
+import SyncedScrollTable from "@/components/synced-scroll-table";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;version:number;archived_at:string|null;
  config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
@@ -50,6 +51,9 @@ export default function StagingDatabaseLab(){
  const [setupProgress,setSetupProgress]=useState("");
  const [snapshotChoice,setSnapshotChoice]=useState("");
  const [makingSnapshot,setMakingSnapshot]=useState(false);
+ const [momentName,setMomentName]=useState("");
+ const [creatingMoment,setCreatingMoment]=useState(false);
+ const [showTimeline,setShowTimeline]=useState(true);
  const refresh=useCallback(async()=>{
   const [a,b,c,d,e,f,g]=await Promise.all([
    supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
@@ -93,6 +97,49 @@ export default function StagingDatabaseLab(){
  const eventsDatabase=dbs.find(d=>d.name.toLowerCase()==="events");
  const perspectivesDatabase=dbs.find(d=>d.name.toLowerCase()==="perspectives");
  const snapshotPair=record?perspectives.find(p=>p.record_id===record.record_id):undefined;
+ const isEvents=database?.name.toLowerCase()==="events";
+ const isCharacters=database?.name.toLowerCase()==="characters";
+ const eventProperties=props.filter(p=>p.database_id===eventsDatabase?.id);
+ const orderProperty=eventProperties.find(p=>p.name.toLowerCase()==="chronology order");
+ const scaleProperty=eventProperties.find(p=>p.name.toLowerCase()==="scale");
+ const parentProperty=eventProperties.find(p=>p.name.toLowerCase()==="parent event"&&p.type==="relation");
+ const chronology=records.filter(r=>r.database_id===eventsDatabase?.id).sort((a,b)=>{
+   const one=orderProperty?.id?a.values_json[orderProperty.id]:undefined;
+   const two=orderProperty?.id?b.values_json[orderProperty.id]:undefined;
+   if(typeof one==="number"&&typeof two==="number")return one-two;
+   if(typeof one==="number")return -1;
+   if(typeof two==="number")return 1;
+   return a.sequence_no-b.sequence_no;
+ });
+ const createStandaloneMoment=()=>void(async()=>{
+  const title=momentName.trim();
+  if(!eventsDatabase||!title||creatingMoment)return;
+  setCreatingMoment(true);setInfo("");setError("");
+  try{
+   const id=crypto.randomUUID();
+   check(await supabase.rpc("db_create_record",{p_id:id,p_database_id:eventsDatabase.id,p_name:title}));
+   if(scaleProperty?.type==="select"&&scaleProperty.config.options?.includes("Moment")){
+      check(await supabase.rpc("db_set_value",{
+        p_record_id:id,p_version:1,p_property_id:scaleProperty.id,p_value:"Moment"
+      }));
+   }
+   // A Moment remains a full Event even when no umbrella Event exists.
+   // A Character snapshot, if requested, links to that Moment after creation.
+   let snapshotId="";
+   if(record&&isCharacters&&perspectivesDatabase){
+     const created=check(await supabase.rpc("db_create_perspective",{
+       p_id:crypto.randomUUID(),p_character_id:record.record_id,p_event_id:id
+     }));
+     snapshotId=String(created);
+   }
+   await refresh();
+   setMomentName("");
+   if(snapshotId&&perspectivesDatabase)openRelatedRecord(perspectivesDatabase.id,snapshotId);
+   else openRelatedRecord(eventsDatabase.id,id);
+   setInfo("Standalone Moment saved in Events. It does not require a parent event or a known date.");
+  }catch(e){setError(e instanceof Error?e.message:String(e))}
+  finally{setCreatingMoment(false)}
+ })();
  const currentSnapshotPairs=record?perspectives.filter(p=>
    database?.name.toLowerCase()==="characters"?p.character_id===record.record_id:
    database?.name.toLowerCase()==="events"?p.event_id===record.record_id:false):[];
@@ -247,12 +294,12 @@ export default function StagingDatabaseLab(){
    <div className="db-lab-mode"><strong>STAGING SUPABASE · LIVE</strong><span>Saved to an isolated cloud database · Not production</span></div></header>
   <div className="db-lab-workspace"><aside className="db-lab-sidebar">
    <div className="db-lab-sidebar-heading"><strong>Databases</strong></div>
-   {dbs.map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
+   {dbs.filter(d=>d.name.toLowerCase()!=="perspectives").map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
     <span>🗃️</span><span>{d.name}</span><small>{records.filter(r=>r.database_id===d.id).length}</small></button>)}
    <div className="db-lab-inline-form"><input aria-label="Database name" placeholder="New database name" value={addDb} onChange={e=>setAddDb(e.target.value)}/><button onClick={addDatabase} disabled={!addDb.trim()}>+ Create</button></div>
    <section className="db-lab-import"><strong>Worldbuilding foundation</strong>
-    <p>Eight linked databases, including Perspectives (Character × Event), Groups and Abilities.</p>
-    <p>{worldSetupMissing===0?"All seven databases exist.":worldSetupMissing+" databases need to be added."} Creates typed relationships and parent hierarchies without duplicating your records.</p>
+    <p>Seven worldbuilding databases, with Character snapshots kept in Events. The Perspectives junction remains internal.</p>
+    <p>{worldSetupMissing===0?"All worldbuilding databases and snapshot storage exist.":worldSetupMissing+" parts need to be set up."} Creates typed relationships and parent hierarchies without duplicating your records.</p>
     <button type="button" disabled={loading||settingUpWorld||importing} onClick={()=>void startWorldSetup()}>{settingUpWorld?"Setting up…":"Set up linked databases"}</button>
     {settingUpWorld&&<p role="status">{setupProgress}</p>}
     <small>Opt-in and repeatable · No sample locations, abilities or lore records will be invented.</small>
@@ -329,6 +376,16 @@ export default function StagingDatabaseLab(){
         </div>}
        {!perspectivesDatabase&&<p>Run Set up linked databases to enable Perspectives.</p>}
        </section>}
+     {(isCharacters||isEvents)&&eventsDatabase&&<section className="db-lab-snapshot-context">
+       <strong>{isEvents?"Create an independent Moment":"Add an encounter for this Character"}</strong>
+       <p>{isEvents?"Moments live in Events, even without an umbrella Event. Add a parent later if useful.":"Create a standalone Moment and immediately open this Character’s snapshot for it. No larger Event is required."}</p>
+       <form className="db-lab-inline-form" onSubmit={e=>{e.preventDefault();createStandaloneMoment()}}>
+        <input aria-label="Standalone Moment title" value={momentName} onChange={e=>setMomentName(e.target.value)}
+          placeholder="e.g. Theodore meets Cammy after the Blackout" maxLength={160} required/>
+        <button type="submit" disabled={!momentName.trim()||creatingMoment}>
+          {creatingMoment?"Creating…":"Create Moment"}</button>
+       </form>
+      </section>}
      <div className="db-lab-detail-grid">{cols.map(p=><div key={p.id} className="db-lab-detail-field">
       <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       {renderCell(record,p)}</div>)}</div>
@@ -349,14 +406,38 @@ export default function StagingDatabaseLab(){
      <form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
       <button type="submit">+ New record</button></form>
+     {isEvents&&<section className="db-lab-timeline">
+      <row style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+       <strong>World chronology · Events & Moments</strong>
+       <button type="button" onClick={()=>setShowTimeline(v=>!v)}>{showTimeline?"Collapse":"Expand"}</button>
+      </row>
+      <p>Every event can stand alone. Set its optional Chronology order to place it precisely; link Parent event only when appropriate. Snapshots are attached to the event they describe.</p>
+      {showTimeline&&chronology.map(event=>{
+       const eventsSnapshots=perspectives.filter(p=>p.event_id===event.record_id);
+       const parentLink=parentProperty?links.find(l=>l.property_id===parentProperty.id&&l.source_record_id===event.record_id):undefined;
+       const order=orderProperty?.id?event.values_json[orderProperty.id]:undefined;
+       const scale=scaleProperty?.id?event.values_json[scaleProperty.id]:undefined;
+       return <div key={event.record_id} className="db-lab-moment-row">
+        <button type="button" onClick={()=>openRelatedRecord(eventsDatabase!.id,event.record_id)}>{label(event.record_id)} ↗</button>
+        <small> · {scale||"Event"}{order!==undefined&&order!==null?" · Order "+order:" · Order not set"}</small>
+        {parentLink&&<p>Within {label(parentLink.target_record_id)}</p>}
+        {eventsSnapshots.length>0&&<div className="db-lab-moment-snapshots">
+         {eventsSnapshots.map(p=><button key={p.record_id} type="button"
+           onClick={()=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,p.record_id)}>
+           {label(p.record_id)} ↗
+          </button>)}
+        </div>}
+       </div>;
+      })}
+     </section>}
      {view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
-     <div className="db-lab-table-wrap"><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
+     <SyncedScrollTable><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
        <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       </th>)}</tr></thead>
       <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
-       <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></div>}
+       <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
      {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
    </>}
    <footer className="db-lab-footer">Connected to staging Supabase only · Sign-in required · No production database changes</footer>
