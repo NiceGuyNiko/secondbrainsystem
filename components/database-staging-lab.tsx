@@ -8,6 +8,7 @@ import { WORLD_DATABASE_TEMPLATES, setupWorldbuildingDatabases } from "@/lib/db-
 import {DatabasePropertyHeading,RestoreDatabaseProperties} from "@/components/db-property-heading";
 import SyncedScrollTable from "@/components/synced-scroll-table";
 import InlineSelectPicker from "@/components/db-inline-select";
+import InlineRelationPicker from "@/components/db-inline-relation";
 import ViewRulesMenu from "@/components/db-view-rules";
 import EventChronologyTree from "@/components/db-chronology-tree";
 import {applyViewRules,readViewConfig,type ViewFilter,type ViewSort,type QueryMode} from "@/lib/db-engine/view-operators";
@@ -253,11 +254,13 @@ export default function StagingDatabaseLab(){
  const renderCell=(r:Rec,p:Prop)=>{
   if(p.type==="relation"){
    const assigned=links.filter(l=>l.source_record_id===r.record_id&&l.property_id===p.id);
-   return <div className="db-lab-relations"><div className="db-lab-relations-chips">{assigned.map(l=><button type="button" className="db-lab-chip" key={l.id} onClick={()=>removeRelation(l.id)} title="Remove link">{label(l.target_record_id)} ×</button>)}</div>
-   <select aria-label={"Link "+p.name} value="" onChange={e=>{if(e.target.value)saveRelation(r,p,e.target.value)}}>
-    <option value="">+ Link record</option>
-    {(p.config.multi!==false||assigned.length===0) && records.filter(x=>x.database_id===p.config.target_database_id&&x.record_id!==r.record_id&&!assigned.some(l=>l.target_record_id===x.record_id)).map(x=><option key={x.record_id} value={x.record_id}>{label(x.record_id)}</option>)}
-   </select></div>;
+   return <InlineRelationPicker name={p.name}
+    selected={assigned.map(l=>({id:l.id,targetId:l.target_record_id}))}
+    candidates={records.filter(x=>x.database_id===p.config.target_database_id&&x.record_id!==r.record_id)
+      .map(x=>({id:x.record_id,name:label(x.record_id)}))}
+    multi={p.config.multi!==false}
+    onLink={target=>saveRelation(r,p,target)}
+    onUnlink={id=>removeRelation(id)}/>;
   }
   const value=r.values_json[p.id];
   if(p.type==="checkbox")return <input type="checkbox" aria-label={p.name} checked={value===true} onChange={e=>saveValue(r,p,e.target.checked)}/>;
