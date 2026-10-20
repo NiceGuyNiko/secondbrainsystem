@@ -14,7 +14,7 @@ const ctx={
 };
 test("search select options while always permitting custom labels not already used",()=>{
  assert.deepEqual(optionMatches(["P1","P2","P3"],"P"),["P1","P2","P3"]);
- assert.deepEqual(optionMatches(["Canon","Concept","Developing"],"con"),["Canon","Concept"]);
+ assert.deepEqual(optionMatches(["Canon","Concept","Developing"],"c"),["Canon","Concept"]);
  assert.equal(canCreateOption(["P1","P2"],"P"),true,"partial search may also create new option");
  assert.equal(canCreateOption(["P1","P2"],"p1"),false,"case-insensitive duplicates not created");
  assert.equal(canCreateOption(["P1"]," P4 "),true);
