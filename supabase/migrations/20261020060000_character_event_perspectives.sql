@@ -15,7 +15,30 @@ alter table public.db_perspectives enable row level security;
 create policy db_perspectives_owner on public.db_perspectives for select to authenticated
   using(user_id=(select auth.uid()));
 revoke all on public.db_perspectives from public,anon;
-grant select on public.db_perspectives to authenticated;
+grant select,insert on public.db_perspectives to authenticated;
+
+create function public.db_validate_perspective()
+returns trigger language plpgsql security invoker set search_path='' as $
+begin
+ if new.user_id is distinct from auth.uid() then raise exception 'Perspective owner unavailable';end if;
+ if not exists(
+   select 1 from public.db_records r join public.db_databases d
+   on d.id=r.database_id where r.record_id=new.record_id and r.user_id=auth.uid()
+   and d.user_id=auth.uid() and lower(btrim(d.name))='perspectives'
+ ) or not exists(
+   select 1 from public.db_records r join public.db_databases d
+   on d.id=r.database_id where r.record_id=new.character_id and r.user_id=auth.uid()
+   and d.user_id=auth.uid() and lower(btrim(d.name))='characters'
+ ) or not exists(
+   select 1 from public.db_records r join public.db_databases d
+   on d.id=r.database_id where r.record_id=new.event_id and r.user_id=auth.uid()
+   and d.user_id=auth.uid() and lower(btrim(d.name))='events'
+ ) then raise exception 'Perspective links must use your Character, Event and Perspective records';end if;
+ return new;
+end $;
+create trigger db_validate_perspective before insert on public.db_perspectives
+ for each row execute function public.db_validate_perspective();
+revoke all on function public.db_validate_perspective() from public,anon;
 
 -- A Perspective is always created through an authenticated transaction.
 -- The linked character and event must be from the caller's own properly named databases.
