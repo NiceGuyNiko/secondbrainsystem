@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { Settings2 } from "lucide-react";
+import { showVerticalLines, withVerticalLines } from "@/lib/db-engine/table-appearance";
 import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
 import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody-special-characters";
 import { WORLD_DATABASE_TEMPLATES, setupWorldbuildingDatabases } from "@/lib/db-engine/worldbuilding-templates";
@@ -112,18 +114,25 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  const savedRules=readViewConfig(activeRuleConfig);
  const selectionFields=[{id:"name",name:"Name",type:"text"},{id:"creation",name:"ID",type:"number"},
   ...cols.map(p=>({id:p.id,name:p.name,type:p.type,options:p.config.options}))];
- const changeRules=(filters:ViewFilter[],filterMode:QueryMode,sorts:ViewSort[])=>{
+ const updateTableViewConfig=(patch:Record<string,unknown>)=>{
   if(!view)return;
-  const next={...(rulesDraft?.id===view.id?rulesDraft.config:view.config),filters,filterMode,sorts};
+  const next={...(rulesDraft?.id===view.id?rulesDraft.config:view.config),...patch};
   setRulesDraft({id:view.id,config:next});
-  // Keep typing and filtering instantaneous. Persist once editing pauses.
-  // A stable view ID means a delayed save won't apply to a different view.
+  // All view controls share one pending configuration so toggling grid lines
+  // won't overwrite a newly edited filter or sort.
   if(rulesSaveTimer.current)clearTimeout(rulesSaveTimer.current);
   const targetView=view.id,targetDb=dbId;
   rulesSaveTimer.current=setTimeout(async()=>{
    const {error}=await supabase.from("db_views").update({config:next}).eq("id",targetView).eq("database_id",targetDb);
    if(error)setError("View settings could not be saved: "+error.message);
   },550);
+ };
+ const changeRules=(filters:ViewFilter[],filterMode:QueryMode,sorts:ViewSort[])=>{
+  updateTableViewConfig({filters,filterMode,sorts});
+ };
+ const verticalLines=showVerticalLines(activeRuleConfig);
+ const setVerticalLines=(enabled:boolean)=>{
+  updateTableViewConfig(withVerticalLines(activeRuleConfig,enabled));
  };
  const list=applyViewRules(records.filter(x=>x.database_id===dbId),savedRules,{
    name:(id:string)=>label(id),
@@ -407,6 +416,17 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
        onFilters={(filters,mode)=>changeRules(filters,mode,savedRules.sorts)}
        onSorts={sorts=>changeRules(savedRules.filters,savedRules.filterMode,sorts)}/>
       <input className="db-lab-search-input" aria-label="Search this database" placeholder="Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
+      <details className="db-lab-view-settings">
+       <summary aria-label="Database view settings"><Settings2 size={14}/> View settings</summary>
+       <div className="db-lab-view-settings-panel">
+        <strong>Table appearance</strong>
+        <label className="db-lab-settings-choice">
+         <input type="checkbox" checked={verticalLines} onChange={e=>setVerticalLines(e.target.checked)}/>
+         <span>Show vertical column lines</span>
+        </label>
+        <small>Saved for this database view.</small>
+       </div>
+      </details>
       <button onClick={()=>setShowProperties(v=>!v)}>+ Property</button>
      </div>
     </div>}
@@ -504,7 +524,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
      {!eventOutline&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
        <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
-     <SyncedScrollTable><table className="db-lab-table"><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
+     <SyncedScrollTable><table className={"db-lab-table "+(verticalLines?"db-lab-table-dividers":"")}><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id}>
        <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       </th>)}</tr></thead>
       <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
