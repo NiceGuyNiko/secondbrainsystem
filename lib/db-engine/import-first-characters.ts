@@ -7,7 +7,7 @@ import {
 // public Supabase client, never a service-role/admin key. Partial retries are safe:
 // match within the Characters database by title; don't overwrite populated fields.
 type Db = {id:string;name:string};
-type Property = {id:string;database_id:string;name:string;type:string;config:{target_database_id?:string;options?:string[]};position:number};
+type Property = {id:string;database_id:string;name:string;type:string;config:{target_database_id?:string;options?:string[]};position:number;archived_at:string|null};
 type RecordRow = {record_id:string;version:number;values_json:Record<string,unknown>};
 type ItemRow = {id:string;title:string};
 type RelationRow = {id:string;property_id:string;source_record_id:string;target_record_id:string};
@@ -43,8 +43,8 @@ export async function importFirstCharactersToStaging(client:SupabaseClient,notif
   const databaseId=characters.id;
   notify("Checking existing Characters and properties");
 
-  const definitions=must(await client.from("db_properties").select("id,database_id,name,type,config,position")
-    .eq("database_id",databaseId).is("archived_at",null).order("position")) as Property[];
+  const definitions=must(await client.from("db_properties").select("id,database_id,name,type,config,position,archived_at")
+    .eq("database_id",databaseId).order("position")) as Property[];
   const props=new Map(definitions.map(p=>[storyKey(p.name),p]));
   const fields=[...CHARACTER_FIELD_DEFINITIONS,
     ...(["Parents","Siblings","Spouse","Killed","Controls"] as const)
@@ -64,7 +64,7 @@ export async function importFirstCharactersToStaging(client:SupabaseClient,notif
       database_id:databaseId,name:field.name,type:field.type,
       config:("config" in field)?field.config:{},
       position:props.size,
-    }).select("id,database_id,name,type,config,position").single()) as Property;
+    }).select("id,database_id,name,type,config,position,archived_at").single()) as Property;
     props.set(storyKey(result.name),result);
   }
 
@@ -104,6 +104,7 @@ export async function importFirstCharactersToStaging(client:SupabaseClient,notif
       if(value===undefined)continue;
       const property=props.get(storyKey(name));
       if(!property)throw new Error("The "+name+" property is missing.");
+      if(property.archived_at)continue; // Respect user-removed legacy columns: never repopulate them.
       if(next[property.id]!==undefined&&next[property.id]!==null&&next[property.id]!=="")continue;
       next[property.id]=value;
       updated++;
