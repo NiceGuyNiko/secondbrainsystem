@@ -93,7 +93,7 @@ export type WorldSetupResult = {
   databaseIds:Record<string,string>;
 };
 type RowDb={id:string;name:string};
-type RowProperty={id:string;database_id:string;name:string;type:string;config:Record<string,unknown>;position:number};
+type RowProperty={id:string;database_id:string;name:string;type:string;config:Record<string,unknown>;position:number;version:number};
 function checked<T>(result:{data:T;error:{message:string}|null}):T {
   if(result.error)throw new Error(result.error.message);
   return result.data;
@@ -144,7 +144,7 @@ export async function setupWorldbuildingDatabases(
     const dbId=ids[worldDbKey(d.name)];
     onProgress("Connecting "+d.name+" properties");
     const existingProperties=checked(await client.from("db_properties")
-      .select("id,database_id,name,type,config,position").eq("database_id",dbId)
+      .select("id,database_id,name,type,config,position,version").eq("database_id",dbId)
       .is("archived_at",null).order("position").limit(1000)) as RowProperty[];
     const byName=new Map(existingProperties.map(p=>[worldDbKey(p.name),p]));
     for(const p of d.properties){
@@ -160,9 +160,9 @@ export async function setupWorldbuildingDatabases(
           if(p.hierarchy&&prior.config.hierarchy!==true){
             checked(await client.from("db_properties").update({
               config:{...prior.config,hierarchy:true,multi:false},
-            }).eq("id",prior.id).eq("database_id",dbId).eq("version",1).select("id").maybeSingle());
-            // The update is optional for idempotent preexisting schemas;
-            // independent trigger safeguards are also enforced by migration.
+            }).eq("id",prior.id).eq("database_id",dbId).eq("version",prior.version).select("id").maybeSingle());
+            // If this was an existing relation, it can be marked hierarchical
+            // only after its current targets have been checked for cycles.
           }
         }
         if(p.type==="select"){
@@ -181,7 +181,7 @@ export async function setupWorldbuildingDatabases(
       const row=checked(await client.from("db_properties").insert({
         database_id:dbId,name:p.name,type:p.type,config:configuration,
         position:existingProperties.length,
-      }).select("id,database_id,name,type,config,position").single()) as RowProperty;
+      }).select("id,database_id,name,type,config,position,version").single()) as RowProperty;
       existingProperties.push(row);
       byName.set(worldDbKey(p.name),row);
       propertiesCreated++;
