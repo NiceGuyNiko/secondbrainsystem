@@ -105,7 +105,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
   }
  },[databaseName,writingEvents,dbs,dbId]);
  const database=dbs.find(x=>x.id===dbId);
- const cols=props.filter(x=>x.database_id===dbId);
+ const cols=props.filter(x=>x.database_id===dbId).sort((a,b)=>Number(a.position)-Number(b.position));
  const activeViews=views.filter(x=>x.database_id===dbId);
  const view=activeViews.find(x=>x.id===viewId)||activeViews[0];
  const rawLabel=(id:string)=>items.find(x=>x.id===id)?.title||"Untitled";
@@ -141,6 +141,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
    name:(id:string)=>label(id),
    relationTargets:(recordId:string,propertyId:string)=>links.filter(l=>l.source_record_id===recordId&&l.property_id===propertyId).map(l=>label(l.target_record_id)),
  },search);
+ if(!savedRules.sorts.length)list.sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no);
  const record=records.find(x=>x.record_id===selected && x.database_id===dbId);
  const charactersDatabase=dbs.find(d=>d.name.toLowerCase()==="characters");
  const eventsDatabase=dbs.find(d=>d.name.toLowerCase()==="events");
@@ -232,6 +233,37 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  const addRecord=()=>void run(async()=>{
   check(await supabase.rpc("db_create_record",{p_id:crypto.randomUUID(),p_database_id:dbId,p_name:addRec.trim()}));setAddRec("");
  },"Record created");
+ const archiveRecord=(id:string)=>void run(async()=>{
+  if(!window.confirm("Move this record to the archive? It will disappear from the current view but can be restored later. Existing relationships stay stored."))return;
+  const r=records.find(x=>x.record_id===id);
+  if(!r)throw new Error("Record not found");
+  const {data,error}=await supabase.from("db_records").update({archived_at:new Date().toISOString()})
+   .eq("record_id",id).eq("version",r.version).select("record_id").maybeSingle();
+  if(error)throw error;
+  if(!data)throw new Error("Record changed elsewhere; reload");
+  setSelected("");
+ },"Record archived");
+ const moveRecord=(id:string,direction:-1|1)=>void run(async()=>{
+  const ordered=records.filter(r=>r.database_id===dbId).sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no);
+  const index=ordered.findIndex(r=>r.record_id===id),other=ordered[index+direction];
+  if(index<0||!other)return;
+  // Fractional positions avoid rewriting the whole table.
+  const target=index+direction;
+  const neighbor=ordered[target+direction];
+  const next=neighbor?(Number(other.position)+Number(neighbor.position))/2:
+   Number(other.position)+(direction*1024);
+  const {error}=await supabase.from("db_records").update({position:next})
+   .eq("record_id",id).eq("version",ordered[index].version);
+  if(error)throw error;
+ },"Record rearranged");
+ const moveProperty=(id:string,direction:-1|1)=>void run(async()=>{
+  const index=cols.findIndex(p=>p.id===id),other=cols[index+direction];
+  if(index<0||!other)return;
+  const neighbor=cols[index+direction*2];
+  const next=neighbor?(Number(other.position)+Number(neighbor.position))/2:Number(other.position)+direction*1024;
+  const {error}=await supabase.from("db_properties").update({position:next}).eq("id",id).eq("version",cols[index].version);
+  if(error)throw error;
+ },"Column rearranged");
  const addProperty=()=>void run(async()=>{
   const config=propType==="select"?{options:options.split(",").map(s=>s.trim())}:propType==="relation"?{target_database_id:target,multi:true}:{};
   check(await supabase.from("db_properties").insert({database_id:dbId,name:addProp.trim(),type:propType,config,position:cols.length}));
@@ -486,6 +518,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
       </section>}
      <div className="db-lab-detail-grid">{cols.map(p=><div key={p.id} className="db-lab-detail-field">
       <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
+       <div className="db-lab-order-buttons"><button type="button" title="Move column left" onClick={()=>moveProperty(p.id,-1)}>←</button><button type="button" title="Move column right" onClick={()=>moveProperty(p.id,1)}>→</button></div>
       {renderCell(record,p)}</div>)}</div>
      <section className="db-lab-backlinks">
        <strong>Referenced by other records</strong>
@@ -500,7 +533,9 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
          </button>)}
         </div>}
      </section>
-     <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}</div></div>:<>
+     <div className="db-lab-detail-foot">Permanent record ID: {record.record_id}
+      <button type="button" className="db-lab-delete-record" onClick={()=>archiveRecord(record.record_id)}>Archive record</button>
+     </div></div>:<>
      {!writingEvents&&<form className="db-lab-new-record" onSubmit={e=>{e.preventDefault();addRecord()}}>
       <input aria-label="New record name" required placeholder={"New "+database.name+" record"} value={addRec} onChange={e=>setAddRec(e.target.value)}/>
       <button type="submit">+ New record</button></form>}
@@ -531,7 +566,11 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
        <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       </th>)}</tr></thead>
       <tbody>{list.map(r=><tr key={r.record_id}><td><button className="db-lab-record-link" onClick={()=>setSelected(r.record_id)}>{label(r.record_id)} ↗</button></td>
-       <td className="db-lab-id">{r.sequence_no}</td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
+       <td className="db-lab-id">{r.sequence_no}<div className="db-lab-row-actions">
+        <button type="button" title="Move record up" onClick={()=>moveRecord(r.record_id,-1)}>↑</button>
+        <button type="button" title="Move record down" onClick={()=>moveRecord(r.record_id,1)}>↓</button>
+        <button type="button" title="Archive record" onClick={()=>archiveRecord(r.record_id)}>×</button>
+       </div></td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
      {!list.length&&<div className="db-lab-empty">No records yet. Add one above to test cloud persistence.</div>}</>}
      </>}
    </>}
