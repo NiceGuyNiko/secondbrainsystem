@@ -1,5 +1,6 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
+import {createPortal} from "react-dom";
 import {supabase} from "@/lib/supabase";
 export type EditableProperty={
  id:string;database_id:string;name:string;type:string;version:number;
@@ -8,12 +9,38 @@ export type EditableProperty={
 };
 type Props={property:EditableProperty;onRefresh:()=>Promise<void>;onError:(message:string)=>void;onSaved:(message:string)=>void};
 const errText=(error:unknown)=>error instanceof Error?error.message:String(error);
-/** Notion-like property heading: click to rename or archive, without deleting values. */
+/** A floating, click-away-safe property menu. It never changes table row height. */
 export function DatabasePropertyHeading({property,onRefresh,onError,onSaved}:Props){
  const [open,setOpen]=useState(false);
  const [draft,setDraft]=useState(property.name);
  const [busy,setBusy]=useState(false);
+ const trigger=useRef<HTMLButtonElement>(null);
+ const [place,setPlace]=useState({left:8,top:8});
  useEffect(()=>setDraft(property.name),[property.name,property.id]);
+ useEffect(()=>{
+  if(!open)return;
+  const position=()=>{
+   const r=trigger.current?.getBoundingClientRect();
+   if(!r)return;
+   const width=264, height=254, margin=8;
+   const left=Math.max(margin,Math.min(r.left,window.innerWidth-width-margin));
+   const below=r.bottom+6;
+   const top=below+height>window.innerHeight-margin&&r.top>height+margin
+      ?r.top-height-6:Math.max(margin,Math.min(below,window.innerHeight-height-margin));
+   setPlace({left,top});
+  };
+  position();
+  window.addEventListener("resize",position);
+  // Capture scrolls from the table or any scrolling ancestor.
+  window.addEventListener("scroll",position,true);
+  const key=(e:KeyboardEvent)=>{if(e.key==="Escape"){e.preventDefault();setOpen(false)}};
+  document.addEventListener("keydown",key);
+  return()=>{
+   window.removeEventListener("resize",position);
+   window.removeEventListener("scroll",position,true);
+   document.removeEventListener("keydown",key);
+  };
+ },[open]);
  const rename=async()=>{
   const name=draft.trim();
   if(!name||name.length>80){onError("Property names need 1–80 characters.");return;}
@@ -28,7 +55,7 @@ export function DatabasePropertyHeading({property,onRefresh,onError,onSaved}:Pro
   }catch(e){onError(errText(e))}finally{setBusy(false)}
  };
  const archive=async()=>{
-  if(!window.confirm("Remove the “"+property.name+"” column from this database? All saved values and relationships remain stored and the column can be restored later."))return;
+  if(!window.confirm("Remove “"+property.name+"” from this database? It will STAY removed, including when templates are reapplied. Values remain stored until you explicitly restore the property."))return;
   setBusy(true);
   try{
    const {data,error}=await supabase.from("db_properties").update({archived_at:new Date().toISOString()})
@@ -36,30 +63,40 @@ export function DatabasePropertyHeading({property,onRefresh,onError,onSaved}:Pro
     .select("id").maybeSingle();
    if(error)throw error;
    if(!data)throw new Error("The property changed elsewhere. Reload and try again.");
-   await onRefresh();onSaved("Column removed from view. Values are preserved; restore it from Properties.");setOpen(false);
+   await onRefresh();onSaved("Property removed. It will not be re-created by template setup.");setOpen(false);
   }catch(e){onError(errText(e))}finally{setBusy(false)}
  };
+ const dismiss=(e:React.MouseEvent|React.PointerEvent)=>{
+  e.preventDefault();
+  e.stopPropagation();
+  if(!busy)setOpen(false);
+ };
  return <div className="db-notion-heading">
-  <button type="button" className="db-notion-heading-trigger" aria-label={"Edit property "+property.name}
-   aria-expanded={open} onClick={()=>setOpen(v=>!v)}>
+  <button ref={trigger} type="button" className="db-notion-heading-trigger"
+   aria-label={"Edit property "+property.name} aria-expanded={open}
+   onClick={e=>{e.stopPropagation();setOpen(v=>!v)}}>
    <span>{property.name}</span><span aria-hidden="true">⌄</span>
   </button>
-  <small>{property.type}</small>
-  {open&&<div className="db-notion-property-menu" role="group" aria-label={"Manage "+property.name}>
-   <label>Property name
-    <input aria-label={"Rename "+property.name} value={draft} maxLength={80}
-      onChange={e=>setDraft(e.target.value)}
-      onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void rename();}if(e.key==="Escape")setOpen(false)}}/>
-   </label>
-   <p>{property.type==="relation"?"Relation target is preserved on rename.":"Changing the name doesn't change values."}</p>
-   <div className="db-notion-property-actions">
-    <button type="button" disabled={busy} onClick={()=>void rename()}>Save name</button>
-    <button type="button" disabled={busy} onClick={()=>setOpen(false)}>Cancel</button>
-   </div>
-   <button type="button" className="db-notion-property-remove" disabled={busy} onClick={()=>void archive()}>
-    Remove column (reversible)
-   </button>
-  </div>}
+  {open&&typeof document!=="undefined"&&createPortal(
+   <div className="db-notion-overlay" onPointerDown={dismiss} onClick={dismiss}
+     onContextMenu={dismiss} aria-label="Close property menu">
+     <div role="dialog" aria-modal="true" className="db-notion-property-menu"
+       aria-label={"Manage "+property.name} style={{position:"fixed",left:place.left,top:place.top}}
+       onPointerDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+       <label>Property name
+         <input autoFocus aria-label={"Rename "+property.name} value={draft} maxLength={80}
+          onChange={e=>setDraft(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();void rename()}}}/>
+       </label>
+       <p>{property.type==="relation"?"Changing the label keeps existing links.":"Changing the label keeps existing values."}</p>
+       <div className="db-notion-property-actions">
+        <button type="button" disabled={busy} onClick={()=>void rename()}>Save name</button>
+        <button type="button" disabled={busy} onClick={()=>setOpen(false)}>Cancel</button>
+       </div>
+       <button type="button" className="db-notion-property-remove" disabled={busy}
+         onClick={()=>void archive()}>Delete property</button>
+      </div>
+    </div>,document.body)}
  </div>;
 }
 export function RestoreDatabaseProperties({archived,dbId,onRefresh,onError,onSaved}:{
@@ -67,15 +104,15 @@ export function RestoreDatabaseProperties({archived,dbId,onRefresh,onError,onSav
 }){
  const list=archived.filter(p=>p.database_id===dbId);
  if(!list.length)return null;
- return <div className="db-notion-archived">
-  <strong>Removed columns ({list.length})</strong>
-  {list.map(p=><div key={p.id}><span>{p.name} · {p.type}</span>
+ return <details className="db-notion-archived">
+  <summary>Removed properties ({list.length}) · restore only if needed</summary>
+  {list.map(p=><div key={p.id}><span>{p.name}</span>
     <button type="button" onClick={()=>void(async()=>{
       const {data,error}=await supabase.from("db_properties").update({archived_at:null})
         .eq("id",p.id).eq("database_id",dbId).eq("version",p.version).select("id").maybeSingle();
       if(error){onError(error.message);return;}
-      if(!data){onError("The column changed elsewhere. Reload to retry.");return;}
-      try{await onRefresh();onSaved("Column restored with its saved values.");}catch(e){onError(errText(e))}
+      if(!data){onError("The property changed elsewhere. Reload to retry.");return;}
+      try{await onRefresh();onSaved("Property explicitly restored with its existing values.");}catch(e){onError(errText(e))}
     })()}>Restore</button></div>)}
- </div>;
+ </details>;
 }
