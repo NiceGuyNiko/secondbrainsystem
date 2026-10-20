@@ -108,7 +108,7 @@ export type WorldSetupResult = {
   databaseIds:Record<string,string>;
 };
 type RowDb={id:string;name:string};
-type RowProperty={id:string;database_id:string;name:string;type:string;config:Record<string,unknown>;position:number;version:number};
+type RowProperty={id:string;database_id:string;name:string;type:string;config:Record<string,unknown>;position:number;version:number;archived_at:string|null};
 function checked<T>(result:{data:T;error:{message:string}|null}):T {
   if(result.error)throw new Error(result.error.message);
   return result.data;
@@ -159,12 +159,15 @@ export async function setupWorldbuildingDatabases(
     const dbId=ids[worldDbKey(d.name)];
     onProgress("Connecting "+d.name+" properties");
     const existingProperties=checked(await client.from("db_properties")
-      .select("id,database_id,name,type,config,position,version").eq("database_id",dbId)
-      .is("archived_at",null).order("position").limit(1000)) as RowProperty[];
+      .select("id,database_id,name,type,config,position,version,archived_at").eq("database_id",dbId)
+      .order("position").limit(1000)) as RowProperty[];
     const byName=new Map(existingProperties.map(p=>[worldDbKey(p.name),p]));
     for(const p of d.properties){
       const configuration=propertyConfiguration(p,ids);
       const prior=byName.get(worldDbKey(p.name));
+      // An archived property is an explicit user deletion. NEVER reconstruct
+      // it from template definitions, even on later setup runs.
+      if(prior?.archived_at)continue;
       if(prior){
         if(prior.type!==p.type)throw new Error(
           d.name+" has an existing property named "+p.name+" with a different type. Review it before continuing.");
@@ -196,7 +199,7 @@ export async function setupWorldbuildingDatabases(
       const row=checked(await client.from("db_properties").insert({
         database_id:dbId,name:p.name,type:p.type,config:configuration,
         position:existingProperties.length,
-      }).select("id,database_id,name,type,config,position,version").single()) as RowProperty;
+      }).select("id,database_id,name,type,config,position,version,archived_at").single()) as RowProperty;
       existingProperties.push(row);
       byName.set(worldDbKey(p.name),row);
       propertiesCreated++;
