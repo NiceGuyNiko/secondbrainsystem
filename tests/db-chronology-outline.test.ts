@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {toChronologyNodes,sortedNodes} from "../components/db-chronology-tree";
 
 test("Events hierarchy supports eras, major events, moments, and standalone moments",()=>{
- const events=[
+ const events:Array<{record_id:string;sequence_no:number;values_json:Record<string,string|number|boolean|null>}>=[
   {record_id:"era",sequence_no:2,values_json:{scale:"Era",order:1}},
   {record_id:"blackout",sequence_no:4,values_json:{scale:"Major Event",order:3}},
   {record_id:"otto",sequence_no:7,values_json:{scale:"Moment",order:1}},
