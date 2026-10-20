@@ -637,3 +637,8 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-writing-link small{grid-column:2;color:var(--muted);font-size:12px;margin-top:5px}
 .aaa-writing-link>svg{color:var(--accent-text)}
 @media(max-width:767px){.db-lab.db-lab-embedded{padding:8px}.aaa-writing-home{padding:20px 14px}.db-lab-embedded .db-lab-db-head{padding:13px}}
+
+.aaa-context-create{display:flex;gap:5px;align-items:center;padding:6px 10px;min-width:0;flex-shrink:0}
+.aaa-context-create input{width:100%;min-width:0;flex:1;font-size:11px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px}
+.aaa-context-create button{font-size:11px;background:var(--accent);color:var(--on-accent);border-radius:6px;padding:7px 8px}
+.aaa-context-create button:disabled{opacity:.6;cursor:wait}
