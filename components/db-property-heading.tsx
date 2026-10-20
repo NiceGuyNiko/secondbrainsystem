@@ -66,9 +66,11 @@ export function DatabasePropertyHeading({property,onRefresh,onError,onSaved}:Pro
    await onRefresh();onSaved("Property removed. It will not be re-created by template setup.");setOpen(false);
   }catch(e){onError(errText(e))}finally{setBusy(false)}
  };
- const dismiss=(e:React.MouseEvent|React.PointerEvent)=>{
-  e.preventDefault();
-  e.stopPropagation();
+ const swallowPointer=(e:React.PointerEvent)=>{e.preventDefault();e.stopPropagation();};
+ const dismiss=(e:React.MouseEvent)=>{
+  e.preventDefault();e.stopPropagation();
+  // Close on the completed click, rather than pointerdown. Keeping the
+  // backdrop mounted until click completes prevents click-through.
   if(!busy)setOpen(false);
  };
  return <div className="db-notion-heading">
@@ -78,7 +80,7 @@ export function DatabasePropertyHeading({property,onRefresh,onError,onSaved}:Pro
    <span>{property.name}</span><span aria-hidden="true">⌄</span>
   </button>
   {open&&typeof document!=="undefined"&&createPortal(
-   <div className="db-notion-overlay" onPointerDown={dismiss} onClick={dismiss}
+   <div className="db-notion-overlay" onPointerDown={swallowPointer} onClick={dismiss}
      onContextMenu={dismiss} aria-label="Close property menu">
      <div role="dialog" aria-modal="true" className="db-notion-property-menu"
        aria-label={"Manage "+property.name} style={{position:"fixed",left:place.left,top:place.top}}
