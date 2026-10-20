@@ -29,7 +29,7 @@ export const WORLD_DATABASE_TEMPLATES:readonly WorldDatabaseTemplate[]=[
   {name:"Characters",description:"People, identities, their relationships, and evolving world involvement.",properties:[
     editorialStatus,
     {name:"Abilities",type:"relation",target:"Abilities",multi:true,help:"Select existing Ability records. A character may have several."},
-    {name:"Groups",type:"relation",target:"Groups",multi:true,help:"Memberships and affiliations; inverse membership appears on Group records."},
+    // Time-dependent memberships belong to Perspectives (Character × Event), not a timeless Character field.
     {name:"Home location",type:"relation",target:"Locations",multi:false},
   ]},
   {name:"Events",description:"World chronology, from large eras to individual moments.",properties:[
@@ -67,6 +67,21 @@ export const WORLD_DATABASE_TEMPLATES:readonly WorldDatabaseTemplate[]=[
     {name:"Power system",type:"relation",target:"Power Systems",multi:false,
       help:"The broad system this specific ability draws from; no forced system if unresolved."},
     {name:"Limitations",type:"long_text"},
+  ]},
+  {name:"Perspectives",description:"An event-scoped character snapshot: one record per Character × Event pairing. Not a copy of the Character or Event.",properties:[
+    editorialStatus,
+    {name:"Character",type:"relation",target:"Characters",multi:false},
+    {name:"Event",type:"relation",target:"Events",multi:false},
+    {name:"Groups at event",type:"relation",target:"Groups",multi:true,
+      help:"The groups this Character actually belongs to DURING this Event, not an all-time membership."},
+    {name:"Abilities at event",type:"relation",target:"Abilities",multi:true,
+      help:"Known or accessible abilities during this Event; not automatically assumed for other Events."},
+    {name:"Location at event",type:"relation",target:"Locations",multi:false},
+    {name:"Knows",type:"long_text"},
+    {name:"Believes",type:"long_text"},
+    {name:"Wants",type:"long_text"},
+    {name:"Experiences",type:"long_text"},
+    {name:"Continuity note",type:"long_text"},
   ]},
   {name:"Lore",description:"In-world artifacts, beliefs, secrets, history, mysteries and rules.",properties:[
     editorialStatus,
@@ -139,7 +154,7 @@ export async function setupWorldbuildingDatabases(
     checked(await client.rpc("db_create_database",{p_id:id,p_name:d.name,p_dataset:"acceptance"}));
     ids[key]=id;databasesCreated++;
   }
-  // Second pass: all seven target IDs are now available, including self-relations.
+  // Second pass: all target IDs are now available, including self-relations.
   for(const d of WORLD_DATABASE_TEMPLATES){
     const dbId=ids[worldDbKey(d.name)];
     onProgress("Connecting "+d.name+" properties");
