@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
+import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody-special-characters";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;config:{options?:string[];target_database_id?:string;multi?:boolean};position:number};
 type Rec={record_id:string;database_id:string;sequence_no:number;version:number;values_json:Record<string,string|number|boolean|null>;archived_at:string|null};
@@ -36,6 +38,8 @@ export default function StagingDatabaseLab(){
  const [search,setSearch]=useState("");
  const [sort,setSort]=useState("creation");
  const [reverse,setReverse]=useState(false);
+ const [importing,setImporting]=useState(false);
+ const [importProgress,setImportProgress]=useState("");
  const refresh=useCallback(async()=>{
   const [a,b,c,d,e,f]=await Promise.all([
    supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
@@ -118,6 +122,20 @@ export default function StagingDatabaseLab(){
    onBlur={e=>{const t=e.target.value;if(t===String(value??""))return;saveValue(r,p,t===""?null:p.type==="number"?Number(t):t)}}
    onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>;
  };
+ const characterDb=dbs.find(d=>d.name.toLowerCase()==="characters");
+ const characterIds=new Set(records.filter(r=>r.database_id===characterDb?.id).map(r=>r.record_id));
+ const missingCharacters=countMissingCharacters(items.filter(i=>characterIds.has(i.id)).map(i=>i.title));
+ const startCharacterImport=async()=>{
+  if(importing||loading)return;
+  if(!window.confirm("Import the 23 starter Characters into your signed-in staging account? Existing Characters, IDs, and nonempty fields will be preserved. Only missing records and fields will be added."))return;
+  setImporting(true);setImportProgress("Preparing import");setError("");setInfo("");
+  try{
+   const report=await importFirstCharactersToStaging(supabase,setImportProgress);
+   await refresh();setDbId(report.databaseId);setSelected("");
+   setInfo(`Character import complete: ${report.created} created, ${report.reused} reused, ${report.fieldsFilled} values added, ${report.linksCreated+report.eventLinksCreated} links added. Refresh to verify cloud persistence.`);
+  }catch(e){setError("Import stopped: "+(e instanceof Error?e.message:String(e))+". You can safely retry without duplicating completed records.");}
+  finally{setImporting(false);setImportProgress("");}
+ };
  const checklist=[
   ["Characters database exists",dbs.some(d=>d.name==="Characters")],
   ["At least one Character stored",records.some(r=>dbs.find(d=>d.id===r.database_id)?.name==="Characters")],
@@ -136,6 +154,7 @@ export default function StagingDatabaseLab(){
    {dbs.map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
     <span>🗃️</span><span>{d.name}</span><small>{records.filter(r=>r.database_id===d.id).length}</small></button>)}
    <div className="db-lab-inline-form"><input aria-label="Database name" placeholder="New database name" value={addDb} onChange={e=>setAddDb(e.target.value)}/><button onClick={addDatabase} disabled={!addDb.trim()}>+ Create</button></div>
+   <section className="db-lab-import"><strong>Nobody Special starter dataset</strong><p>{FIRST_CHARACTERS.length} Characters · {missingCharacters} missing from your staging account. Adds structured story fields and only explicitly described connections.</p><button type="button" disabled={loading||importing} onClick={()=>void startCharacterImport()}>{importing?"Importing…":"Import 23 Characters"}</button>{importing&&<p role="status">{importProgress}</p>}<small>Review before importing. Existing names, IDs, genders, descriptions, and links are preserved.</small></section>
    <section className="db-lab-checklist"><strong>Real backend acceptance</strong><p>{checklist.filter(x=>x[1]).length} / {checklist.length} steps completed</p>
     {checklist.map(([s,done])=><div key={s} className="db-lab-check"><span>{done?"✓":"○"}</span>{s}</div>)}
     <p>After saving, refresh this page or sign into staging from another device to verify cloud persistence.</p>
