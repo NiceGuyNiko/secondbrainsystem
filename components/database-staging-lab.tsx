@@ -198,7 +198,7 @@ export default function StagingDatabaseLab(){
      ". Existing records remain unchanged. You can safely retry the setup.");
   }finally{setSettingUpWorld(false);setSetupProgress("");}
  };
- const legacyCharacterNames=["Summary","Affiliation","Story role","Power status","Ability","Curse","Timeline note"];
+ const legacyCharacterNames=["Summary","Affiliation","Story role","Power status","Ability","Curse","Timeline note","Groups"];
  const legacyCharacterProps=props.filter(p=>p.database_id===charactersDatabase?.id
    &&legacyCharacterNames.includes(p.name));
  const retireLegacyCharacterFields=()=>void(async()=>{
@@ -206,7 +206,7 @@ export default function StagingDatabaseLab(){
     setError("Set up the Perspectives worldbuilding foundation before retiring legacy columns.");return;
   }
   if(!legacyCharacterProps.length){setInfo("All legacy character columns are already removed.");return;}
-  if(!window.confirm("Hide "+legacyCharacterProps.length+" old Character text/status columns? Their original values remain safely stored and can be restored from Properties. They will NOT be assumed to apply to any Event; enter those details in the appropriate snapshots when you know their context."))return;
+  if(!window.confirm("Hide "+legacyCharacterProps.length+" old Character text/status and timeless Groups columns? Their original values remain safely stored and can be restored from Properties. They will NOT be assumed to apply to any Event; enter those details in the appropriate snapshots when you know their context."))return;
   setError("");setInfo("");
   try{
     for(const p of legacyCharacterProps){
