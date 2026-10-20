@@ -83,6 +83,9 @@ function Workspace() {
   const [stagingDatabases,setStagingDatabases]=useState<{id:string;name:string}[]>([]);
   const [stagingDatabaseId,setStagingDatabaseId]=useState("");
   const [writingExpanded,setWritingExpanded]=useState(true);
+  const [newDatabaseOpen,setNewDatabaseOpen]=useState(false);
+  const [newDatabaseName,setNewDatabaseName]=useState("");
+  const [creatingDatabase,setCreatingDatabase]=useState(false);
   const staging=environment.ok&&environment.data==="staging";
   const stagingDatabaseName=stagingDatabases.find(d=>d.id===stagingDatabaseId)?.name||"Characters";
   const refreshStagingDatabases=useCallback(async()=>{
@@ -93,6 +96,25 @@ function Workspace() {
     setStagingDatabases(rows);
     setStagingDatabaseId(id=>rows.some(x=>x.id===id)?id:(rows.find(x=>x.name.toLowerCase()==="characters")??rows[0])?.id??"");
   },[]);
+  const createStagingDatabase=async()=>{
+    const name=newDatabaseName.trim();
+    if(creatingDatabase||!name)return;
+    if(stagingDatabases.some(d=>d.name.toLowerCase()===name.toLowerCase())){
+      setNotice("A database with that name already exists.");return;
+    }
+    setCreatingDatabase(true);
+    try{
+      const id=crypto.randomUUID();
+      const {error}=await supabase.rpc("db_create_database",{p_id:id,p_name:name,p_dataset:"acceptance"});
+      if(error)throw error;
+      await refreshStagingDatabases();
+      setStagingDatabaseId(id);
+      setNewDatabaseName("");
+      setNewDatabaseOpen(false);
+      setNotice(name+" database created in staging.");
+    }catch(e){setNotice(e instanceof Error?e.message:"Could not create database.");}
+    finally{setCreatingDatabase(false)}
+  };
   useEffect(()=>{
     if(!staging||section!=="Databases")return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
@@ -367,12 +389,21 @@ function Workspace() {
               }
               onClick={() => {
                 if (calendarSection) manage();
+                else if(staging&&section==="Databases")setNewDatabaseOpen(open=>!open);
               }}
             >
-              {calendarSection ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection||staging&&section==="Databases" ? <Plus size={19} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
+          {staging&&section==="Databases"&&newDatabaseOpen&&
+           <form className="aaa-context-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
+            <input value={newDatabaseName} autoFocus maxLength={80}
+              placeholder="New database name…" aria-label="New database name"
+              onChange={e=>setNewDatabaseName(e.target.value)}/>
+            <button type="submit" disabled={!newDatabaseName.trim()||creatingDatabase}>
+              {creatingDatabase?"Saving…":"Create"}</button>
+           </form>}
           <div className="aaa-context-scroll">
             {calendarSection ? (
               calendarControls
