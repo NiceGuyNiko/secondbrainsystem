@@ -253,3 +253,18 @@
 .db-relation-results>button:disabled{opacity:.55;cursor:default}
 .db-relation-results>p,.db-relation-note{color:var(--muted);font-size:11px;line-height:1.5;padding:6px}
 .db-option-error{color:var(--danger);font-size:11px;padding:8px}
+
+/* Thin, optional dividers between header/cell columns, never outer edges. */
+.db-lab-table.db-lab-table-dividers th:not(:last-child),
+.db-lab-table.db-lab-table-dividers td:not(:last-child){border-right:1px solid var(--border)}
+.db-lab-table:not(.db-lab-table-dividers) th,
+.db-lab-table:not(.db-lab-table-dividers) td{border-right:0}
+.db-lab-toolbar-clean .db-lab-view-settings{position:relative;z-index:4}
+.db-lab-view-settings>summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer;color:var(--muted);padding:7px 9px;font-size:12px;border-radius:6px}
+.db-lab-view-settings>summary::-webkit-details-marker{display:none}
+.db-lab-view-settings>summary:hover,.db-lab-view-settings[open]>summary{color:var(--text);background:var(--surface-2)}
+.db-lab-view-settings-panel{position:absolute;z-index:30;right:0;top:calc(100% + 5px);width:270px;max-width:calc(100vw - 35px);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;box-shadow:0 12px 32px #0005}
+.db-lab-view-settings-panel strong{font-size:12px;display:block;margin-bottom:12px}
+.db-lab-view-settings-panel .db-lab-settings-choice{display:flex;gap:9px;align-items:center;color:var(--text);font-size:12px;cursor:pointer}
+.db-lab-view-settings-panel input[type=checkbox]{flex-shrink:0;width:15px;height:15px;accent-color:var(--accent)}
+.db-lab-view-settings-panel small{display:block;color:var(--muted);font-size:11px;margin-top:10px;line-height:1.5}
