@@ -607,3 +607,33 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-db-property-grid{overflow:visible}
 .aaa-db-property-edit,.aaa-db-property-extra,.aaa-db-property-list{overflow:visible}
 @media(max-width:1190px){.aaa-companion-tools>button:first-child{display:none}}
+
+/* Staging database engine integrates into the existing Calendar/Workspaces shell.
+   The profile sidebar owns navigation; there is no duplicate lab sidebar here. */
+.aaa-working-surface:has(.db-lab-embedded){padding:0!important;overflow-y:auto}
+.aaa-working-surface:has(.db-lab-embedded)>.aaa-page-toolbar{display:none}
+.db-lab.db-lab-embedded{padding:10px 15px 24px;max-width:none;min-height:100%;width:100%;background:var(--bg)}
+.db-lab-embedded .db-lab-workspace{display:block;width:100%;min-width:0}
+.db-lab-embedded .db-lab-main{min-height:420px;width:100%;min-width:0;border:0;border-radius:0;background:var(--surface)}
+.db-lab-embedded .db-lab-db-head{padding:16px 18px 14px}
+.db-lab-embedded .db-lab-db-head h2{font-size:23px}
+.db-lab-embedded .db-lab-toolbar{padding:10px 12px}
+.db-lab-embedded .db-lab-table-wrap{max-width:100%}
+.db-lab-embedded .db-lab-new-record{padding:13px 15px}
+.db-lab-workspace-outline{padding:6px 0 18px}
+.db-lab-workspace-outline>summary{cursor:pointer;list-style:revert;padding:12px 16px;color:var(--text);font-size:13px;font-weight:700;border-bottom:1px solid var(--border)}
+.db-lab-workspace-outline>summary:hover{background:var(--surface-2)}
+.db-lab-writing .db-lab-new-record,.db-lab-writing .db-lab-gallery{display:none}
+.aaa-context-row.aaa-context-nested{padding-left:23px}
+.aaa-context-row.aaa-context-nested .aaa-icon-slot{width:39px}
+.aaa-writing-home{padding:38px 28px;max-width:900px;display:flex;flex-direction:column;gap:14px}
+.aaa-writing-eyebrow{display:flex;align-items:center;gap:8px;color:var(--accent-text);font-size:11px;font-weight:700;letter-spacing:.09em}
+.aaa-writing-home h1{font-size:30px;font-weight:760;margin:0}
+.aaa-writing-home>p{color:var(--muted);font-size:13px;max-width:620px;line-height:1.65;margin:0 0 14px}
+.aaa-writing-link{width:min(100%,610px);display:flex;justify-content:space-between;align-items:center;gap:16px;border:1px solid var(--border);border-radius:11px;background:var(--surface);text-align:left;padding:20px;color:var(--text)}
+.aaa-writing-link:hover{border-color:var(--accent);background:var(--surface-2)}
+.aaa-writing-link>span{display:grid;grid-template-columns:28px 1fr;column-gap:8px;align-items:center}
+.aaa-writing-link strong{font-size:16px}
+.aaa-writing-link small{grid-column:2;color:var(--muted);font-size:12px;margin-top:5px}
+.aaa-writing-link>svg{color:var(--accent-text)}
+@media(max-width:767px){.db-lab.db-lab-embedded{padding:8px}.aaa-writing-home{padding:20px 14px}.db-lab-embedded .db-lab-db-head{padding:13px}}
