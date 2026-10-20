@@ -225,7 +225,7 @@ export default function StagingDatabaseLab(){
      <div className="db-lab-detail-grid">{cols.map(p=><div key={p.id} className="db-lab-detail-field"><label>{p.name}<small>{p.type}</small></label>{renderCell(record,p)}</div>)}</div>
      <section className="db-lab-backlinks">
        <strong>Referenced by other records</strong>
-       <p>Automatic backlinks from shared relationships. These aren't copied records.</p>
+       <p>Automatic backlinks from shared relationships. These are not copied records.</p>
        {incomingLinks.length===0?<small>No incoming relationships yet.</small>:
         <div className="db-lab-backlink-list">
         {incomingLinks.map(({link,property,origin,database})=>
