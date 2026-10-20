@@ -338,6 +338,7 @@ export default function StagingDatabaseLab(){
    {dbs.filter(d=>d.name.toLowerCase()!=="perspectives").map(d=><button key={d.id} className={"db-lab-nav "+(dbId===d.id?"active":"")} onClick={()=>{setDbId(d.id);setSelected("");setViewId("");}}>
     <span>🗃️</span><span>{d.name}</span><small>{records.filter(r=>r.database_id===d.id).length}</small></button>)}
    <div className="db-lab-inline-form"><input aria-label="Database name" placeholder="New database name" value={addDb} onChange={e=>setAddDb(e.target.value)}/><button onClick={addDatabase} disabled={!addDb.trim()}>+ Create</button></div>
+   <details className="db-lab-tools"><summary>Developer tools & data setup</summary>
    <section className="db-lab-import"><strong>Worldbuilding foundation</strong>
     <p>Seven worldbuilding databases, with Character snapshots kept in Events. The Perspectives junction remains internal.</p>
     <p>{worldSetupMissing===0?"All worldbuilding databases and snapshot storage exist.":worldSetupMissing+" parts need to be set up."} Creates typed relationships and parent hierarchies without duplicating your records.</p>
@@ -359,6 +360,7 @@ export default function StagingDatabaseLab(){
     <p>After saving, refresh this page or sign into staging from another device to verify cloud persistence.</p>
    </section>
    <button className="db-lab-reset" onClick={()=>void run(refresh,"Synced from Supabase")}>Reload from Supabase</button>
+   </details>
   </aside><section className="db-lab-main">
    <div className="db-lab-db-head"><span className="db-lab-kicker">CLOUD BACKED DATABASE</span>
    <h2>{database?.name||"Create your first database"}</h2><p>Every record has its own permanent ID and page identity.</p></div>
