@@ -95,7 +95,10 @@ export function resolveSections(target: CompanionTarget, configs: ContextConfigu
       } as ContextSection;
       if (index>=0) sections.splice(index,1);
       const after = updated.afterId ? sections.findIndex(s=>s.id===updated.afterId) : -1;
-      if (after>=0) sections.splice(after+1,0,updated); else sections.push(updated);
+      if (updated.afterId === "__first") sections.unshift(updated);
+      else if (after>=0) sections.splice(after+1,0,updated);
+      else if (index>=0) sections.splice(Math.min(index,sections.length),0,updated);
+      else sections.push(updated);
     }
   }
   return sections;
