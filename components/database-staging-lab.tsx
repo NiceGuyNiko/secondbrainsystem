@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import {environment} from "@/lib/environment";
 import { Settings2 } from "lucide-react";
+import type {CompanionTarget} from "@/lib/companion-config";
 import { showVerticalLines, withVerticalLines } from "@/lib/db-engine/table-appearance";
 import { importFirstCharactersToStaging } from "@/lib/db-engine/import-first-characters";
 import { countMissingCharacters, FIRST_CHARACTERS } from "@/lib/db-engine/nobody-special-characters";
@@ -29,8 +30,8 @@ const check=<T,>(response:{data:T;error:{message:string}|null}):T=>{
   return response.data;
 };
 export type DatabaseSurface = "lab" | "database" | "writing-events";
-export default function StagingDatabaseLab({surface="lab",databaseName,onDatabasesChange}:{
- surface?:DatabaseSurface;databaseName?:string;onDatabasesChange?:()=>void;
+export default function StagingDatabaseLab({surface="lab",databaseName,onDatabasesChange,onContextRecord}:{
+ surface?:DatabaseSurface;databaseName?:string;onDatabasesChange?:()=>void;onContextRecord?:(record:CompanionTarget|null)=>void;
 }){
  const production=environment.ok&&environment.data==="production";
  const cloudLabel=production?"production":"staging";
@@ -147,6 +148,15 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
  },search);
  if(!savedRules.sorts.length)list.sort((a,b)=>Number(a.position)-Number(b.position)||a.sequence_no-b.sequence_no);
  const record=records.find(x=>x.record_id===selected && x.database_id===dbId);
+  useEffect(()=>{
+    if(!onContextRecord)return;
+    if(!record || !database){onContextRecord(null);return;}
+    const fields=cols.map(prop=>({id:prop.id,label:prop.name,
+      value:prop.type==="relation"?links.filter(link=>link.source_record_id===record.record_id&&link.property_id===prop.id).map(link=>label(link.target_record_id)).join(", "):String(record.values_json[prop.id]??""),
+      kind:(prop.type==="relation"?"relation":"property") as "relation"|"property"}));
+    onContextRecord({id:record.record_id,title:label(record.record_id),databaseId:database.id,databaseName:database.name,
+      workspaceId:"nobody-special",workspaceName:"Nobody Special",kind:"record",fields});
+  },[record, database, cols, links, items, perspectives, onContextRecord]);
  const charactersDatabase=dbs.find(d=>d.name.toLowerCase()==="characters");
  const eventsDatabase=dbs.find(d=>d.name.toLowerCase()==="events");
  const perspectivesDatabase=dbs.find(d=>d.name.toLowerCase()==="perspectives");
