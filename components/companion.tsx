@@ -33,6 +33,7 @@ type Props={
 export default function Companion(p:Props){
   const [top,setTop]=useState<CompanionTool>(p.options.primary);
   const [bottom,setBottom]=useState<CompanionTool>(p.options.secondary);
+  useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary)},[p.options.primary,p.options.secondary]);
   const [fixed,setFixed]=useState<CompanionTool|null>(null);
   const [chosenDate,setChosenDate]=useState(p.today);
   const [selected,setSelected]=useState<string|null>(null);
@@ -56,6 +57,7 @@ export default function Companion(p:Props){
     databaseName:"Workspace",workspaceId:p.target.workspaceId,workspaceName:p.target.workspaceName,
     kind:"page" as const,fields:[{id:"workspace",label:"Workspace",value:p.target.workspaceName}]
   } : p.target);
+  useEffect(()=>{if(locked && p.target.id===locked.id && JSON.stringify(p.target)!==JSON.stringify(locked))setLocked(p.target);},[p.target,locked]);
   const storageId=contextKey(p.profileKey);
   useEffect(()=>{try{const data=localStorage.getItem(storageId);setConfigs(data?JSON.parse(data) as ContextConfigurations:{});}catch{setConfigs({});}},[storageId]);
   const saveConfig=(next:ContextConfigurations)=>{setConfigs(next);try{localStorage.setItem(storageId,JSON.stringify(next));}catch{setMessage("Context layout could not be saved in this browser.");}};
@@ -81,7 +83,7 @@ export default function Companion(p:Props){
     const first=occurrences.filter(o=>!o.event.allDay).map(o=>minuteOf(o.start||o.event.start)).sort((a,b)=>a-b)[0];
     return Math.max(0,(first??0)-80);
   },[chosenDate,today,nowMinute,p.options.jump,occurrences.length]);
-  useEffect(()=>{if(p.mode!=="closed" && scroll.current)scroll.current.scrollTop=beginning;},[chosenDate,p.mode,beginning,top,bottom]);
+  useEffect(()=>{if(p.mode!=="closed" && scroll.current)scroll.current.scrollTop=beginning;},[chosenDate,p.mode,p.options.jump,top,bottom]);
   useEffect(()=>{if(p.mode==="closed")return;const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape" && !configure){if(p.preference!=="column")p.onMode("closed");}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[p.mode,p.preference,p.onMode,configure]);
   const loadThoughts=useCallback(async()=>{
     setLoadingThoughts(true);
@@ -107,15 +109,17 @@ export default function Companion(p:Props){
     finally{setBusy(false);}
   };
   const selectTool=(slot:"top"|"bottom",tool:CompanionTool)=>{
-    const other=slot==="top"?bottom:top;
-    if(tool===other){if(slot==="top")setBottom(top);else setTop(bottom);}
-    if(slot==="top")setTop(tool);else setBottom(tool);
+    if(fixed === (slot==="top"?top:bottom))return;
+    const nextTop=slot==="top"?tool:(tool===top?bottom:top);
+    const nextBottom=slot==="bottom"?tool:(tool===bottom?top:bottom);
+    setTop(nextTop);setBottom(nextBottom);
+    p.onOptions({primary:nextTop,secondary:nextBottom});
   };
   const resizeStart=useRef<{y:number;ratio:number;height:number}|null>(null);
   const toolHeader=(slot:"top"|"bottom",tool:CompanionTool)=><div className="aaa-companion-tool-head">
     <select value={tool} aria-label={"Select "+slot+" Companion tool"}
       onChange={e=>selectTool(slot,e.target.value as CompanionTool)}
-      disabled={fixed===tool && slot==="top" && p.options.layout==="split"}>
+      disabled={fixed===tool && p.options.layout==="split"}>
       {tools.map(t=><option key={t.key} value={t.key}>{t.title}</option>)}
     </select>
     {p.options.layout==="split"&&<button title={fixed===tool?"Unpin tool":"Keep this tool in its section"}
