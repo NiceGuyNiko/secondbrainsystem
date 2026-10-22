@@ -51,7 +51,7 @@ export default function Companion(p:Props){
   });
   const [recent,setRecent]=useState<CompanionTarget[]>([]);
   const [tabMenu,setTabMenu]=useState<{slot:CompanionSlot;tool:CompanionTool;left:number;top:number}|null>(null);
-  const [tabTooltip,setTabTooltip]=useState<{title:string;left:number;top:number}|null>(null);
+  const [tabTooltip,setTabTooltip]=useState<{title:string;left:number;top:number;width:number}|null>(null);
   const [message,setMessage]=useState("");
   const [configs,setConfigs]=useState<ContextConfigurations>({});
   const [thoughts,setThoughts]=useState<Thought[]>([]);
@@ -161,7 +161,8 @@ export default function Companion(p:Props){
     if(p.options.tabDisplay!=="icons"||tabMenu)return;
     // Anchor to the visible glyph, not the full-height tab button or its underline.
     const rect=(event.currentTarget.querySelector("svg, span")??event.currentTarget).getBoundingClientRect();
-    const width=116;
+    // Size the hover label to the text while retaining its icon-centered anchor.
+    const width=Math.max(58,Math.ceil(title.length*6.3+22));
     const position=positionCompanionPopover(
       rect,{width:window.innerWidth,height:window.innerHeight},
       {width,height:34},"center"
@@ -319,7 +320,7 @@ export default function Companion(p:Props){
     </aside>
     {tabTooltip&&!tabMenu&&p.options.tabDisplay==="icons"&&typeof document!=="undefined"&&createPortal(
       <div className="aaa-companion-tab-tooltip" role="tooltip"
-        style={{left:tabTooltip.left,top:tabTooltip.top}}>{tabTooltip.title}</div>,
+        style={{left:tabTooltip.left,top:tabTooltip.top,width:tabTooltip.width}}>{tabTooltip.title}</div>,
       document.body
     )}
     {tabMenu&&typeof document!=="undefined"&&createPortal(<>
