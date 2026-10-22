@@ -1326,3 +1326,51 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
   }
   .calendar-modal .aaa-event-date-trigger{font-size:11px}
 }
+
+
+/* Match custom select popup scrollbars to the active theme.
+   The top arrow already inherits var(--text); use that same foreground for
+   the thumb and the bottom arrow, keeping the darker surface as the track. */
+@supports (appearance:base-select){
+  ::picker(select){
+    scrollbar-color:var(--text) var(--surface-2);
+  }
+  /* Chromium/WebKit: explicitly theme the track, handle, and both
+     directional buttons. Reset scrollbar-color so prefixed rules apply. */
+  @supports selector(::-webkit-scrollbar){
+    ::picker(select){scrollbar-color:auto}
+    ::picker(select)::-webkit-scrollbar{
+      width:13px;
+      background:var(--surface-2);
+    }
+    ::picker(select)::-webkit-scrollbar-track{
+      background:var(--surface-2);
+      border-radius:999px;
+    }
+    ::picker(select)::-webkit-scrollbar-thumb{
+      background:var(--text);
+      border:3px solid var(--surface-2);
+      border-radius:999px;
+    }
+    ::picker(select)::-webkit-scrollbar-button:vertical{
+      display:block;
+      width:13px;
+      height:15px;
+      background-color:var(--text);
+      -webkit-mask-repeat:no-repeat;
+      mask-repeat:no-repeat;
+      -webkit-mask-position:center;
+      mask-position:center;
+      -webkit-mask-size:11px 11px;
+      mask-size:11px 11px;
+    }
+    ::picker(select)::-webkit-scrollbar-button:vertical:decrement{
+      -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 10.5 8 5.5l5 5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
+      mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 10.5 8 5.5l5 5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
+    }
+    ::picker(select)::-webkit-scrollbar-button:vertical:increment{
+      -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 5.5 5 5 5-5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
+      mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 5.5 5 5 5-5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
+    }
+  }
+}
