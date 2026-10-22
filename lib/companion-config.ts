@@ -9,6 +9,7 @@ export type CompanionPreferences = {
   layout: CompanionLayout;
   primary: CompanionTool;
   secondary: CompanionTool;
+  matchingTool: "duplicate" | "swap";
   splitPercent: number;
   jump: CompanionJump;
   visibility: CompanionVisibility;
@@ -18,7 +19,7 @@ export type CompanionPreferences = {
 };
 export const defaultCompanion: CompanionPreferences = {
   uiVersion: 2,
-  layout: "single", primary: "agenda", secondary: "context",
+  layout: "single", primary: "agenda", secondary: "context", matchingTool: "duplicate",
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
 };
@@ -33,11 +34,13 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
     && r.layout === "split" && r.splitPercent === 52;
   const primary = oldPreviewDefault ? "agenda" : pick("primary", ["agenda", "context", "thoughts"] as const, defaultCompanion.primary);
   const secondary = oldPreviewDefault ? "context" : pick("secondary", ["agenda", "context", "thoughts"] as const, defaultCompanion.secondary);
+  const matchingTool = pick("matchingTool", ["duplicate", "swap"] as const, defaultCompanion.matchingTool);
   return {
     uiVersion: 2,
     layout: oldPreviewDefault ? "single" : pick("layout", ["single", "split"] as const, defaultCompanion.layout),
     primary,
-    secondary: secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
+    secondary: matchingTool === "swap" && secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
+    matchingTool,
     splitPercent: typeof r.splitPercent === "number" && Number.isFinite(r.splitPercent)
       ? Math.min(75, Math.max(25, Math.round(r.splitPercent))) : defaultCompanion.splitPercent,
     jump: pick("jump", ["first", "midnight"] as const, defaultCompanion.jump),
