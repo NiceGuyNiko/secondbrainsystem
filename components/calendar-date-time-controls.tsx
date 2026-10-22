@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useRef,useState} from "react";
+import {useEffect,useLayoutEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {CalendarDays,ChevronLeft,ChevronRight,ChevronUp,ChevronDown} from "lucide-react";
 import {formatCalendarDate,type CalendarDateFormat} from "@/lib/calendar-date-format";
@@ -48,15 +48,21 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
 }){
   const [open,setOpen]=useState(false);
   const trigger=useRef<HTMLButtonElement>(null);
-  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:240,maxHeight:268});
+  const popup=useRef<HTMLDivElement>(null);
+  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:240,maxHeight:280});
   const [month,setMonth]=useState(value||iso(new Date()));
   const close=()=>{setOpen(false);trigger.current?.focus()};
   usePickerDismiss(open,close);
+  useLayoutEffect(()=>{
+    if(!open||!trigger.current||!popup.current)return;
+    const next=positionPicker(trigger.current,popup.current.scrollHeight+2);
+    setPosition(prev=>prev.left===next.left&&prev.top===next.top&&prev.width===next.width&&prev.maxHeight===next.maxHeight?prev:next);
+  },[open,month]);
   useEffect(()=>{
     const onOther=()=>setOpen(false);
     const onBatch=()=>{if(label==="Choose dates"||label==="Change selected date"){
       setMonth(value||iso(new Date()));
-      if(trigger.current)setPosition(positionPicker(trigger.current,268));
+      if(trigger.current)setPosition(positionPicker(trigger.current,280));
       setOpen(true);
     }};
     window.addEventListener("calendar-date-open",onOther);
@@ -78,7 +84,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
     window.dispatchEvent(new Event("calendar-date-open"));
     window.dispatchEvent(new Event("calendar-time-open"));
     setMonth(value||iso(new Date()));
-    if(trigger.current)setPosition(positionPicker(trigger.current,268));
+    if(trigger.current)setPosition(positionPicker(trigger.current,280));
     setOpen(true);
   };
   return <>
@@ -92,7 +98,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
     </div>
     {open&&typeof document!=="undefined"&&createPortal(<>
       <PickerBackdrop onClose={close}/>
-      <div role="dialog" aria-modal="true" aria-label={label+" date picker"}
+      <div ref={popup} role="dialog" aria-modal="true" aria-label={label+" date picker"}
         className="aaa-event-calendar-popover"
         style={{left:position.left,top:position.top,width:position.width,maxHeight:position.maxHeight}}
         onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
@@ -122,9 +128,15 @@ export function TimeChoice({value,onChange,label,clock="12-hour"}:{
 }){
   const [open,setOpen]=useState(false);
   const trigger=useRef<HTMLButtonElement>(null);
+  const popup=useRef<HTMLDivElement>(null);
   const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:176,maxHeight:130});
   const close=()=>{setOpen(false);trigger.current?.focus()};
   usePickerDismiss(open,close);
+  useLayoutEffect(()=>{
+    if(!open||!trigger.current||!popup.current)return;
+    const next=positionPicker(trigger.current,popup.current.scrollHeight+2);
+    setPosition(prev=>prev.left===next.left&&prev.top===next.top&&prev.width===next.width&&prev.maxHeight===next.maxHeight?prev:next);
+  },[open,clock]);
   useEffect(()=>{
     const onOther=()=>setOpen(false);
     window.addEventListener("calendar-date-open",onOther);
@@ -163,7 +175,7 @@ export function TimeChoice({value,onChange,label,clock="12-hour"}:{
     </div>
     {open&&typeof document!=="undefined"&&createPortal(<>
       <PickerBackdrop onClose={close}/>
-      <div className="aaa-event-time-popover" role="dialog" aria-label={label+" time picker"} aria-modal="true"
+      <div ref={popup} className="aaa-event-time-popover" role="dialog" aria-label={label+" time picker"} aria-modal="true"
         style={{left:position.left,top:position.top,width:position.width,maxHeight:position.maxHeight}}
         onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
         {fields.map(field=><div key={field.name} className="aaa-event-time-spinner">
