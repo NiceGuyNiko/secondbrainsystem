@@ -744,6 +744,37 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-companion-toolbar-button{flex-shrink:0;min-width:43px;min-height:43px;color:var(--text);transition:background-color .15s ease,border-color .15s ease}
 .aaa-companion-toolbar-button:hover{background:var(--ui-hover)}
 .aaa-page-toolbar .aaa-companion-toolbar-button{color:var(--text)}
+
+/* Align the global Companion launcher across calendar and non-calendar headers.
+   Page-toolbar buttons inherit a flex rule with no horizontal centering; override it. */
+.aaa-page-toolbar .aaa-companion-toolbar-button,
+.aaa-calendar-content .pr11-calendar-toolbar .aaa-companion-toolbar-button{
+  display:grid;
+  place-items:center;
+  justify-items:center;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 43px;
+  width:43px;
+  height:43px;
+  padding:0!important;
+  margin:0;
+  line-height:1;
+}
+.aaa-companion-toolbar-button svg{display:block;flex-shrink:0}
+/* 68px matches the existing calendar surface's 14px top inset + 54px toolbar.
+   It also lines up the non-calendar bottom border with the Companion header. */
+@media (min-width:768px){
+  .aaa-page-toolbar,
+  .aaa-hybrid-header{
+    box-sizing:border-box;
+    height:68px;
+    min-height:68px;
+  }
+  .aaa-page-toolbar{padding-block:0}
+  .aaa-hybrid-header{padding-block:0}
+}
+
 .aaa-agenda-edge.aaa-companion-edge-launcher{position:fixed!important;right:0!important;top:45%!important;bottom:auto!important}
 .aaa-companion-settings{display:grid;gap:12px}
 .aaa-companion-settings>label{display:grid;gap:7px}
