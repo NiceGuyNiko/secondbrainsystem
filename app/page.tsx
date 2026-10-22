@@ -29,6 +29,7 @@ import { environment } from "@/lib/environment";
 import { thoughtStore } from "@/lib/thoughts";
 import {
   appearanceKey,
+  appearanceDefaults,
   applyAppearance,
   ownedPageTitle,
   type Appearance,
@@ -165,7 +166,7 @@ function Workspace() {
   const setEventDateFormat = (eventDateFormat: ProfilePreferences["eventDateFormat"]) => setPreferences(() => ({ eventDateFormat }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
-  useEffect(() => { if (!isDemo) return; try { if (localStorage.getItem("aaa-demo-slate-initialized")) return; localStorage.setItem("aaa-demo-slate-initialized","1"); setAppearance({...appearance,preset:"slate",primaryAccentOverride:null,highlightAccentOverride:null}); } catch {} }, []);
+  useEffect(() => { if (!isDemo) return; try { if (localStorage.getItem("aaa-demo-slate-initialized")) return; localStorage.setItem("aaa-demo-slate-initialized","1"); setPreferences(() => ({ appearance: {...appearanceDefaults, preset:"slate"} })); } catch {} }, [setPreferences]);
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
     [categories, setCategories] = useState<{ name: string; color: string }[]>(
       [],
@@ -629,7 +630,7 @@ function Workspace() {
                 <WritingWorkspaceDemo />
               ) : section === "Goals" && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
-                  <h2>Goals aren't available in Demo Mode</h2>
+                  <h2>Goals aren&apos;t available in Demo Mode</h2>
                   <p className="calendar-muted">Existing goals, projects and tasks require a real account database and remain unchanged.</p>
                 </div>
               ) : section === "Goals" || section === "Workspaces" ? (
