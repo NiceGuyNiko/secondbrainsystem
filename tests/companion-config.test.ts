@@ -19,6 +19,7 @@ test("Companion preference parsing preserves safe defaults",()=>{
 
 test("old preview's default Context-first layout migrates only once",()=>{
  const migrated=parseCompanion({primary:"context",secondary:"agenda",layout:"split",splitPercent:52});
+ assert.equal(migrated.layout,"single");
  assert.equal(migrated.primary,"agenda");
  assert.equal(migrated.secondary,"context");
  assert.equal(migrated.uiVersion,2);
