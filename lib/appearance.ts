@@ -17,6 +17,7 @@ export type Palette = DarkPalette | LightPalette;
 export const palettes: readonly Palette[] = [
   { id: "midnight", name: "Midnight", description: "Deep blue and clear accents", scheme: "dark", surface: "#141D31", canvas: "#0B1021", accent: "#3556A2", highlight: "#91B4FF", text: "#F0F4FF" },
   { id: "slate", name: "Slate", description: "Quiet charcoal neutrals", scheme: "dark", surface: "#222832", canvas: "#15191E", accent: "#526574", highlight: "#B9CCD9", text: "#F1F5F8" },
+  { id: "darkest-night", name: "Darkest Night", description: "Near-black charcoal with restrained steel accents", scheme: "dark", surface: "#101217", canvas: "#050608", accent: "#293344", highlight: "#A2B6D2", text: "#F2F4F8" },
   { id: "midnight-forest", name: "Forest", description: "Calm forest greens", scheme: "dark", surface: "#121916", canvas: "#0C120F", accent: "#346851", highlight: "#79C7A3", text: "#F2F6F3" },
   { id: "deep-ocean", name: "Deep Ocean", description: "Cool and considered", scheme: "dark", surface: "#101C23", canvas: "#0B1319", accent: "#346851", highlight: "#5DB9C0", text: "#EDF9FA" },
   { id: "warm-botanical", name: "Warm Botanical", description: "Warm organic neutrals", scheme: "dark", surface: "#1C1916", canvas: "#13110E", accent: "#346851", highlight: "#C9A976", text: "#F4EFE6" },
