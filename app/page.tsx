@@ -5,6 +5,7 @@ import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
+import WritingWorkspaceDemo from "@/components/writing-workspace-demo";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
@@ -164,6 +165,7 @@ function Workspace() {
   const setEventDateFormat = (eventDateFormat: ProfilePreferences["eventDateFormat"]) => setPreferences(() => ({ eventDateFormat }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
+  useEffect(() => { if (!isDemo) return; try { if (localStorage.getItem("aaa-demo-slate-initialized")) return; localStorage.setItem("aaa-demo-slate-initialized","1"); setAppearance({...appearance,preset:"slate",primaryAccentOverride:null,highlightAccentOverride:null}); } catch {} }, []);
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
     [categories, setCategories] = useState<{ name: string; color: string }[]>(
       [],
@@ -623,12 +625,12 @@ function Workspace() {
                   }}
                   onOpenDocument={openThought}
                 />
-              ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
+              ) : section === "Workspaces" && isDemo ? (
+                <WritingWorkspaceDemo />
+              ) : section === "Goals" && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
-                  <h2>{section} isn’t available in Demo Mode</h2>
-                  <p className="calendar-muted">
-                    The existing {section === "Goals" ? "goals, projects and tasks" : "writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix)"} rely on your real account’s database. They are unchanged and keep working in the live app.
-                  </p>
+                  <h2>Goals aren't available in Demo Mode</h2>
+                  <p className="calendar-muted">Existing goals, projects and tasks require a real account database and remain unchanged.</p>
                 </div>
               ) : section === "Goals" || section === "Workspaces" ? (
                 <PlanningWorkspace
