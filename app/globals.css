@@ -913,3 +913,95 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
   .aaa-companion-date-label{font-size:15px}
   .aaa-companion-agenda-actions button{padding:5px}
 }
+
+
+/* Companion V7 — matching tabs, a non-click-through date popover, and adjustable column width. */
+.aaa-hybrid-companion{position:relative;max-width:calc(100vw - 280px)}
+.aaa-companion-secondary-header{
+  flex:0 0 46px;height:46px!important;min-height:46px!important;
+  border-top:1px solid var(--border);background:var(--ui-sidebar);
+  padding:0 10px!important;gap:4px;
+}
+.aaa-companion-secondary-header .aaa-companion-header-tabs button{
+  font-size:10px;letter-spacing:.07em;padding:2px 8px 0;
+}
+.aaa-companion-secondary-header .aaa-companion-header-actions button{width:26px;height:26px}
+.aaa-hybrid-companion .aaa-companion-date{display:flex;align-items:center;gap:6px;min-height:48px;padding:12px 0 10px}
+.aaa-hybrid-companion .aaa-companion-date-trigger{
+  display:flex;align-items:center;justify-content:flex-start;
+  flex:1;min-width:0;min-height:30px;line-height:30px;
+  font-size:16px;font-weight:700;text-align:left;
+  border:0;padding:0;background:none;color:var(--text);
+  text-overflow:ellipsis;overflow:hidden;white-space:nowrap;
+}
+.aaa-hybrid-companion .aaa-companion-date-trigger:hover{text-decoration:underline;text-underline-offset:3px}
+.aaa-companion-date-arrows{align-self:center;align-items:center;display:flex;gap:3px;height:30px;margin:0}
+.aaa-hybrid-companion .aaa-companion-date-arrows button{
+  height:30px;width:27px;min-height:30px;min-width:27px;
+  display:grid;place-items:center;align-self:center;margin:0;padding:0;
+}
+.aaa-companion-date-dismiss{
+  position:fixed;inset:0;z-index:1500;width:100%;height:100%;
+  border:0;background:transparent;cursor:default;
+}
+.aaa-companion-date-popover{
+  position:fixed;z-index:1501;width:296px;max-width:calc(100vw - 20px);
+  padding:12px;background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:11px;
+  box-shadow:0 18px 48px #0007;
+  user-select:none;
+}
+.aaa-companion-picker-head{
+  display:grid;grid-template-columns:32px 1fr 32px;
+  align-items:center;gap:5px;margin-bottom:10px;
+}
+.aaa-companion-picker-head strong{font-size:13px;text-align:center}
+.aaa-companion-picker-head button{
+  display:grid;place-items:center;width:32px;height:32px;
+  border:1px solid var(--border);border-radius:6px;
+}
+.aaa-companion-picker-weekdays,.aaa-companion-picker-days{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;
+}
+.aaa-companion-picker-weekdays{margin-bottom:4px}
+.aaa-companion-picker-weekdays span{
+  text-align:center;color:var(--muted);font-size:10px;font-weight:650;padding:4px 0;
+}
+.aaa-companion-picker-days button{
+  height:32px;min-width:0;display:grid;place-items:center;
+  padding:0;border:1px solid transparent;border-radius:6px;
+  font-size:11px;line-height:1;
+}
+.aaa-companion-picker-days button:hover{background:var(--surface-2)}
+.aaa-companion-picker-days button.outside{opacity:.38}
+.aaa-companion-picker-days button.today{border-color:var(--accent-text)}
+.aaa-companion-picker-days button.selected{background:var(--accent);color:var(--on-accent);font-weight:750}
+.aaa-companion-picker-footer{
+  display:flex;justify-content:space-between;gap:8px;
+  border-top:1px solid var(--border);margin-top:10px;padding-top:10px;
+}
+.aaa-companion-picker-footer button{
+  padding:6px 10px;border:1px solid var(--border);
+  border-radius:6px;font-size:11px;
+}
+.aaa-companion-picker-footer button:hover{background:var(--surface-2)}
+.aaa-companion-width-resizer{
+  position:absolute;left:-6px;top:0;bottom:0;width:11px;
+  z-index:85;cursor:ew-resize;touch-action:none;outline-offset:2px;
+}
+.aaa-companion-width-resizer::after{
+  content:"";position:absolute;top:calc(50% - 28px);left:4px;
+  height:56px;width:3px;background:var(--border);border-radius:3px;
+  opacity:.4;transition:opacity .15s,background .15s;
+}
+.aaa-companion-width-resizer:hover::after,
+.aaa-companion-width-resizer:focus-visible::after{
+  opacity:1;background:var(--accent-text);
+}
+@media(max-width:767px){
+  .aaa-hybrid-companion{width:100vw!important;max-width:none!important;min-width:0!important;flex-basis:auto!important}
+  .aaa-companion-width-resizer{display:none}
+  .aaa-companion-date-trigger{font-size:14px!important}
+  .aaa-companion-secondary-header{height:46px!important;min-height:46px!important;padding-top:0!important}
+  .aaa-companion-secondary-header .aaa-companion-header-tabs button{padding-inline:6px;font-size:9px}
+}
