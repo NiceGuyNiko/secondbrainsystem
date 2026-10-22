@@ -58,7 +58,7 @@ export default function Companion(p:Props){
   useEffect(()=>{setRecent(prev=>addRecentReference(prev,p.target));},[targetSignature]);
   useEffect(()=>{
     setPanes({top:initialPaneState(p.today,p.options.quickLink),bottom:initialPaneState(p.today,p.options.quickLink)});
-    setRecent([]);setTabMenu(null);
+    setRecent([p.target]);setTabMenu(null);
   },[p.profileKey]);
   const updateAgenda=(slot:CompanionSlot,patch:Partial<CompanionPaneState["agenda"]>)=>
     setPanes(prev=>({...prev,[slot]:{...prev[slot],agenda:{...prev[slot].agenda,...patch}}}));
