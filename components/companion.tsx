@@ -159,7 +159,8 @@ export default function Companion(p:Props){
   };
   const showTabTooltip=(event:SyntheticEvent<HTMLButtonElement>,title:string)=>{
     if(p.options.tabDisplay!=="icons"||tabMenu)return;
-    const rect=event.currentTarget.getBoundingClientRect();
+    // Anchor to the visible glyph, not the full-height tab button or its underline.
+    const rect=(event.currentTarget.querySelector("svg, span")??event.currentTarget).getBoundingClientRect();
     const width=116;
     const position=positionCompanionPopover(
       rect,{width:window.innerWidth,height:window.innerHeight},
@@ -170,7 +171,8 @@ export default function Companion(p:Props){
   const showTabMenu=(event:MouseEvent<HTMLButtonElement>,slot:CompanionSlot,tool:CompanionTool)=>{
     event.preventDefault();
     event.stopPropagation();
-    const rect=event.currentTarget.getBoundingClientRect();
+    // Anchor to the visible glyph, not the full-height tab button or its underline.
+    const rect=(event.currentTarget.querySelector("svg, span")??event.currentTarget).getBoundingClientRect();
     const position=positionCompanionPopover(
       rect,{width:window.innerWidth,height:window.innerHeight},
       {width:218,height:50},"start"
@@ -190,7 +192,7 @@ export default function Companion(p:Props){
         onFocus={e=>showTabTooltip(e,t.title)}
         onBlur={()=>setTabTooltip(null)}
         onContextMenu={e=>showTabMenu(e,slot,t.key)}>
-        {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={17}/>:t.key==="context"?<BookOpen size={17}/>:<Lightbulb size={17}/>)}
+        {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={20}/>:t.key==="context"?<BookOpen size={20}/>:<Lightbulb size={20}/>)}
         {p.options.tabDisplay!=="icons"&&<span>{t.title.toUpperCase()}</span>}
       </button>)}
     </nav>;
