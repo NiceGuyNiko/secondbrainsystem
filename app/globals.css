@@ -1081,3 +1081,90 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
   white-space:nowrap;
   text-align:center;
 }
+
+
+/* Compact Companion hover labels: width is measured from the label in React;
+   retain the popover's position centered on the hovered icon. */
+.aaa-companion-tab-tooltip{
+  width:auto;
+  min-width:0;
+  max-width:min(180px,calc(100vw - 16px));
+  padding:7px 10px;
+}
+
+/* Theme-aware dropdowns. Modern browsers render their picker in the top layer
+   instead of allowing the OS highlight colour to bleed through our palette.
+   Preserve native select accessibility, events and existing option values. */
+@supports (appearance:base-select){
+  select:not([multiple]):not([size]),
+  ::picker(select){
+    appearance:base-select;
+    -webkit-appearance:base-select;
+  }
+  select:not([multiple]):not([size]),
+  select:not([multiple]):not([size]):focus{
+    background-image:none!important;
+    background-color:var(--field);
+    border-color:var(--border);
+    color:var(--text);
+  }
+  select:not([multiple]):not([size])::picker-icon{
+    content:"⌄";
+    display:inline-block;
+    font-size:23px;
+    font-family:inherit;
+    font-weight:700;
+    line-height:.65;
+    color:var(--muted);
+    margin-inline-start:auto;
+    padding-inline-start:11px;
+    transition:transform .15s ease;
+  }
+  select:not([multiple]):not([size]):open::picker-icon{transform:rotate(180deg)}
+  ::picker(select){
+    background:var(--surface-2);
+    color:var(--text);
+    border:1px solid var(--border);
+    border-radius:9px;
+    box-shadow:0 15px 35px #0005;
+    padding:5px;
+    max-height:min(360px,60vh);
+    overflow:auto;
+    scrollbar-color:var(--border) transparent;
+  }
+  select:not([multiple]):not([size]) option{
+    background:var(--surface-2)!important;
+    color:var(--text)!important;
+    border:0;
+    border-radius:5px;
+    padding:10px 12px;
+    font:inherit;
+    min-height:30px;
+  }
+  select:not([multiple]):not([size]) option:is(:hover,:focus,:active,:checked){
+    background:var(--surface-2)!important;
+    color:var(--text)!important;
+  }
+  select:not([multiple]):not([size]) option:checked{font-weight:700}
+  select:not([multiple]):not([size]) option::checkmark{
+    color:var(--text);
+    margin-inline-end:7px;
+  }
+  select:not([multiple]):not([size]) optgroup{
+    color:var(--muted);
+    background:var(--surface-2);
+    padding-block:5px;
+  }
+}
+/* Graceful fallback for browsers without fully customizable select menus.
+   OS-native popup highlighting cannot always be overridden in those browsers. */
+@supports not (appearance:base-select){
+  select:not([multiple]):not([size]){
+    color-scheme:inherit;
+    accent-color:var(--accent);
+  }
+  select:not([multiple]):not([size]) option{
+    color:var(--text)!important;
+    background:var(--surface-2)!important;
+  }
+}
