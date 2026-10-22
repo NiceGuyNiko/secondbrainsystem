@@ -12,6 +12,7 @@ import {thoughtStore,type Thought} from "@/lib/thoughts";
 import {contextKey,type CompanionPreferences,type CompanionTool,type CompanionTarget,type ContextConfigurations} from "@/lib/companion-config";
 import {initialPaneState,cloneCompanionView,addRecentReference,
   type CompanionPaneState,type CompanionSlot,type ContextViewState,type ThoughtsViewState} from "@/lib/companion-pane-state";
+import {positionCompanionPopover} from "@/lib/companion-popover-position";
 
 const tools: {key:CompanionTool;title:string}[] = [
   {key:"agenda",title:"The Agenda"},
@@ -50,6 +51,7 @@ export default function Companion(p:Props){
   });
   const [recent,setRecent]=useState<CompanionTarget[]>([]);
   const [tabMenu,setTabMenu]=useState<{slot:CompanionSlot;tool:CompanionTool;left:number;top:number}|null>(null);
+  const [tabTooltip,setTabTooltip]=useState<{title:string;left:number;top:number}|null>(null);
   const [message,setMessage]=useState("");
   const [configs,setConfigs]=useState<ContextConfigurations>({});
   const [thoughts,setThoughts]=useState<Thought[]>([]);
@@ -58,7 +60,7 @@ export default function Companion(p:Props){
   useEffect(()=>{setRecent(prev=>addRecentReference(prev,p.target));},[targetSignature]);
   useEffect(()=>{
     setPanes({top:initialPaneState(p.today,p.options.quickLink),bottom:initialPaneState(p.today,p.options.quickLink)});
-    setRecent([p.target]);setTabMenu(null);
+    setRecent([p.target]);setTabMenu(null);setTabTooltip(null);
   },[p.profileKey]);
   const updateAgenda=(slot:CompanionSlot,patch:Partial<CompanionPaneState["agenda"]>)=>
     setPanes(prev=>({...prev,[slot]:{...prev[slot],agenda:{...prev[slot].agenda,...patch}}}));
@@ -155,19 +157,39 @@ export default function Companion(p:Props){
     if(next===0)p.onOptions({layout:"single"});
     else p.onOptions({layout:"split",splitPercent:100-next});
   };
+  const showTabTooltip=(event:React.SyntheticEvent<HTMLButtonElement>,title:string)=>{
+    if(p.options.tabDisplay!=="icons"||tabMenu)return;
+    const rect=event.currentTarget.getBoundingClientRect();
+    const width=Math.max(76,Math.min(130,Math.ceil(title.length*7+26)));
+    const position=positionCompanionPopover(
+      rect,{width:window.innerWidth,height:window.innerHeight},
+      {width,height:34},"center"
+    );
+    setTabTooltip({title,...position});
+  };
+  const showTabMenu=(event:React.MouseEvent<HTMLButtonElement>,slot:CompanionSlot,tool:CompanionTool)=>{
+    event.preventDefault();
+    event.stopPropagation();
+    const rect=event.currentTarget.getBoundingClientRect();
+    const position=positionCompanionPopover(
+      rect,{width:window.innerWidth,height:window.innerHeight},
+      {width:218,height:50},"start"
+    );
+    setTabTooltip(null);
+    setTabMenu({slot,tool,...position});
+  };
   const tabList=(slot:CompanionSlot,value:CompanionTool)=>
     <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
       className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
       {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={value===t.key}
-        aria-label={t.title} title={t.title}
+        aria-label={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={value===t.key?"active":""} onClick={()=>selectTool(slot,t.key)}
-        onContextMenu={e=>{
-          e.preventDefault();e.stopPropagation();
-          setTabMenu({slot,tool:t.key,
-            left:Math.max(8,Math.min(e.clientX,window.innerWidth-225)),
-            top:Math.max(8,Math.min(e.clientY,window.innerHeight-95))});
-        }}>
+        className={value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
+        onMouseEnter={e=>showTabTooltip(e,t.title)}
+        onMouseLeave={()=>setTabTooltip(null)}
+        onFocus={e=>showTabTooltip(e,t.title)}
+        onBlur={()=>setTabTooltip(null)}
+        onContextMenu={e=>showTabMenu(e,slot,t.key)}>
         {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={17}/>:t.key==="context"?<BookOpen size={17}/>:<Lightbulb size={17}/>)}
         {p.options.tabDisplay!=="icons"&&<span>{t.title.toUpperCase()}</span>}
       </button>)}
@@ -293,6 +315,11 @@ export default function Companion(p:Props){
       </div>
       {message&&<div className="aaa-companion-message" role="status">{message}<button onClick={()=>setMessage("")} aria-label="Dismiss"><X size={13}/></button></div>}
     </aside>
+    {tabTooltip&&!tabMenu&&p.options.tabDisplay==="icons"&&typeof document!=="undefined"&&createPortal(
+      <div className="aaa-companion-tab-tooltip" role="tooltip"
+        style={{left:tabTooltip.left,top:tabTooltip.top}}>{tabTooltip.title}</div>,
+      document.body
+    )}
     {tabMenu&&typeof document!=="undefined"&&createPortal(<>
       <button type="button" className="aaa-companion-tab-menu-shield" tabIndex={-1} aria-label="Close Companion tab menu"
         onClick={()=>setTabMenu(null)}/>
