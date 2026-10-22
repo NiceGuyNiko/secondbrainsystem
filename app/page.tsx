@@ -154,13 +154,14 @@ function Workspace() {
     if(!engineEnabled||section!=="Databases")return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
   },[engineEnabled,section,refreshStagingDatabases]);
-  const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
+  const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
   const setCompanion = (patch:Partial<CompanionPreferences>)=>setPreferences(p=>({companion:{...p.companion,...patch}}));
   const setLastPinned = useCallback((lastPinned: boolean) => setPreferences(() => ({ lastPinned })), [setPreferences]);
   const setStartDay = (startDay: string) => setPreferences(() => ({ startDay: startDay as ProfilePreferences["startDay"] }));
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
+  const setEventDateFormat = (eventDateFormat: ProfilePreferences["eventDateFormat"]) => setPreferences(() => ({ eventDateFormat }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
@@ -531,6 +532,7 @@ function Workspace() {
         <CalendarWorkspace
           startDay={startDay}
           clock={clock}
+          dateFormat={eventDateFormat}
           fluidOnly={section === "Fluid Calendar"}
           hiddenCategories={hidden}
           onCategoriesChange={setCategories}
@@ -570,6 +572,8 @@ function Workspace() {
                   onStartDay={setStartDay}
                   clock={clock}
                   onClock={setClock}
+                  dateFormat={eventDateFormat}
+                  onDateFormat={setEventDateFormat}
                   onBack={() => nav("Calendar")}
                 />
               ) : section === "Databases" && engineEnabled ? (
