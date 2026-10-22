@@ -12,7 +12,7 @@ test("Companion preference parsing preserves safe defaults",()=>{
  assert.deepEqual(parseCompanion(null),defaultCompanion);
  const c=parseCompanion({splitPercent:900,layout:"invalid",primary:"agenda",secondary:"agenda",visibility:"empty"});
  assert.equal(c.splitPercent,75);
- assert.equal(c.layout,"split");
+ assert.equal(c.layout,"single");
  assert.equal(c.secondary,"context");
  assert.equal(c.visibility,"empty");
 });
