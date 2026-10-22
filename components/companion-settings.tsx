@@ -19,6 +19,14 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
   <label>Second tool drawer (also controlled by the pull handle)<select value={c.layout} onChange={e=>onChange({layout:e.target.value as CompanionPreferences["layout"]})}>
     <option value="split">Expanded — show both tools</option><option value="single">Collapsed — show only the selected tab</option>
   </select></label>
+  <label>Companion tab appearance
+    <select value={c.tabDisplay} onChange={e=>onChange({tabDisplay:e.target.value as CompanionPreferences["tabDisplay"]})}>
+      <option value="labels">Text labels (current)</option>
+      <option value="icons">Icons only — hover for names</option>
+      <option value="icon-labels">Icons and text</option>
+    </select>
+  </label>
+  <p className="calendar-muted">Right-click a Companion tool tab and choose “Open in second panel” to duplicate its current view. Context and Thoughts each have independent page locks in the upper and lower panes. Recently visited pages appear in their reference selectors.</p>
   <label>When both panes select the same tool
     <select value={c.matchingTool} onChange={e=>onChange({
       matchingTool:e.target.value as CompanionPreferences["matchingTool"],
@@ -47,6 +55,6 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
     <option value="rules">Configurable rules</option><option value="empty">Hide empty sections</option><option value="manual">Manual visibility only</option>
   </select></label>
   <label className="aaa-companion-check"><input type="checkbox" checked={c.quickLink} onChange={e=>onChange({quickLink:e.target.checked})}/> Suggest linking captured Thoughts to the current reference</label>
-  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"single",primary:"agenda",secondary:"context",matchingTool:"duplicate",widthPx:380,resizableColumn:true,splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
+  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"single",primary:"agenda",secondary:"context",matchingTool:"duplicate",tabDisplay:"labels",widthPx:380,resizableColumn:true,splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
  </div>;
 }
