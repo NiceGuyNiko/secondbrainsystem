@@ -4,6 +4,7 @@ import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, Che
 import AppearanceSettings from "./appearance-settings";
 import CompanionSettings from "./companion-settings";
 import type {CompanionPreferences} from "@/lib/companion-config";
+import type {CalendarDateFormat} from "@/lib/calendar-date-format";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
@@ -29,6 +30,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   demoIsolation:boolean;
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
+  dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
 };
 export default function SettingsWorkspace(p:Props) {
@@ -48,6 +50,12 @@ export default function SettingsWorkspace(p:Props) {
       <p className="calendar-muted">Changes apply immediately and are saved to your current profile.</p>
       <label>Week starts on<select value={p.startDay} onChange={e=>p.onStartDay(e.target.value)}>{["Monday","Sunday","Saturday"].map(x=><option key={x}>{x}</option>)}</select></label>
       <label>Time format<select value={p.clock} onChange={e=>p.onClock(e.target.value)}><option>12-hour</option><option>24-hour</option></select></label>
+      <label>Event date display<select value={p.dateFormat} onChange={e=>p.onDateFormat(e.target.value as CalendarDateFormat)}>
+        <option value="long">Full — Wednesday, October 7, 2026</option>
+        <option value="friendly">Month first — October 7, 2026</option>
+        <option value="compact">ISO — 2026-10-07</option>
+      </select></label>
+      <p className="calendar-muted">Controls how dates appear when creating or editing calendar events. Agenda dates keep their familiar full-date style.</p>
       <label>Agenda display mode<select value={p.agendaPreference} onChange={e=>p.onAgendaPreference(e.target.value as AgendaPreference)}><option value="column">Column</option><option value="pin">Pin</option><option value="toggle">Toggle</option></select></label>
       <p className="calendar-muted">{p.agendaPreference==="column"?"Always opens as a docked column.":p.agendaPreference==="pin"?"Opens as a pop-out; pin it temporarily for this opening.":"Remembers your last pinned or unpinned presentation."} Mobile always opens full-screen.</p>
       <h2>Ontario holidays</h2><p className="calendar-muted">Automatically shown in the Holiday calendar. Observances and common weekday observed dates are labelled separately. Workplace substitute dates may differ.</p>

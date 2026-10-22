@@ -5,6 +5,7 @@
 // only: every profile of an account sees the same calendar events, thoughts, goals and tasks.
 import type { AgendaPreference } from "@/lib/agenda-state";
 import {defaultCompanion,parseCompanion,type CompanionPreferences} from "@/lib/companion-config";
+import {parseCalendarDateFormat,type CalendarDateFormat} from "@/lib/calendar-date-format";
 import { appearanceDefaults, lightCounterpart, paletteFor, parseAppearance, type Appearance } from "@/lib/appearance";
 
 export type BetaFeatures = { fluidCalendar: boolean; thinkAboutIt: boolean };
@@ -18,6 +19,7 @@ export type ProfilePreferences = {
   companion: CompanionPreferences;
   startDay: "Monday" | "Sunday" | "Saturday";
   clock: "12-hour" | "24-hour";
+  eventDateFormat: CalendarDateFormat;
   hiddenCalendars: string[];
   appearance: Appearance;
   themeMode: ThemeMode;
@@ -35,6 +37,7 @@ export const defaultPreferences: ProfilePreferences = {
   companion: defaultCompanion,
   startDay: "Monday",
   clock: "12-hour",
+  eventDateFormat: "long",
   hiddenCalendars: [],
   appearance: appearanceDefaults,
   themeMode: "manual",
@@ -58,6 +61,7 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
     companion: parseCompanion(p.companion),
     startDay: pick(p.startDay, ["Monday", "Sunday", "Saturday"] as const, fallback.startDay),
     clock: pick(p.clock, ["12-hour", "24-hour"] as const, fallback.clock),
+    eventDateFormat: p.eventDateFormat===undefined?fallback.eventDateFormat:parseCalendarDateFormat(p.eventDateFormat),
     hiddenCalendars: Array.isArray(p.hiddenCalendars) ? [...new Set(p.hiddenCalendars.filter((x): x is string => typeof x === "string"))] : [...fallback.hiddenCalendars],
     appearance: p.appearance && typeof p.appearance === "object" ? parseAppearance(p.appearance) : fallback.appearance,
     themeMode: pick(p.themeMode, ["manual", "dark", "light", "system"] as const, fallback.themeMode),
