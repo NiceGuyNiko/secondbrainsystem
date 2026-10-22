@@ -1,15 +1,22 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ChevronUp,ChevronDown,Lightbulb,Lock,LockOpen,Pin,PinOff,Plus,RotateCcw,Settings2,X} from "lucide-react";
+import {createPortal} from "react-dom";
+import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
 import type {AgendaMode} from "@/components/agenda";
 import {type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
 import CompanionAgendaView from "@/components/companion-agenda-view";
+import CompanionContextView from "@/components/companion-context-view";
+import CompanionThoughtsView from "@/components/companion-thoughts-view";
 import {thoughtStore,type Thought} from "@/lib/thoughts";
-import {contextKey,defaultSections,resolveSections,scopeKey,sectionVisible,type CompanionPreferences,type CompanionTool,type CompanionTarget,type ContextScope,type ContextSection,type ContextConfigurations,type CompanionCondition} from "@/lib/companion-config";
+import {contextKey,type CompanionPreferences,type CompanionTool,type CompanionTarget,type ContextConfigurations} from "@/lib/companion-config";
+import {initialPaneState,cloneCompanionView,addRecentReference,
+  type CompanionPaneState,type CompanionSlot,type ContextViewState,type ThoughtsViewState} from "@/lib/companion-pane-state";
 
 const tools: {key:CompanionTool;title:string}[] = [
-  {key:"agenda",title:"The Agenda"},{key:"context",title:"Context"},{key:"thoughts",title:"Thoughts"}
+  {key:"agenda",title:"The Agenda"},
+  {key:"context",title:"Context"},
+  {key:"thoughts",title:"Thoughts"}
 ];
 type Props={
   preference:AgendaPreference;mode:AgendaMode;onMode:(mode:AgendaMode)=>void;
@@ -28,94 +35,118 @@ type Props={
 export default function Companion(p:Props){
   const [top,setTop]=useState<CompanionTool>(p.options.primary);
   const [bottom,setBottom]=useState<CompanionTool>(p.options.secondary);
-  useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary)},[p.options.primary,p.options.secondary]);
+  useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary);},[p.options.primary,p.options.secondary]);
   const [fixed,setFixed]=useState<CompanionTool|null>(null);
-  // The secondary tool is a draggable drawer. Zero means only the main tab is visible.
   const [drawerHeight,setDrawerHeight]=useState(p.options.layout==="split"?100-p.options.splitPercent:0);
   const drawerHeightRef=useRef(drawerHeight);
   useEffect(()=>{
     const value=p.options.layout==="split"?100-p.options.splitPercent:0;
     drawerHeightRef.current=value;setDrawerHeight(value);
   },[p.options.layout,p.options.splitPercent]);
-  const [topDate,setTopDate]=useState(p.today);
-  const [bottomDate,setBottomDate]=useState(p.today);
-  const [topSelected,setTopSelected]=useState<string|null>(null);
-  const [bottomSelected,setBottomSelected]=useState<string|null>(null);
-  const [busy,setBusy]=useState(false);
+
+  const [panes,setPanes]=useState<Record<CompanionSlot,CompanionPaneState>>({
+    top:initialPaneState(p.today,p.options.quickLink),
+    bottom:initialPaneState(p.today,p.options.quickLink)
+  });
+  const [recent,setRecent]=useState<CompanionTarget[]>([]);
+  const [tabMenu,setTabMenu]=useState<{slot:CompanionSlot;tool:CompanionTool;left:number;top:number}|null>(null);
   const [message,setMessage]=useState("");
-  const [locked,setLocked]=useState<CompanionTarget|null>(null);
-  const [configure,setConfigure]=useState(false);
-  const [scope,setScope]=useState<ContextScope>("workspace");
   const [configs,setConfigs]=useState<ContextConfigurations>({});
-  const [newSection,setNewSection]=useState("");
-  const [expanded,setExpanded]=useState<Record<string,boolean>>({});
   const [thoughts,setThoughts]=useState<Thought[]>([]);
-  const [thoughtFilter,setThoughtFilter]=useState<"related"|"all">("related");
-  const [draft,setDraft]=useState("");
-  const [linkDraft,setLinkDraft]=useState(p.options.quickLink);
   const [loadingThoughts,setLoadingThoughts]=useState(false);
+  const targetSignature=JSON.stringify(p.target);
+  useEffect(()=>{setRecent(prev=>addRecentReference(prev,p.target));},[targetSignature]);
+  useEffect(()=>{
+    setPanes({top:initialPaneState(p.today,p.options.quickLink),bottom:initialPaneState(p.today,p.options.quickLink)});
+    setRecent([]);setTabMenu(null);
+  },[p.profileKey]);
+  const updateAgenda=(slot:CompanionSlot,patch:Partial<CompanionPaneState["agenda"]>)=>
+    setPanes(prev=>({...prev,[slot]:{...prev[slot],agenda:{...prev[slot].agenda,...patch}}}));
+  const updateContext=(slot:CompanionSlot,patch:Partial<ContextViewState>)=>
+    setPanes(prev=>({...prev,[slot]:{...prev[slot],context:{...prev[slot].context,...patch}}}));
+  const updateThoughts=(slot:CompanionSlot,patch:Partial<ThoughtsViewState>)=>
+    setPanes(prev=>({...prev,[slot]:{...prev[slot],thoughts:{...prev[slot].thoughts,...patch}}}));
+
   const panel=useRef<HTMLElement>(null);
   const columnResizeStart=useRef<{x:number;width:number}|null>(null);
   const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
   const previewWidthRef=useRef(p.options.widthPx);
   useEffect(()=>{previewWidthRef.current=p.options.widthPx;setPreviewWidth(p.options.widthPx);},[p.options.widthPx]);
-  const columnMin=300;
-  const clampWidth=(w:number)=>Math.max(columnMin,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
+  const clampWidth=(w:number)=>Math.max(300,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
   const updateWidth=(w:number)=>{
     const next=clampWidth(w);previewWidthRef.current=next;setPreviewWidth(next);return next;
   };
-  const target=locked || (p.options.follow==="workspace" ? {
+  const currentTarget:CompanionTarget=p.options.follow==="workspace"?{
     id:"workspace:"+p.target.workspaceId,title:p.target.workspaceName,databaseId:"workspace",
     databaseName:"Workspace",workspaceId:p.target.workspaceId,workspaceName:p.target.workspaceName,
-    kind:"page" as const,fields:[{id:"workspace",label:"Workspace",value:p.target.workspaceName}]
-  } : p.target);
-  useEffect(()=>{if(locked && p.target.id===locked.id && JSON.stringify(p.target)!==JSON.stringify(locked))setLocked(p.target);},[p.target,locked]);
+    kind:"page",fields:[{id:"workspace",label:"Workspace",value:p.target.workspaceName}]
+  }:p.target;
   const storageId=contextKey(p.profileKey);
-  useEffect(()=>{try{const data=localStorage.getItem(storageId);setConfigs(data?JSON.parse(data) as ContextConfigurations:{});}catch{setConfigs({});}},[storageId]);
-  const saveConfig=(next:ContextConfigurations)=>{setConfigs(next);try{localStorage.setItem(storageId,JSON.stringify(next));}catch{setMessage("Context layout could not be saved in this browser.");}};
-  const changeSection=(section:ContextSection,patch:Partial<ContextSection>|{removed:true})=>{
-    const key=scopeKey(scope,target);
-    const prior=configs[key]||[];
-    const old=prior.find(item=>item.id===section.id);
-    const next={...configs,[key]:[...prior.filter(item=>item.id!==section.id),{...old,id:section.id,...patch}]};
-    saveConfig(next);
+  useEffect(()=>{try{
+    const data=localStorage.getItem(storageId);
+    setConfigs(data?JSON.parse(data) as ContextConfigurations:{});
+  }catch{setConfigs({});}},[storageId]);
+  const saveConfigs=(next:ContextConfigurations)=>{
+    setConfigs(next);
+    try{localStorage.setItem(storageId,JSON.stringify(next));}
+    catch{setMessage("Context layout could not be saved in this browser.");}
   };
-  const sections=resolveSections(target,configs);
-  const visibleSections=sections.filter(section=>sectionVisible(section,target,p.options.visibility));
-  useEffect(()=>{if(p.mode==="closed")return;const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape" && !configure){if(p.preference!=="column")p.onMode("closed");}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[p.mode,p.preference,p.onMode,configure]);
+  useEffect(()=>{
+    if(p.mode==="closed")return;
+    const onKey=(e:KeyboardEvent)=>{
+      if(e.key!=="Escape")return;
+      if(tabMenu){e.preventDefault();e.stopPropagation();setTabMenu(null);return;}
+      if(p.preference!=="column")p.onMode("closed");
+    };
+    window.addEventListener("keydown",onKey);
+    return()=>window.removeEventListener("keydown",onKey);
+  },[p.mode,p.preference,p.onMode,tabMenu]);
+
   const loadThoughts=useCallback(async()=>{
     setLoadingThoughts(true);
     try{setThoughts((await thoughtStore.load()).thoughts.filter(t=>!t.details.archived_at));}
     catch(e){setMessage(e instanceof Error?e.message:"Thoughts could not be loaded.");}
     finally{setLoadingThoughts(false);}
   },[]);
-  useEffect(()=>{if(p.mode==="closed"||(top!=="thoughts"&&bottom!=="thoughts"))return;void loadThoughts();},[p.mode,top,bottom,loadThoughts]);
-  useEffect(()=>setLinkDraft(p.options.quickLink),[p.options.quickLink]);
-  const linked=(thought:Thought)=>Array.isArray(thought.content.companionRefs)&&thought.content.companionRefs.includes(target.id);
-  const related=thoughts.filter(t=>thoughtFilter==="all"||linked(t));
-  const capture=async()=>{
-    const name=draft.trim();if(!name||busy)return;setBusy(true);setMessage("");
-    try{
-      const id=await thoughtStore.create(name);
-      if(linkDraft){
-        const data=await thoughtStore.load();
-        const thought=data.thoughts.find(t=>t.id===id);
-        if(thought)await thoughtStore.save({...thought,content:{...thought.content,companionRefs:[target.id]}});
-      }
-      setDraft("");await loadThoughts();setMessage("Thought captured.");
-    }catch(e){setMessage(e instanceof Error?e.message:"Could not capture Thought.");}
-    finally{setBusy(false);}
+  useEffect(()=>{
+    if(p.mode==="closed"||(top!=="thoughts"&&bottom!=="thoughts"))return;
+    void loadThoughts();
+  },[p.mode,top,bottom,loadThoughts]);
+  const captureThought=async(name:string,reference:CompanionTarget|null)=>{
+    const id=await thoughtStore.create(name);
+    if(reference){
+      const data=await thoughtStore.load();
+      const thought=data.thoughts.find(t=>t.id===id);
+      if(thought)await thoughtStore.save({...thought,content:{...thought.content,
+        companionRefs:[...new Set([...(Array.isArray(thought.content.companionRefs)?thought.content.companionRefs:[]),reference.id])]
+      }});
+    }
+    await loadThoughts();
   };
-  const selectTool=(slot:"top"|"bottom",tool:CompanionTool)=>{
-    if(slot==="bottom"&&fixed===bottom)return;
+
+  const selectTool=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
     let nextBottom=slot==="bottom"?tool:bottom;
-    if(p.options.matchingTool==="swap" && nextTop===nextBottom){
-      if(fixed===bottom && slot==="top")return;
+    if(p.options.matchingTool==="swap"&&nextTop===nextBottom){
+      if(fixed===bottom&&slot==="top")return;
       if(slot==="top")nextBottom=top;else nextTop=bottom;
     }
     setTop(nextTop);setBottom(nextBottom);
     p.onOptions({primary:nextTop,secondary:nextBottom});
+  };
+  const duplicateToOtherPane=(source:CompanionSlot,tool:CompanionTool)=>{
+    const destination:CompanionSlot=source==="top"?"bottom":"top";
+    if(destination==="bottom"&&fixed===bottom&&bottom!==tool){
+      setMessage("Unpin the lower tool before opening another view there.");
+      setTabMenu(null);return;
+    }
+    setPanes(prev=>({...prev,[destination]:cloneCompanionView(prev[source],prev[destination],tool)}));
+    const nextTop=destination==="top"?tool:top;
+    const nextBottom=destination==="bottom"?tool:bottom;
+    setTop(nextTop);setBottom(nextBottom);setTabMenu(null);
+    p.onOptions({primary:nextTop,secondary:nextBottom,layout:"split",
+      matchingTool:nextTop===nextBottom?"duplicate":p.options.matchingTool});
   };
   const resizeStart=useRef<{y:number;percent:number;height:number;moved:boolean}|null>(null);
   const commitDrawer=(percent:number)=>{
@@ -124,12 +155,21 @@ export default function Companion(p:Props){
     if(next===0)p.onOptions({layout:"single"});
     else p.onOptions({layout:"split",splitPercent:100-next});
   };
-  const tabList=(slot:"top"|"bottom",value:CompanionTool)=>
-    <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"} className="aaa-companion-header-tabs">
+  const tabList=(slot:CompanionSlot,value:CompanionTool)=>
+    <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
+      className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
       {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={value===t.key}
+        aria-label={t.title} title={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={value===t.key?"active":""} onClick={()=>selectTool(slot,t.key)}>
-        {t.title.toUpperCase()}
+        className={value===t.key?"active":""} onClick={()=>selectTool(slot,t.key)}
+        onContextMenu={e=>{
+          e.preventDefault();e.stopPropagation();
+          setTabMenu({slot,tool:t.key,
+            left:Math.max(8,Math.min(e.clientX,window.innerWidth-225)),
+            top:Math.max(8,Math.min(e.clientY,window.innerHeight-95))});
+        }}>
+        {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={17}/>:t.key==="context"?<BookOpen size={17}/>:<Lightbulb size={17}/>)}
+        {p.options.tabDisplay!=="icons"&&<span>{t.title.toUpperCase()}</span>}
       </button>)}
     </nav>;
   const secondaryHeader=()=><header className="aaa-hybrid-header aaa-companion-secondary-header">
@@ -141,111 +181,27 @@ export default function Companion(p:Props){
       </button>
     </div>
   </header>;
-  const agenda=(slot:"top"|"bottom")=><CompanionAgendaView
-    date={slot==="top"?topDate:bottomDate}
-    today={p.today} now={p.now} timeZone={p.timeZone} jump={p.options.jump}
-    onDate={slot==="top"?setTopDate:setBottomDate}
-    selected={slot==="top"?topSelected:bottomSelected}
-    onSelected={slot==="top"?setTopSelected:setBottomSelected}
-    occurrencesForDate={p.occurrencesForDate} colour={p.colour} format={p.format}
-    onNew={p.onNew} onToggleTask={p.onToggleTask} onOpenThought={p.onOpenThought}/>;
-  const context=<div className="aaa-companion-context">
-    <div className="aaa-companion-actions">
-      <button onClick={()=>setLocked(locked?null:{...target})} aria-pressed={!!locked}>
-        {locked?<Lock size={15}/>:<LockOpen size={15}/>} {locked?"Locked":"Follow"}
-      </button>
-      <button onClick={()=>setConfigure(v=>!v)} aria-pressed={configure}><Settings2 size={15}/>{configure?"Done":"Configure"}</button>
-    </div>
-    <div className="aaa-companion-reference">
-      <small>{target.workspaceName} / {target.databaseName}</small>
-      <strong>{target.title}</strong>
-      <small>{locked?"Reference fixed · values from last refresh":"Following "+p.options.follow}</small>
-    </div>
-    {configure&&<div className="aaa-companion-config">
-      <label>Editing scope
-        <select value={scope} onChange={e=>setScope(e.target.value as ContextScope)}>
-          <option value="database">Database default</option>
-          <option value="workspace">Current workspace</option>
-          <option value="record">This record everywhere</option>
-          <option value="record-workspace">This record here</option>
-        </select>
-      </label>
-      <small>Layout edits do not change the original records. Overrides for this preview are saved on this device and profile.</small>
-      <form onSubmit={e=>{e.preventDefault();const name=newSection.trim();if(!name)return;
-        const id="section:"+crypto.randomUUID();
-        const s:ContextSection={id,title:name,visible:true,condition:"always",fieldIds:[],text:"",origin:scope};
-        changeSection(s,s);setNewSection("");
-      }}>
-        <input value={newSection} maxLength={80} onChange={e=>setNewSection(e.target.value)} placeholder="New section"/>
-        <button type="submit" disabled={!newSection.trim()}><Plus size={14}/> Add</button>
-      </form>
-      <button onClick={()=>{const key=scopeKey(scope,target);const next={...configs};delete next[key];saveConfig(next);}}><RotateCcw size={14}/> Reset this scope</button>
-    </div>}
-    <div className="aaa-companion-sections">
-      {sections.map((s,index)=>{
-        const visible=sectionVisible(s,target,p.options.visibility);
-        if(!configure&&!visible)return null;
-        const fields=target.fields.filter(f=>s.fieldIds.includes(f.id));
-        const open=expanded[s.id]!==false;
-        return <section key={s.id} className={"aaa-companion-reference-section "+(!visible?"aaa-section-hidden":"")}>
-          <div className="aaa-companion-section-title">
-            <button onClick={()=>setExpanded(prev=>({...prev,[s.id]:!open}))} aria-expanded={open}>
-              {open?"▾":"▸"} {s.title}
-            </button>
-            {configure&&<small>{s.origin||"Database"}</small>}
-          </div>
-          {configure&&<div className="aaa-companion-section-editor">
-            <label>Title <input value={s.title} onChange={e=>changeSection(s,{title:e.target.value})}/></label>
-            <label>Visibility <select value={s.condition} onChange={e=>changeSection(s,{condition:e.target.value as CompanionCondition})}>
-              <option value="always">Always</option><option value="nonempty">Not empty</option>
-              <option value="property">Has property value</option><option value="relation">Has relationships</option>
-              <option value="workflow">In a workspace</option>
-            </select></label>
-            <label><input type="checkbox" checked={s.visible} onChange={e=>changeSection(s,{visible:e.target.checked})}/> Enabled</label>
-            <label>Reference note <textarea value={s.text||""} onChange={e=>changeSection(s,{text:e.target.value})} placeholder="Optional section note"/></label>
-            <div className="aaa-companion-config-fields">
-              {target.fields.map(f=><label key={f.id}>
-                <input type="checkbox" checked={s.fieldIds.includes(f.id)}
-                  onChange={e=>changeSection(s,{fieldIds:e.target.checked?[...s.fieldIds,f.id]:s.fieldIds.filter(id=>id!==f.id)})}/>
-                {f.label}
-              </label>)}
-            </div>
-            <div className="aaa-companion-actions">
-              <button disabled={index===0} onClick={()=>changeSection(s,{afterId:index>=2?sections[index-2].id:"__first"})}>↑ Move</button>
-              <button disabled={index===sections.length-1} onClick={()=>changeSection(s,{afterId:sections[index+1].id})}>↓ Move</button>
-              {s.id.startsWith("section:")&&<button onClick={()=>changeSection(s,{removed:true})}>Remove</button>}
-            </div>
-          </div>}
-          {open&&<div className="aaa-companion-section-body">
-            {s.text&&<p>{s.text}</p>}
-            {fields.map(f=><div key={f.id} className="aaa-companion-field"><span>{f.label}</span><strong>{f.value||"—"}</strong></div>)}
-            {!fields.length&&!s.text&&<small>{configure?"Add properties or a reference note.":"No reference information available."}</small>}
-          </div>}
-        </section>;
-      })}
-      {!visibleSections.length&&!configure&&<p>No sections match the current visibility rules. Choose Configure to change them.</p>}
-    </div>
-  </div>;
-  const thoughtPane=<div className="aaa-companion-thoughts">
-    <div className="aaa-companion-actions">
-      <button onClick={()=>setThoughtFilter("related")} aria-pressed={thoughtFilter==="related"}>Related</button>
-      <button onClick={()=>setThoughtFilter("all")} aria-pressed={thoughtFilter==="all"}>All</button>
-      <button onClick={()=>void loadThoughts()}><RotateCcw size={14}/></button>
-    </div>
-    <small>{loadingThoughts?"Loading thoughts…":related.length+" thoughts"} · {target.title}</small>
-    <div className="aaa-companion-thought-list">
-      {related.slice(0,60).map(t=><button key={t.id} onClick={()=>p.onOpenThought?.(t.id)}>
-        <Lightbulb size={14}/><span>{t.title||"Untitled"}</span>
-      </button>)}
-      {!related.length&&!loadingThoughts&&<p>No thoughts in this view yet.</p>}
-    </div>
-    <form className="aaa-companion-capture" onSubmit={e=>{e.preventDefault();void capture();}}>
-      <textarea placeholder="Capture a thought…" value={draft} onChange={e=>setDraft(e.target.value)} rows={3}/>
-      <label><input type="checkbox" checked={linkDraft} onChange={e=>setLinkDraft(e.target.checked)}/> Link to {target.title}</label>
-      <button type="submit" disabled={busy||!draft.trim()}><Plus size={14}/> Capture thought</button>
-    </form>
-  </div>;
-  const body=(slot:"top"|"bottom",tool:CompanionTool)=>tool==="agenda"?agenda(slot):tool==="context"?context:thoughtPane;
+  const body=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(tool==="agenda")return <CompanionAgendaView
+      date={panes[slot].agenda.date} today={p.today} now={p.now}
+      timeZone={p.timeZone} jump={p.options.jump}
+      onDate={date=>updateAgenda(slot,{date,selected:null})}
+      selected={panes[slot].agenda.selected}
+      onSelected={selected=>updateAgenda(slot,{selected})}
+      occurrencesForDate={p.occurrencesForDate} colour={p.colour} format={p.format}
+      onNew={p.onNew} onToggleTask={p.onToggleTask} onOpenThought={p.onOpenThought}/>;
+    if(tool==="context")return <CompanionContextView
+      paneLabel={slot==="top"?"Top":"Bottom"}
+      current={currentTarget} recent={recent}
+      state={panes[slot].context} onState={patch=>updateContext(slot,patch)}
+      configs={configs} onConfigs={saveConfigs} visibility={p.options.visibility}/>;
+    return <CompanionThoughtsView
+      paneLabel={slot==="top"?"Top":"Bottom"}
+      current={currentTarget} recent={recent}
+      state={panes[slot].thoughts} onState={patch=>updateThoughts(slot,patch)}
+      thoughts={thoughts} loading={loadingThoughts}
+      onRefresh={loadThoughts} onCapture={captureThought} onOpenThought={p.onOpenThought}/>;
+  };
   if(p.mode==="closed")return null;
   return <>
     {p.mode==="overlay"&&<button className="aaa-companion-backdrop" aria-label="Close The Companion" onClick={()=>p.onMode("closed")}/>}
@@ -274,7 +230,7 @@ export default function Companion(p:Props){
           e.preventDefault();
           const next=e.key==="Home"?380:updateWidth(previewWidth+(e.key==="ArrowLeft"?20:-20));
           previewWidthRef.current=next;setPreviewWidth(next);p.onOptions({widthPx:next});
-        }}/>} 
+        }}/>}
       <header className="aaa-hybrid-header">
         {tabList("top",top)}
         <div className="aaa-companion-header-actions">
@@ -337,5 +293,17 @@ export default function Companion(p:Props){
       </div>
       {message&&<div className="aaa-companion-message" role="status">{message}<button onClick={()=>setMessage("")} aria-label="Dismiss"><X size={13}/></button></div>}
     </aside>
+    {tabMenu&&typeof document!=="undefined"&&createPortal(<>
+      <button type="button" className="aaa-companion-tab-menu-shield" tabIndex={-1} aria-label="Close Companion tab menu"
+        onClick={()=>setTabMenu(null)}/>
+      <div className="aaa-companion-tab-menu" role="menu" aria-label={tools.find(t=>t.key===tabMenu.tool)?.title+" options"}
+        style={{left:tabMenu.left,top:tabMenu.top}}>
+        <button type="button" role="menuitem"
+          onClick={()=>duplicateToOtherPane(tabMenu.slot,tabMenu.tool)}>
+          <PanelsTopLeft size={15}/>
+          {tabMenu.slot==="top"?"Open in second panel":"Open in first panel"}
+        </button>
+      </div>
+    </>,document.body)}
   </>;
 }
