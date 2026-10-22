@@ -17,6 +17,16 @@ test("Companion preference parsing preserves safe defaults",()=>{
  assert.equal(c.visibility,"empty");
 });
 
+test("old preview's default Context-first layout migrates only once",()=>{
+ const migrated=parseCompanion({primary:"context",secondary:"agenda",layout:"split",splitPercent:52});
+ assert.equal(migrated.primary,"agenda");
+ assert.equal(migrated.secondary,"context");
+ assert.equal(migrated.uiVersion,2);
+ const intentional=parseCompanion({...migrated,primary:"context",secondary:"agenda"});
+ assert.equal(intentional.primary,"context");
+ assert.equal(intentional.secondary,"agenda");
+});
+
 test("four-level Context inheritance edits presentation without cloning source fields",()=>{
  const configs={
   [scopeKey("database",target)]:[{id:"overview",title:"Character overview"}],
