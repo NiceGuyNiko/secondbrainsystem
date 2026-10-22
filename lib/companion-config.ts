@@ -16,7 +16,7 @@ export type CompanionPreferences = {
   launcher: "top" | "edge";
 };
 export const defaultCompanion: CompanionPreferences = {
-  layout: "split", primary: "context", secondary: "agenda",
+  layout: "split", primary: "agenda", secondary: "context",
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
 };
