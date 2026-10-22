@@ -10,6 +10,8 @@ export type CompanionPreferences = {
   primary: CompanionTool;
   secondary: CompanionTool;
   matchingTool: "duplicate" | "swap";
+  widthPx: number;
+  resizableColumn: boolean;
   splitPercent: number;
   jump: CompanionJump;
   visibility: CompanionVisibility;
@@ -20,6 +22,7 @@ export type CompanionPreferences = {
 export const defaultCompanion: CompanionPreferences = {
   uiVersion: 2,
   layout: "single", primary: "agenda", secondary: "context", matchingTool: "duplicate",
+  widthPx: 380, resizableColumn: true,
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
 };
@@ -41,6 +44,9 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
     primary,
     secondary: matchingTool === "swap" && secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
     matchingTool,
+    widthPx: typeof r.widthPx === "number" && Number.isFinite(r.widthPx)
+      ? Math.min(720,Math.max(300,Math.round(r.widthPx))) : defaultCompanion.widthPx,
+    resizableColumn: typeof r.resizableColumn === "boolean" ? r.resizableColumn : defaultCompanion.resizableColumn,
     splitPercent: typeof r.splitPercent === "number" && Number.isFinite(r.splitPercent)
       ? Math.min(75, Math.max(25, Math.round(r.splitPercent))) : defaultCompanion.splitPercent,
     jump: pick("jump", ["first", "midnight"] as const, defaultCompanion.jump),
