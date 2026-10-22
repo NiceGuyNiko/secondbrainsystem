@@ -18,7 +18,7 @@ export type CompanionPreferences = {
 };
 export const defaultCompanion: CompanionPreferences = {
   uiVersion: 2,
-  layout: "split", primary: "agenda", secondary: "context",
+  layout: "single", primary: "agenda", secondary: "context",
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
 };
@@ -35,7 +35,7 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
   const secondary = oldPreviewDefault ? "context" : pick("secondary", ["agenda", "context", "thoughts"] as const, defaultCompanion.secondary);
   return {
     uiVersion: 2,
-    layout: pick("layout", ["single", "split"] as const, defaultCompanion.layout),
+    layout: oldPreviewDefault ? "single" : pick("layout", ["single", "split"] as const, defaultCompanion.layout),
     primary,
     secondary: secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
     splitPercent: typeof r.splitPercent === "number" && Number.isFinite(r.splitPercent)
