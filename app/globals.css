@@ -741,9 +741,10 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-companion-capture label{display:flex;align-items:center;gap:7px;font-size:11px}
 .aaa-companion-capture button{justify-self:end;background:var(--accent);color:var(--on-accent)}
 .aaa-companion-message{padding:8px 11px;display:flex;align-items:center;justify-content:space-between;font-size:11px;border-top:1px solid var(--border)}
-.aaa-agenda-edge.aaa-companion-top-launcher{position:fixed!important;top:14px!important;right:14px!important;left:auto!important;bottom:auto!important;transform:none!important;width:38px!important;height:38px!important;border-radius:7px!important;z-index:54!important;display:grid;place-items:center}
+.aaa-companion-toolbar-button{flex-shrink:0;min-width:43px;min-height:43px;color:var(--text);transition:background-color .15s ease,border-color .15s ease}
+.aaa-companion-toolbar-button:hover{background:var(--ui-hover)}
+.aaa-page-toolbar .aaa-companion-toolbar-button{color:var(--text)}
 .aaa-agenda-edge.aaa-companion-edge-launcher{position:fixed!important;right:0!important;top:45%!important;bottom:auto!important}
-.aaa-hybrid-companion~.aaa-agenda-edge{display:none}
 .aaa-companion-settings{display:grid;gap:12px}
 .aaa-companion-settings>label{display:grid;gap:7px}
 .aaa-companion-settings select,.aaa-companion-settings input[type=range]{width:100%}
@@ -752,5 +753,5 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
  .aaa-hybrid-companion{width:100vw;min-width:0;position:fixed;inset:0;z-index:80}
  .aaa-hybrid-header{padding-top:60px}
  .aaa-hybrid-pinned{position:fixed}
- .aaa-agenda-edge.aaa-companion-top-launcher{top:52px!important}
+
 }
