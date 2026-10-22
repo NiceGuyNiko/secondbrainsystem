@@ -1254,7 +1254,7 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-event-time-popover{
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
   align-items:stretch;gap:4px;padding:7px;
-  max-height:156px;overflow:visible;
+  max-height:156px;overflow-y:auto;overflow-x:hidden;
 }
 .aaa-event-time-spinner{
   display:flex;flex-direction:column;align-items:stretch;
