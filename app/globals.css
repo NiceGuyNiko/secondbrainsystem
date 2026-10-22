@@ -786,3 +786,130 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
  .aaa-hybrid-pinned{position:fixed}
 
 }
+
+
+/* Companion V6: familiar Agenda styling, header tabs and a bottom-pull secondary drawer. */
+.aaa-hybrid-header{
+  height:68px;min-height:68px;box-sizing:border-box;
+  padding:0 10px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.aaa-companion-header-tabs{
+  flex:1;min-width:0;align-self:stretch;
+  display:flex;align-items:stretch;gap:1px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.aaa-companion-header-tabs::-webkit-scrollbar{display:none}
+.aaa-hybrid-header .aaa-companion-header-tabs button{
+  flex:0 0 auto;width:auto;height:auto;min-width:0;
+  padding:2px 8px 0;border:0;border-bottom:2px solid transparent;
+  border-radius:0;color:var(--muted);background:transparent;
+  font-size:10px;letter-spacing:.07em;font-weight:500;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;
+}
+.aaa-hybrid-header .aaa-companion-header-tabs button:first-child{letter-spacing:.12em}
+.aaa-hybrid-header .aaa-companion-header-tabs button.active{
+  color:var(--text);border-bottom-color:var(--accent-text);font-weight:650;
+}
+.aaa-hybrid-header .aaa-companion-header-tabs button:hover{color:var(--text)}
+.aaa-companion-header-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:5px}
+.aaa-hybrid-header .aaa-companion-header-actions button{
+  flex:none;display:grid;place-items:center;width:28px;height:28px;
+  border:1px solid var(--border);border-radius:5px;
+}
+.aaa-hybrid-primary{flex:1 1 0;min-height:0}
+.aaa-hybrid-secondary{flex-shrink:0;min-height:0}
+.aaa-companion-pull{
+  flex:0 0 18px;min-height:18px;height:18px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin:0;padding:0;
+  border:0;border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background:var(--ui-sidebar);color:var(--muted);
+  cursor:ns-resize;touch-action:none;user-select:none;
+}
+.aaa-companion-pull:hover,.aaa-companion-pull:focus-visible{background:var(--ui-hover);color:var(--text)}
+.aaa-companion-pull-track{width:37px;height:1px;background:var(--border)}
+.aaa-companion-pull-pill{
+  width:45px;height:14px;border-radius:9px;
+  display:grid;place-items:center;
+  border:1px solid var(--border);background:var(--surface-2);
+}
+.aaa-companion-pull.is-open .aaa-companion-pull-pill{background:var(--ui-sidebar)}
+.aaa-companion-tool-head{height:39px;min-height:39px;background:var(--ui-sidebar);gap:8px}
+.aaa-companion-tool-head>span{color:var(--muted);font-size:9px;letter-spacing:.08em;white-space:nowrap}
+.aaa-companion-tool-head select{min-width:0;flex:1}
+.aaa-companion-tool-head button{flex:none}
+.aaa-companion-agenda-top{
+  flex-shrink:0;padding:0 11px 10px;
+  border-bottom:1px solid var(--border);
+}
+.aaa-companion-date{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:5px;padding:13px 0 10px;min-height:46px;
+}
+.aaa-companion-date-label{
+  display:block;flex:1;min-width:0;position:relative;
+  font-size:17px;font-weight:700;line-height:1.25;
+  color:var(--text);cursor:pointer;
+}
+.aaa-companion-date-label>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aaa-hybrid-companion .aaa-companion-date-label input[type=date]{
+  position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;cursor:pointer;border:0;padding:0;z-index:1;
+}
+.aaa-companion-date-label:focus-within{outline:2px solid var(--accent-text);outline-offset:3px;border-radius:2px}
+.aaa-companion-date-arrows{display:flex;align-items:center;gap:2px;flex:none}
+.aaa-hybrid-companion .aaa-companion-date-arrows button{
+  display:grid;place-items:center;width:25px;height:28px;
+  border:0;border-radius:5px;background:transparent;color:var(--muted);
+}
+.aaa-hybrid-companion .aaa-companion-date-arrows button:hover{background:var(--ui-hover);color:var(--text)}
+.aaa-companion-agenda-actions{display:flex;align-items:center;gap:5px;min-height:27px}
+.aaa-companion-agenda-actions small{
+  flex:1;min-width:0;font-size:10px;color:var(--muted);white-space:nowrap;
+}
+.aaa-companion-agenda-actions button{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  gap:4px;padding:5px 7px;font-size:10px;line-height:1.1;
+  border:1px solid var(--border);border-radius:5px;
+  white-space:nowrap;
+}
+.aaa-companion-agenda-actions button:hover{background:var(--ui-hover)}
+.aaa-companion-allday{
+  flex-shrink:0;border-top:0;border-bottom:1px solid var(--border);
+  gap:7px;padding:11px 9px 10px;
+}
+.aaa-companion-allday .event-chip{width:100%;border-radius:14px!important}
+.aaa-companion-hour{border-top:1px solid var(--border)}
+.aaa-companion-hour span{top:3px;left:5px;font-size:9px}
+.aaa-companion-grid{border-left:0}
+.aaa-companion-grid::before{
+  content:"";position:absolute;left:52px;top:0;bottom:0;
+  border-left:1px solid var(--border);pointer-events:none;
+}
+.aaa-companion-block{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  border-radius:5px!important;gap:2px;
+  min-height:22px;padding:5px;
+  overflow:hidden;text-align:left;
+}
+.aaa-companion-block strong{font-size:11px}
+.aaa-companion-block small{font-size:10px;line-height:1.3}
+.aaa-companion-empty-day{padding:9px 11px;font-size:11px;color:var(--muted)}
+/* The implied line at the bottom of the 68px Companion header is also the
+   reference line for the calendar toolbar. Keep the grid where it was:
+   remove the old 14px top inset and give it back to the toolbar height. */
+@media(min-width:768px){
+  .aaa-calendar-host>.aaa-main-surface:not(.aaa-working-surface){padding-top:0}
+  .aaa-calendar-content>.pr11-calendar-toolbar{
+    box-sizing:border-box;flex:0 0 68px;
+    min-height:68px;height:68px;align-items:center;
+  }
+}
+@media(max-width:767px){
+  .aaa-hybrid-header{height:108px;min-height:108px;padding-top:58px}
+  .aaa-hybrid-header .aaa-companion-header-tabs button{padding-inline:6px;font-size:9px}
+  .aaa-companion-date-label{font-size:15px}
+  .aaa-companion-agenda-actions button{padding:5px}
+}
