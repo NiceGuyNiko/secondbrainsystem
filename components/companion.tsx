@@ -167,7 +167,7 @@ export default function Companion(p:Props){
       rect,{width:window.innerWidth,height:window.innerHeight},
       {width,height:34},"center"
     );
-    setTabTooltip({title,...position});
+    setTabTooltip({title,...position,width});
   };
   const showTabMenu=(event:MouseEvent<HTMLButtonElement>,slot:CompanionSlot,tool:CompanionTool)=>{
     event.preventDefault();
