@@ -10,6 +10,7 @@ export type CompanionPreferences = {
   primary: CompanionTool;
   secondary: CompanionTool;
   matchingTool: "duplicate" | "swap";
+  tabDisplay: "labels" | "icons" | "icon-labels";
   widthPx: number;
   resizableColumn: boolean;
   splitPercent: number;
@@ -22,6 +23,7 @@ export type CompanionPreferences = {
 export const defaultCompanion: CompanionPreferences = {
   uiVersion: 2,
   layout: "single", primary: "agenda", secondary: "context", matchingTool: "duplicate",
+  tabDisplay: "labels",
   widthPx: 380, resizableColumn: true,
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
@@ -44,6 +46,7 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
     primary,
     secondary: matchingTool === "swap" && secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
     matchingTool,
+    tabDisplay: pick("tabDisplay", ["labels", "icons", "icon-labels"] as const, defaultCompanion.tabDisplay),
     widthPx: typeof r.widthPx === "number" && Number.isFinite(r.widthPx)
       ? Math.min(720,Math.max(300,Math.round(r.widthPx))) : defaultCompanion.widthPx,
     resizableColumn: typeof r.resizableColumn === "boolean" ? r.resizableColumn : defaultCompanion.resizableColumn,
