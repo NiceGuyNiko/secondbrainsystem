@@ -50,6 +50,7 @@ import {
   ChevronDown,
   ChevronRight,
   PenLine,
+  PanelRightOpen,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -548,6 +549,7 @@ function Workspace() {
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
+                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
               {section === "Settings" ? (
