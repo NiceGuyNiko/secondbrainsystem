@@ -3,27 +3,17 @@ import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {CalendarDays,ChevronLeft,ChevronRight,ChevronUp,ChevronDown} from "lucide-react";
 import {formatCalendarDate,type CalendarDateFormat} from "@/lib/calendar-date-format";
+import {positionCalendarPicker,type CalendarPickerPosition} from "@/lib/calendar-picker-position";
 
 const iso=(date:Date)=>[date.getFullYear(),String(date.getMonth()+1).padStart(2,"0"),String(date.getDate()).padStart(2,"0")].join("-");
 const parse=(date:string)=>new Date(date+"T12:00:00");
 const add=(date:string,days:number)=>{const next=parse(date);next.setDate(next.getDate()+days);return iso(next)};
 const weekdays=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-type PickerPosition = {left:number;top:number;width:number};
+type PickerPosition = CalendarPickerPosition;
 function positionPicker(element:HTMLElement,estimatedHeight:number):PickerPosition {
-  const rect=element.getBoundingClientRect();
-  const width=rect.width;
-  const margin=8;
-  const below=window.innerHeight-rect.bottom-margin;
-  const above=rect.top-margin;
-  // Prefer beneath the field. Use the area above only when the picker wouldn't fit below.
-  const placeAbove=below<estimatedHeight+6 && above>below;
-  const idealTop=placeAbove?rect.top-estimatedHeight-6:rect.bottom+6;
-  return {
-    width,
-    left:Math.max(margin,Math.min(rect.left,window.innerWidth-width-margin)),
-    top:Math.max(margin,Math.min(idealTop,window.innerHeight-estimatedHeight-margin))
-  };
+  return positionCalendarPicker(element.getBoundingClientRect(),
+    {width:window.innerWidth,height:window.innerHeight},estimatedHeight);
 }
 function PickerBackdrop({onClose}:{onClose:()=>void}){
   return <button type="button" className="aaa-event-picker-backdrop" tabIndex={-1}
@@ -58,7 +48,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
 }){
   const [open,setOpen]=useState(false);
   const trigger=useRef<HTMLButtonElement>(null);
-  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:240});
+  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:240,maxHeight:268});
   const [month,setMonth]=useState(value||iso(new Date()));
   const close=()=>{setOpen(false);trigger.current?.focus()};
   usePickerDismiss(open,close);
@@ -66,7 +56,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
     const onOther=()=>setOpen(false);
     const onBatch=()=>{if(label==="Choose dates"||label==="Change selected date"){
       setMonth(value||iso(new Date()));
-      if(trigger.current)setPosition(positionPicker(trigger.current,300));
+      if(trigger.current)setPosition(positionPicker(trigger.current,268));
       setOpen(true);
     }};
     window.addEventListener("calendar-date-open",onOther);
@@ -88,7 +78,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
     window.dispatchEvent(new Event("calendar-date-open"));
     window.dispatchEvent(new Event("calendar-time-open"));
     setMonth(value||iso(new Date()));
-    if(trigger.current)setPosition(positionPicker(trigger.current,300));
+    if(trigger.current)setPosition(positionPicker(trigger.current,268));
     setOpen(true);
   };
   return <>
@@ -104,7 +94,7 @@ export function DateChoice({value,onChange,label,min,startDay,dateFormat="long"}
       <PickerBackdrop onClose={close}/>
       <div role="dialog" aria-modal="true" aria-label={label+" date picker"}
         className="aaa-event-calendar-popover"
-        style={{left:position.left,top:position.top,width:position.width}}
+        style={{left:position.left,top:position.top,width:position.width,maxHeight:position.maxHeight}}
         onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
         <div className="aaa-event-calendar-head">
           <button type="button" aria-label="Previous month" onClick={()=>shift(-1)}><ChevronLeft size={18}/></button>
@@ -132,7 +122,7 @@ export function TimeChoice({value,onChange,label,clock="12-hour"}:{
 }){
   const [open,setOpen]=useState(false);
   const trigger=useRef<HTMLButtonElement>(null);
-  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:176});
+  const [position,setPosition]=useState<PickerPosition>({left:0,top:0,width:176,maxHeight:130});
   const close=()=>{setOpen(false);trigger.current?.focus()};
   usePickerDismiss(open,close);
   useEffect(()=>{
@@ -153,7 +143,7 @@ export function TimeChoice({value,onChange,label,clock="12-hour"}:{
     if(open){setOpen(false);return}
     window.dispatchEvent(new Event("calendar-date-open"));
     window.dispatchEvent(new Event("calendar-time-open"));
-    if(trigger.current)setPosition(positionPicker(trigger.current,146));
+    if(trigger.current)setPosition(positionPicker(trigger.current,130));
     setOpen(true);
   };
   const fields=[
@@ -174,7 +164,7 @@ export function TimeChoice({value,onChange,label,clock="12-hour"}:{
     {open&&typeof document!=="undefined"&&createPortal(<>
       <PickerBackdrop onClose={close}/>
       <div className="aaa-event-time-popover" role="dialog" aria-label={label+" time picker"} aria-modal="true"
-        style={{left:position.left,top:position.top,width:position.width}}
+        style={{left:position.left,top:position.top,width:position.width,maxHeight:position.maxHeight}}
         onClick={e=>e.stopPropagation()} onPointerDown={e=>e.stopPropagation()}>
         {fields.map(field=><div key={field.name} className="aaa-event-time-spinner">
           <button type="button" aria-label={"Increase "+field.name} onClick={field.up}><ChevronUp size={17}/></button>
