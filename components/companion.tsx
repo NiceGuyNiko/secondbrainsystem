@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState} from "react";
+import {useCallback,useEffect,useRef,useState,type MouseEvent,type SyntheticEvent} from "react";
 import {createPortal} from "react-dom";
 import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
@@ -157,17 +157,17 @@ export default function Companion(p:Props){
     if(next===0)p.onOptions({layout:"single"});
     else p.onOptions({layout:"split",splitPercent:100-next});
   };
-  const showTabTooltip=(event:React.SyntheticEvent<HTMLButtonElement>,title:string)=>{
+  const showTabTooltip=(event:SyntheticEvent<HTMLButtonElement>,title:string)=>{
     if(p.options.tabDisplay!=="icons"||tabMenu)return;
     const rect=event.currentTarget.getBoundingClientRect();
-    const width=Math.max(76,Math.min(130,Math.ceil(title.length*7+26)));
+    const width=116;
     const position=positionCompanionPopover(
       rect,{width:window.innerWidth,height:window.innerHeight},
       {width,height:34},"center"
     );
     setTabTooltip({title,...position});
   };
-  const showTabMenu=(event:React.MouseEvent<HTMLButtonElement>,slot:CompanionSlot,tool:CompanionTool)=>{
+  const showTabMenu=(event:MouseEvent<HTMLButtonElement>,slot:CompanionSlot,tool:CompanionTool)=>{
     event.preventDefault();
     event.stopPropagation();
     const rect=event.currentTarget.getBoundingClientRect();
