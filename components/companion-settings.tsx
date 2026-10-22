@@ -16,11 +16,11 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
   <label>Launcher<select value={c.launcher} onChange={e=>onChange({launcher:e.target.value as CompanionPreferences["launcher"]})}>
     <option value="top">Top-right square</option><option value="edge">Right-edge handle</option>
   </select></label>
-  <label>Layout<select value={c.layout} onChange={e=>onChange({layout:e.target.value as CompanionPreferences["layout"]})}>
-    <option value="split">Hybrid split</option><option value="single">Single tool</option>
+  <label>Second tool drawer (also controlled by the pull handle)<select value={c.layout} onChange={e=>onChange({layout:e.target.value as CompanionPreferences["layout"]})}>
+    <option value="split">Expanded — show both tools</option><option value="single">Collapsed — show only the selected tab</option>
   </select></label>
-  <label>Primary tool<select value={c.primary} onChange={e=>onChange({primary:e.target.value as CompanionTool})}>{toolOptions.map(t=><option value={t} key={t}>{t}</option>)}</select></label>
-  <label>Secondary tool<select value={c.secondary} onChange={e=>onChange({secondary:e.target.value as CompanionTool})}>{toolOptions.filter(t=>t!==c.primary).map(t=><option key={t} value={t}>{t}</option>)}</select></label>
+  <label>Starting header tab<select value={c.primary} onChange={e=>onChange({primary:e.target.value as CompanionTool})}>{toolOptions.map(t=><option value={t} key={t}>{t}</option>)}</select></label>
+  <label>Drawer tool<select value={c.secondary} onChange={e=>onChange({secondary:e.target.value as CompanionTool})}>{toolOptions.filter(t=>t!==c.primary).map(t=><option key={t} value={t}>{t}</option>)}</select></label>
   <label>Top section height: {c.splitPercent}%<input aria-label="Top section percentage" type="range" min="25" max="75" value={c.splitPercent} onChange={e=>onChange({splitPercent:Number(e.target.value)})}/></label>
   <label>Day navigation<select value={c.jump} onChange={e=>onChange({jump:e.target.value as CompanionPreferences["jump"]})}>
     <option value="first">Jump to first timed block</option><option value="midnight">Start at midnight</option>
@@ -32,6 +32,6 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
     <option value="rules">Configurable rules</option><option value="empty">Hide empty sections</option><option value="manual">Manual visibility only</option>
   </select></label>
   <label className="aaa-companion-check"><input type="checkbox" checked={c.quickLink} onChange={e=>onChange({quickLink:e.target.checked})}/> Suggest linking captured Thoughts to the current reference</label>
-  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"split",primary:"context",secondary:"agenda",splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
+  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"split",primary:"agenda",secondary:"context",splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
  </div>;
 }
