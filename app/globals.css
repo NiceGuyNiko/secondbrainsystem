@@ -1328,19 +1328,24 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 }
 
 
-/* Match custom select popup scrollbars to the active theme.
-   The top arrow already inherits var(--text); use that same foreground for
-   the thumb and the bottom arrow, keeping the darker surface as the track. */
+/* Theme-consistent dropdown scrollbars: use accent gold for the thumb in
+   Black & Gold (and the selected accent in all other themes).
+   Both directional arrows retain the theme's foreground colour. */
 @supports (appearance:base-select){
   ::picker(select){
-    scrollbar-color:var(--text) var(--surface-2);
+    /* Standard scrollbar colors work on customizable select pickers and
+       take precedence over unsupported nested WebKit pseudo-elements. */
+    scrollbar-color:var(--accent) var(--surface-2);
+    /* A browser-drawn scrollbar can extend past the curved menu corner.
+       Clip the picker paint, not its scrolling overflow. */
+    border-radius:10px;
+    clip-path:inset(0 round 10px);
   }
-  /* Chromium/WebKit: explicitly theme the track, handle, and both
-     directional buttons. Reset scrollbar-color so prefixed rules apply. */
+  /* Chrome/WebKit fallback for themed scrollbar pieces. Keep the standard
+     gold thumb declaration above; do not reset it to 'auto'. */
   @supports selector(::-webkit-scrollbar){
-    ::picker(select){scrollbar-color:auto}
     ::picker(select)::-webkit-scrollbar{
-      width:13px;
+      width:11px;
       background:var(--surface-2);
     }
     ::picker(select)::-webkit-scrollbar-track{
@@ -1348,21 +1353,21 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
       border-radius:999px;
     }
     ::picker(select)::-webkit-scrollbar-thumb{
-      background:var(--text);
-      border:3px solid var(--surface-2);
+      background:var(--accent);
+      border:2px solid var(--surface-2);
       border-radius:999px;
     }
     ::picker(select)::-webkit-scrollbar-button:vertical{
       display:block;
-      width:13px;
-      height:15px;
+      width:11px;
+      height:13px;
       background-color:var(--text);
       -webkit-mask-repeat:no-repeat;
       mask-repeat:no-repeat;
       -webkit-mask-position:center;
       mask-position:center;
-      -webkit-mask-size:11px 11px;
-      mask-size:11px 11px;
+      -webkit-mask-size:10px 10px;
+      mask-size:10px 10px;
     }
     ::picker(select)::-webkit-scrollbar-button:vertical:decrement{
       -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 10.5 8 5.5l5 5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
@@ -1373,4 +1378,30 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
       mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3 5.5 5 5 5-5' fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.3'/%3E%3C/svg%3E");
     }
   }
+}
+
+
+/* Unified accent-coloured scroll controls across Calendar, The Companion,
+   database tables and Settings. Slider thumbs follow the manually chosen
+   theme rather than the operating system's default blue/grey. */
+:root{
+  scrollbar-color:var(--accent) var(--surface-2);
+}
+:where(
+  .calendar-hour-scroll,
+  .aaa-companion-timeline,
+  .aaa-companion-context,
+  .aaa-companion-thoughts,
+  .aaa-companion-thought-list,
+  .aaa-event-calendar-popover,
+  .aaa-event-time-popover,
+  .aaa-companion-sections,
+  .db-lab-top-scroll,
+  .db-lab-table-wrap,
+  .db-notion-property-menu
+){
+  scrollbar-color:var(--accent) var(--surface-2);
+}
+input[type="range"]{
+  accent-color:var(--accent);
 }
