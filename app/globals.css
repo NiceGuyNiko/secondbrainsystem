@@ -1005,3 +1005,46 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
   .aaa-companion-secondary-header{height:46px!important;min-height:46px!important;padding-top:0!important}
   .aaa-companion-secondary-header .aaa-companion-header-tabs button{padding-inline:6px;font-size:9px}
 }
+
+
+/* Companion V8 — independent reference panes, contextual copy-to-other menu and scalable tabs. */
+.aaa-companion-header-tabs button{gap:6px}
+.aaa-companion-header-tabs button svg{display:block;flex-shrink:0}
+.aaa-companion-tabs-icons{justify-content:flex-start;gap:4px}
+.aaa-hybrid-header .aaa-companion-tabs-icons button{
+  padding:0 11px;min-width:39px;min-height:33px;
+}
+.aaa-companion-tabs-icon-labels{gap:2px}
+.aaa-hybrid-header .aaa-companion-tabs-icon-labels button{gap:5px;padding-inline:7px}
+.aaa-companion-tab-menu-shield{
+  position:fixed;inset:0;z-index:1510;border:0;
+  background:transparent;cursor:default;
+}
+.aaa-companion-tab-menu{
+  position:fixed;z-index:1511;min-width:205px;
+  padding:5px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);
+  border-radius:8px;box-shadow:0 14px 40px #0008;
+}
+.aaa-companion-tab-menu button{
+  display:flex;align-items:center;gap:9px;width:100%;
+  padding:10px 9px;font-size:12px;text-align:left;
+  border:0;background:transparent;border-radius:6px;color:var(--text);
+}
+.aaa-companion-tab-menu button:hover,.aaa-companion-tab-menu button:focus-visible{background:var(--ui-hover)}
+.aaa-companion-reference-chooser{
+  display:grid;grid-template-columns:1fr;gap:5px;
+  font-size:11px;color:var(--muted);
+}
+.aaa-companion-reference-chooser select{
+  width:100%;max-width:100%;min-width:0;
+  color:var(--text);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:6px;
+  padding:7px 8px;font-size:11px;
+}
+.aaa-companion-context .aaa-companion-actions,
+.aaa-companion-thoughts .aaa-companion-actions{justify-content:flex-start}
+@media(max-width:767px){
+  .aaa-hybrid-header .aaa-companion-tabs-icon-labels button{gap:3px;padding-inline:4px;font-size:9px}
+  .aaa-hybrid-header .aaa-companion-tabs-icons button{min-width:34px;padding-inline:8px}
+}
