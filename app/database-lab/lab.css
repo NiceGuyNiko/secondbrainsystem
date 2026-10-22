@@ -135,7 +135,7 @@
 .db-lab-top-scroll-inner{height:1px;pointer-events:none}
 .db-lab-table-wrap{overflow-x:auto;overflow-y:visible;scrollbar-width:auto}
 .db-lab-top-scroll::-webkit-scrollbar,.db-lab-table-wrap::-webkit-scrollbar{height:12px}
-.db-lab-top-scroll::-webkit-scrollbar-thumb,.db-lab-table-wrap::-webkit-scrollbar-thumb{background:var(--muted);border:3px solid var(--surface-2);border-radius:10px}
+.db-lab-top-scroll::-webkit-scrollbar-thumb,.db-lab-table-wrap::-webkit-scrollbar-thumb{background:var(--accent);border:3px solid var(--surface-2);border-radius:10px}
 .db-lab-top-scroll::-webkit-scrollbar-track,.db-lab-table-wrap::-webkit-scrollbar-track{background:var(--surface-2)}
 .db-lab-timeline{padding:16px 22px;border-bottom:1px solid var(--border)}
 .db-lab-timeline>strong{display:block;font-size:14px;margin-bottom:6px}
