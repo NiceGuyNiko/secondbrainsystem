@@ -553,7 +553,7 @@ function Workspace() {
           {!calendarSection && (
             <>
               <div className="aaa-page-toolbar">
-                <span>{ownedPageTitle(displayName, section)}</span>
+                {section === "Workspaces" && isDemo ? <div id="aaa-writing-demo-header" style={{flex:"1 1 auto",minWidth:0}} /> : <span>{ownedPageTitle(displayName, section)}</span>}
                 {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
