@@ -28,6 +28,22 @@ test("old preview's default Context-first layout migrates only once",()=>{
  assert.equal(intentional.secondary,"agenda");
 });
 
+test("matching-tool preference allows two simultaneous Agenda panes",()=>{
+ const both=parseCompanion({primary:"agenda",secondary:"agenda",matchingTool:"duplicate",layout:"split"});
+ assert.equal(both.primary,"agenda");assert.equal(both.secondary,"agenda");
+ assert.equal(both.matchingTool,"duplicate");
+ const swap=parseCompanion({primary:"agenda",secondary:"agenda",matchingTool:"swap",layout:"split"});
+ assert.equal(swap.secondary,"context");
+ assert.equal(swap.matchingTool,"swap");
+});
+test("docked column width is bounded and resize can be disabled",()=>{
+ assert.equal(defaultCompanion.resizableColumn,true);
+ assert.equal(parseCompanion({widthPx:200}).widthPx,300);
+ assert.equal(parseCompanion({widthPx:2000}).widthPx,720);
+ assert.equal(parseCompanion({widthPx:475,resizableColumn:false}).widthPx,475);
+ assert.equal(parseCompanion({widthPx:475,resizableColumn:false}).resizableColumn,false);
+});
+
 test("four-level Context inheritance edits presentation without cloning source fields",()=>{
  const configs={
   [scopeKey("database",target)]:[{id:"overview",title:"Character overview"}],
