@@ -34,7 +34,7 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
     <input aria-label="Companion column width" type="range" min="300" max="720" step="10"
       value={c.widthPx} onChange={e=>onChange({widthPx:Number(e.target.value)})}/>
   </label>
-  <label>Starting header tab<select value={c.primary} onChange={e=>onChange({primary:e.target.value as CompanionTool})}>{toolOptions.map(t=><option value={t} key={t}>{t}</option>)}</select></label>
+  <label>Starting header tab<select value={c.primary} onChange={e=>{const primary=e.target.value as CompanionTool;onChange({primary,...(c.matchingTool==="swap"&&primary===c.secondary?{secondary:c.primary}:{})})}}>{toolOptions.map(t=><option value={t} key={t}>{t}</option>)}</select></label>
   <label>Drawer tool<select value={c.secondary} onChange={e=>onChange({secondary:e.target.value as CompanionTool})}>{toolOptions.filter(t=>c.matchingTool==="duplicate"||t!==c.primary).map(t=><option key={t} value={t}>{t}</option>)}</select></label>
   <label>Top section height: {c.splitPercent}%<input aria-label="Top section percentage" type="range" min="25" max="75" value={c.splitPercent} onChange={e=>onChange({splitPercent:Number(e.target.value)})}/></label>
   <label>Day navigation<select value={c.jump} onChange={e=>onChange({jump:e.target.value as CompanionPreferences["jump"]})}>
