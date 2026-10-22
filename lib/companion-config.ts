@@ -5,6 +5,7 @@ export type CompanionVisibility = "rules" | "empty" | "manual";
 export type CompanionCondition = "always" | "nonempty" | "property" | "relation" | "workflow";
 export type ContextScope = "database" | "workspace" | "record" | "record-workspace";
 export type CompanionPreferences = {
+  uiVersion: number;
   layout: CompanionLayout;
   primary: CompanionTool;
   secondary: CompanionTool;
@@ -16,6 +17,7 @@ export type CompanionPreferences = {
   launcher: "top" | "edge";
 };
 export const defaultCompanion: CompanionPreferences = {
+  uiVersion: 2,
   layout: "split", primary: "agenda", secondary: "context",
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
@@ -24,9 +26,15 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
   const r = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
   const pick = <T extends string>(key: string, options: readonly T[], fallback: T): T =>
     options.includes(r[key] as T) ? r[key] as T : fallback;
-  const primary = pick("primary", ["agenda", "context", "thoughts"] as const, defaultCompanion.primary);
-  const secondary = pick("secondary", ["agenda", "context", "thoughts"] as const, defaultCompanion.secondary);
+  // Prior preview's untouched default placed Context above Agenda. For the new
+  // tab design, migrate just that old default once; explicit V2 choices remain intact.
+  const oldPreviewDefault = !(typeof r.uiVersion === "number" && r.uiVersion >= 2)
+    && r.primary === "context" && r.secondary === "agenda"
+    && r.layout === "split" && r.splitPercent === 52;
+  const primary = oldPreviewDefault ? "agenda" : pick("primary", ["agenda", "context", "thoughts"] as const, defaultCompanion.primary);
+  const secondary = oldPreviewDefault ? "context" : pick("secondary", ["agenda", "context", "thoughts"] as const, defaultCompanion.secondary);
   return {
+    uiVersion: 2,
     layout: pick("layout", ["single", "split"] as const, defaultCompanion.layout),
     primary,
     secondary: secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
