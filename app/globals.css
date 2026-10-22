@@ -1168,3 +1168,161 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
     background:var(--surface-2)!important;
   }
 }
+
+
+/* Calendar editor polish — matched popup/control widths and full-date labels.
+   Only the event form date rows change; the month/week/day calendar is untouched. */
+.calendar-modal .calendar-date-row:not(.pr11-all-day-date){
+  grid-template-columns:50px minmax(0,1fr) 176px;
+  gap:8px;
+}
+.calendar-modal .calendar-date-row.pr11-all-day-date{
+  grid-template-columns:50px minmax(0,1fr);
+  gap:8px;
+}
+.aaa-event-date-field,.aaa-event-time-field{min-width:0;width:100%}
+.calendar-modal .aaa-event-date-trigger,
+.calendar-modal .aaa-event-time-trigger{
+  width:100%;height:43px;min-height:43px;min-width:0;
+  background:var(--field);color:var(--text);
+  border:1px solid var(--border);border-radius:10px;
+  display:flex;align-items:center;line-height:1.25;
+}
+.calendar-modal .aaa-event-date-trigger{
+  gap:6px;justify-content:space-between;
+  padding:8px 11px;font-size:12px;text-align:left;
+}
+.aaa-event-date-trigger span{
+  display:block;flex:1;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis;min-width:0;
+}
+.aaa-event-date-trigger svg{flex:0 0 auto;opacity:.9}
+.calendar-modal .aaa-event-time-trigger{
+  justify-content:center;padding:8px 7px;
+  font-size:12px;font-variant-numeric:tabular-nums;font-weight:600;
+}
+.calendar-modal .aaa-event-date-trigger:hover,
+.calendar-modal .aaa-event-time-trigger:hover{border-color:var(--accent-text)}
+.aaa-event-picker-backdrop{
+  position:fixed;inset:0;z-index:130;
+  background:transparent;border:0;cursor:default;
+}
+.aaa-event-calendar-popover,
+.aaa-event-time-popover{
+  position:fixed;z-index:131;box-sizing:border-box;
+  max-width:calc(100vw - 16px);max-height:min(370px,70dvh);
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:9px;background:var(--surface);
+  color:var(--text);border:1px solid var(--border);
+  border-radius:11px;box-shadow:0 16px 36px #0007;
+  scrollbar-width:thin;
+}
+.aaa-event-calendar-head{
+  display:grid;grid-template-columns:25px minmax(0,1fr) 25px;
+  align-items:center;gap:4px;margin-bottom:10px;
+}
+.aaa-event-calendar-head strong{
+  font-size:12px;font-weight:650;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.aaa-event-calendar-head button{
+  border:1px solid var(--border);border-radius:5px;
+  display:grid;place-items:center;width:25px;height:28px;
+}
+.aaa-event-calendar-head button:hover{background:var(--surface-2)}
+.aaa-event-calendar-grid{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:2px;text-align:center;
+}
+.aaa-event-calendar-grid .aaa-event-weekday{
+  color:var(--muted);font-size:10px;font-weight:500;
+  padding:4px 0;overflow:hidden;
+}
+.aaa-event-calendar-grid button{
+  display:grid;place-items:center;min-width:0;
+  height:30px;padding:0;border:1px solid transparent;
+  border-radius:6px;font-size:11px;
+  background:transparent;color:var(--text);
+  font-variant-numeric:tabular-nums;
+}
+.aaa-event-calendar-grid button.is-outside{opacity:.45}
+.aaa-event-calendar-grid button:hover:not(:disabled){background:var(--surface-2)}
+.aaa-event-calendar-grid button.is-selected{
+  background:var(--accent);color:var(--on-accent);font-weight:700;
+}
+.aaa-event-calendar-grid button:disabled{opacity:.25;cursor:not-allowed}
+.aaa-event-time-popover{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:stretch;gap:4px;padding:7px;
+  max-height:156px;overflow:visible;
+}
+.aaa-event-time-spinner{
+  display:flex;flex-direction:column;align-items:stretch;
+  gap:5px;min-width:0;
+}
+.aaa-event-time-spinner>button:not(.aaa-event-ampm){
+  height:30px;border:0;border-radius:5px;
+  display:grid;place-items:center;color:var(--text);
+}
+.aaa-event-time-spinner>button:not(.aaa-event-ampm):hover{background:var(--surface-2)}
+.aaa-event-time-spinner>input,
+.aaa-event-time-spinner>.aaa-event-ampm{
+  width:100%;min-width:0;height:34px;min-height:34px;
+  padding:3px 0;border:1px solid var(--border);border-radius:8px;
+  color:var(--text);background:var(--field);
+  text-align:center;font-size:12px;font-weight:650;
+  font-variant-numeric:tabular-nums;
+  appearance:textfield;
+}
+.aaa-event-time-spinner>.aaa-event-ampm{display:grid;place-items:center}
+.aaa-event-time-spinner input::-webkit-inner-spin-button,
+.aaa-event-time-spinner input::-webkit-outer-spin-button{
+  -webkit-appearance:none;margin:0;
+}
+.aaa-event-time-popover:has(.aaa-event-time-spinner:nth-child(2):last-child){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+/* Use one exact SVG glyph for both chevron orientations.
+   Rotating its center, rather than a text glyph's baseline, prevents drift.
+   Start below the select; flip above only if there isn't room. */
+@supports (appearance:base-select){
+  select:not([multiple]):not([size]){
+    padding-inline-end:10px!important;
+  }
+  select:not([multiple]):not([size])::picker-icon{
+    content:"";
+    display:block;flex:0 0 18px;
+    width:18px;height:18px;
+    margin-inline-start:auto;margin-inline-end:0;
+    background:var(--muted);
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 9 7 7 7-7' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m5 9 7 7 7-7' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    -webkit-mask-size:18px 18px;mask-size:18px 18px;
+    -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
+    -webkit-mask-position:center;mask-position:center;
+    transform-origin:50% 50%;transform:rotate(0deg);
+    transition:transform .15s ease;
+  }
+  select:not([multiple]):not([size]):open::picker-icon{
+    transform:rotate(180deg);
+  }
+  ::picker(select){
+    /* The default 'most-block-size' preference can place even small menus above.
+       Prefer below, retaining a flip when there really isn't enough room. */
+    position-area:block-end span-inline-end;
+    position-try-order:normal;
+    position-try-fallbacks:flip-block,flip-inline;
+    max-block-size:min(270px,50dvh);
+    max-height:min(270px,50dvh);
+  }
+}
+@media(max-width:540px){
+  .calendar-modal .calendar-date-row:not(.pr11-all-day-date){
+    grid-template-columns:48px minmax(0,1fr);gap:6px;
+  }
+  .calendar-modal .calendar-date-row:not(.pr11-all-day-date)>div:last-child{
+    grid-column:2;
+  }
+  .calendar-modal .aaa-event-date-trigger{font-size:11px}
+}
