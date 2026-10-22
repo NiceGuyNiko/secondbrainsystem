@@ -57,11 +57,12 @@ export default function Companion(p:Props){
   const panel=useRef<HTMLElement>(null);
   const columnResizeStart=useRef<{x:number;width:number}|null>(null);
   const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
-  useEffect(()=>setPreviewWidth(p.options.widthPx),[p.options.widthPx]);
+  const previewWidthRef=useRef(p.options.widthPx);
+  useEffect(()=>{previewWidthRef.current=p.options.widthPx;setPreviewWidth(p.options.widthPx);},[p.options.widthPx]);
   const columnMin=300;
   const clampWidth=(w:number)=>Math.max(columnMin,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
   const updateWidth=(w:number)=>{
-    const next=clampWidth(w);setPreviewWidth(next);return next;
+    const next=clampWidth(w);previewWidthRef.current=next;setPreviewWidth(next);return next;
   };
   const target=locked || (p.options.follow==="workspace" ? {
     id:"workspace:"+p.target.workspaceId,title:p.target.workspaceName,databaseId:"workspace",
@@ -265,14 +266,14 @@ export default function Companion(p:Props){
         onPointerUp={e=>{
           if(!columnResizeStart.current)return;
           columnResizeStart.current=null;
-          p.onOptions({widthPx:previewWidth});
+          p.onOptions({widthPx:previewWidthRef.current});
         }}
-        onPointerCancel={()=>{columnResizeStart.current=null;p.onOptions({widthPx:previewWidth});}}
+        onPointerCancel={()=>{columnResizeStart.current=null;p.onOptions({widthPx:previewWidthRef.current});}}
         onKeyDown={e=>{
           if(!["ArrowLeft","ArrowRight","Home"].includes(e.key))return;
           e.preventDefault();
           const next=e.key==="Home"?380:updateWidth(previewWidth+(e.key==="ArrowLeft"?20:-20));
-          setPreviewWidth(next);p.onOptions({widthPx:next});
+          previewWidthRef.current=next;setPreviewWidth(next);p.onOptions({widthPx:next});
         }}/>} 
       <header className="aaa-hybrid-header">
         {tabList("top",top)}
