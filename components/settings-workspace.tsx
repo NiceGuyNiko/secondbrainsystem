@@ -1,7 +1,9 @@
 "use client";
 import type { ComponentProps } from "react";
-import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight } from "lucide-react";
+import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight, PanelRight } from "lucide-react";
 import AppearanceSettings from "./appearance-settings";
+import CompanionSettings from "./companion-settings";
+import type {CompanionPreferences} from "@/lib/companion-config";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
@@ -11,7 +13,8 @@ import {environment} from "@/lib/environment";
 export const settingsSections = [
   {name:"General",icon:SlidersHorizontal,description:"A quick overview of your workspace preferences."},
   {name:"Appearance",icon:Palette,description:"Themes, colours and how your workspace feels."},
-  {name:"Calendar & Time",icon:Clock3,description:"Dates, times and The Agenda."},
+  {name:"Calendar & Time",icon:Clock3,description:"Dates and calendar time preferences."},
+  {name:"The Companion",icon:PanelRight,description:"Play-test tool layouts, Context, Agenda and Thoughts."},
   {name:"Notifications",icon:Bell,description:"Reminder and update preferences."},
   {name:"Account",icon:UserRound,description:"Your identity and account profile."},
   {name:"Privacy & Data",icon:Shield,description:"Account data and future export controls."},
@@ -25,6 +28,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   onBetaFeature:(feature:keyof BetaFeatures,on:boolean)=>void;
   demoIsolation:boolean;
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
+  companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
   displayName:string; email:string; onProfile:()=>void;
 };
 export default function SettingsWorkspace(p:Props) {
@@ -38,6 +42,7 @@ export default function SettingsWorkspace(p:Props) {
       <p className="aaa-preference-summary">{p.startDay} start · {p.clock} · Agenda: {p.agendaPreference} · Developer Mode {p.effective.developerMode?"on":"off"}</p>
       <div className="aaa-settings-cards">{settingsSections.slice(1).map(({name,icon:Icon,description})=><button key={name} onClick={()=>p.onSection(name)}><span className="aaa-card-icon"><Icon size={22}/></span><span><strong>{name}</strong><small>{description}</small></span><ChevronRight size={17}/></button>)}</div>
     </>}
+    {p.section==="The Companion"&&<CompanionSettings options={p.companion} onChange={p.onCompanion} preference={p.agendaPreference} onPreference={p.onAgendaPreference}/>}
     {p.section==="Calendar & Time"&&<div className="aaa-settings-panel">
       <h2>Calendar preferences</h2>
       <p className="calendar-muted">Changes apply immediately and are saved to your current profile.</p>

@@ -17,6 +17,7 @@ import CalendarWorkspace from "@/components/calendar-workspace";
 import SettingsWorkspace, {settingsSections, type SettingsSection} from "@/components/settings-workspace";
 import {openAgenda, type AgendaPreference} from "@/lib/agenda-state";
 import { type AgendaMode } from "@/components/agenda";
+import type {CompanionTarget,CompanionPreferences} from "@/lib/companion-config";
 import { useProfile } from "@/components/profile-context";
 import ProfileMenu from "@/components/profile-menu";
 import { useSettings } from "@/lib/settings/use-settings";
@@ -49,6 +50,7 @@ import {
   ChevronDown,
   ChevronRight,
   PenLine,
+  PanelRightOpen,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -80,6 +82,8 @@ function Workspace() {
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
+  const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
+  const onCompanionRecord=useCallback((value:CompanionTarget|null)=>setCompanionRecord(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value),[]);
   const [databaseCategory, setDatabaseCategory] = useState<DatabaseCategory>("Characters");
   const [databaseRecordId, setDatabaseRecordId] = useState<string | null>(null);
   const [stagingDatabases,setStagingDatabases]=useState<{id:string;name:string}[]>([]);
@@ -153,6 +157,7 @@ function Workspace() {
   const { agendaPreference, lastPinned, startDay, clock, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
+  const setCompanion = (patch:Partial<CompanionPreferences>)=>setPreferences(p=>({companion:{...p.companion,...patch}}));
   const setLastPinned = useCallback((lastPinned: boolean) => setPreferences(() => ({ lastPinned })), [setPreferences]);
   const setStartDay = (startDay: string) => setPreferences(() => ({ startDay: startDay as ProfilePreferences["startDay"] }));
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
@@ -235,6 +240,7 @@ function Workspace() {
     if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
     setContext([]);
     setDatabaseRecordId(null);
+    setCompanionRecord(null);
     setMobileOpen(false);
     setMobileCalendars(false);
     setProfileMenu(false);
@@ -315,6 +321,20 @@ function Workspace() {
       ))}
     </>
   );
+  const companionTarget: CompanionTarget = companionRecord && ((section==="Databases"&&engineEnabled)||(section==="Workspaces"&&contextId==="writing-events")) ? companionRecord : {
+    id: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):(contextId||section),
+    title: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section==="Workspaces"&&contextId==="writing-events"?"Events":section==="Workspaces"&&contextId==="writing"?"Writing":section==="Settings"?settingsSection:section,
+    databaseId: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):section,
+    databaseName: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section,
+    workspaceId: section==="Workspaces"||section==="Databases"?"nobody-special":"general",
+    workspaceName: section==="Workspaces"||section==="Databases"?"Nobody Special":"All About Action",
+    kind:"page",
+    fields:[
+      {id:"location",label:"Current location",value:section},
+      ...(contextId?[{id:"selection",label:"Selected area",value:contextId}]:[]),
+      ...(section==="Databases"?[{id:"database",label:"Database",value:engineEnabled?stagingDatabaseName:databaseCategory}]:[])
+    ]
+  };
   if (!settings) return <main className="grid min-h-screen place-items-center">Loading your workspace…</main>;
   return (
     <div className={`app-shell aaa-shell ${collapsed ? "aaa-collapsed" : ""}`}>
@@ -520,11 +540,16 @@ function Workspace() {
           agendaPreference={agendaPreference}
           onToggleAgenda={toggleAgenda}
           onOpenThought={openThought}
+          companion={preferences.companion}
+          onCompanion={setCompanion}
+          companionTarget={companionTarget}
+          companionProfileKey={userId+":"+settings.account.activeProfileId}
         >
           {!calendarSection && (
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
+                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
               {section === "Settings" ? (
@@ -537,6 +562,7 @@ function Workspace() {
                   onBetaFeature={(feature, on) => setPreferences((p) => ({ betaFeatures: { ...p.betaFeatures, [feature]: on } }))}
                   demoIsolation={isDemo}
                   agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
+                  companion={preferences.companion} onCompanion={setCompanion}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}
@@ -550,11 +576,11 @@ function Workspace() {
                 <DatabaseLabErrorBoundary>
                   <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
                     databaseName={stagingDatabaseName}
-                    onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))}/>
+                    onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/>
                 </DatabaseLabErrorBoundary>
               ) : section==="Workspaces" && engineEnabled && contextId==="writing-events" ? (
                 <DatabaseLabErrorBoundary>
-                  <StagingDatabaseLab key="writing-events" surface="writing-events" databaseName="Events"/>
+                  <StagingDatabaseLab key="writing-events" surface="writing-events" databaseName="Events" onContextRecord={onCompanionRecord}/>
                 </DatabaseLabErrorBoundary>
               ) : section==="Workspaces" && engineEnabled && contextId==="writing" ? (
                 <section className="aaa-writing-home">

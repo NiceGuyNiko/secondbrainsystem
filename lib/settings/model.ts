@@ -4,6 +4,7 @@
 // Fluid Calendar and Think About It beta choices, theme and sidebar. Profiles hold configuration
 // only: every profile of an account sees the same calendar events, thoughts, goals and tasks.
 import type { AgendaPreference } from "@/lib/agenda-state";
+import {defaultCompanion,parseCompanion,type CompanionPreferences} from "@/lib/companion-config";
 import { appearanceDefaults, lightCounterpart, paletteFor, parseAppearance, type Appearance } from "@/lib/appearance";
 
 export type BetaFeatures = { fluidCalendar: boolean; thinkAboutIt: boolean };
@@ -14,6 +15,7 @@ export type ProfilePreferences = {
   betaFeatures: BetaFeatures;
   agendaPreference: AgendaPreference;
   lastPinned: boolean;
+  companion: CompanionPreferences;
   startDay: "Monday" | "Sunday" | "Saturday";
   clock: "12-hour" | "24-hour";
   hiddenCalendars: string[];
@@ -30,6 +32,7 @@ export const defaultPreferences: ProfilePreferences = {
   betaFeatures: { fluidCalendar: false, thinkAboutIt: false },
   agendaPreference: "toggle",
   lastPinned: false,
+  companion: defaultCompanion,
   startDay: "Monday",
   clock: "12-hour",
   hiddenCalendars: [],
@@ -52,6 +55,7 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
     betaFeatures: { fluidCalendar: bool(beta.fluidCalendar, fallback.betaFeatures.fluidCalendar), thinkAboutIt: bool(beta.thinkAboutIt, fallback.betaFeatures.thinkAboutIt) },
     agendaPreference: pick(p.agendaPreference, ["column", "pin", "toggle"] as const, fallback.agendaPreference),
     lastPinned: bool(p.lastPinned, fallback.lastPinned),
+    companion: parseCompanion(p.companion),
     startDay: pick(p.startDay, ["Monday", "Sunday", "Saturday"] as const, fallback.startDay),
     clock: pick(p.clock, ["12-hour", "24-hour"] as const, fallback.clock),
     hiddenCalendars: Array.isArray(p.hiddenCalendars) ? [...new Set(p.hiddenCalendars.filter((x): x is string => typeof x === "string"))] : [...fallback.hiddenCalendars],

@@ -666,3 +666,418 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 .aaa-context-setup{margin:8px 11px;padding:10px 8px;width:calc(100% - 22px);border:1px solid var(--border);border-radius:8px;text-align:center;font-size:11px;font-weight:700;background:var(--surface-2);color:var(--accent-text)}
 .aaa-context-setup:hover{background:var(--accent-soft)}
 .aaa-context-setup:disabled{opacity:.6;cursor:wait}
+
+
+/* Companion V5: hybrid right-hand tools. Scoped to this feature branch. */
+.aaa-hybrid-companion{width:min(380px,100vw);min-width:300px;min-height:0;flex:0 0 min(380px,100vw);background:var(--ui-agenda);color:var(--text);border-left:1px solid var(--border);display:flex;flex-direction:column;z-index:60}
+.aaa-hybrid-overlay{position:fixed;inset:0 0 0 auto;box-shadow:-12px 0 55px #0007}
+.aaa-companion-backdrop{position:fixed;inset:0;background:#0006;z-index:55}
+.aaa-hybrid-header{flex-shrink:0;padding:15px 12px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aaa-hybrid-header strong{display:flex;align-items:center;gap:8px;font-size:12px;letter-spacing:.11em}
+.aaa-hybrid-header button,.aaa-companion-tool-head button,.aaa-companion-date button{display:grid;place-items:center;border:1px solid var(--border);border-radius:5px;width:29px;height:29px}
+.aaa-companion-layout-controls{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--border)}
+.aaa-companion-layout-controls label{display:flex;align-items:center;gap:7px;font-size:11px}
+.aaa-companion-layout-controls small{font-size:10px;color:var(--muted)}
+.aaa-hybrid-companion select,.aaa-hybrid-companion input:not([type=checkbox]),.aaa-hybrid-companion textarea{border:1px solid var(--border);border-radius:6px;background:var(--field);color:var(--text);min-width:0;max-width:100%;padding:6px;font-size:12px}
+.aaa-hybrid-companion input[type=checkbox]{accent-color:var(--accent)}
+.aaa-hybrid-sections{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.aaa-hybrid-slot{min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.aaa-companion-tool-head{flex-shrink:0;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.aaa-companion-tool-head select{flex:1;font-weight:650}
+.aaa-hybrid-slot-body{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.aaa-companion-resizer{height:14px;min-height:14px;cursor:row-resize;display:grid;place-items:center;color:var(--muted);border-block:1px solid var(--border);touch-action:none;background:var(--ui-sidebar)}
+.aaa-companion-resizer:hover,.aaa-companion-resizer:focus-visible{color:var(--accent-text)}
+.aaa-companion-actions{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.aaa-companion-actions button,.aaa-companion-config button,.aaa-companion-capture button,.aaa-companion-detail button{border:1px solid var(--border);border-radius:5px;display:inline-flex;align-items:center;gap:5px;padding:5px 7px;font-size:11px}
+.aaa-companion-actions button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft)}
+.aaa-companion-agenda{display:flex;flex-direction:column;min-height:0;height:100%}
+.aaa-companion-date{display:flex;align-items:center;justify-content:space-between;gap:5px;padding:8px 10px}
+.aaa-companion-date label{flex:1;min-width:0;text-align:center}
+.aaa-companion-date input{width:100%;text-align:center;cursor:pointer}
+.aaa-companion-agenda>.aaa-companion-actions{flex-shrink:0;padding:5px 10px;font-size:10px;color:var(--muted)}
+.aaa-companion-agenda>.aaa-companion-actions span{flex:1}
+.aaa-companion-allday{padding:7px 12px;border-block:1px solid var(--border);display:flex;gap:5px;flex-direction:column;max-height:95px;overflow-y:auto}
+.aaa-companion-allday small{font-size:10px;color:var(--muted)}
+.aaa-companion-allday .event-chip{font-size:11px;padding:4px 8px;text-align:left}
+.aaa-companion-timeline{flex:1;min-height:50px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.aaa-companion-grid{height:1440px;position:relative}
+.aaa-companion-hour{position:absolute;left:0;right:0;height:60px;border-top:1px solid var(--border);pointer-events:none}
+.aaa-companion-hour span{font-size:10px;color:var(--muted);position:absolute;top:3px;left:4px}
+.aaa-companion-block{position:absolute;overflow:hidden;text-align:left;padding:3px 5px;font-size:10px;min-width:0;border-left:2px solid var(--accent);border-radius:4px!important}
+.aaa-companion-block strong,.aaa-companion-block small{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.aaa-companion-now{position:absolute;left:49px;right:0;border-top:2px solid var(--accent);pointer-events:none;z-index:2}
+.aaa-companion-now i{display:block;position:absolute;left:-4px;top:-5px;width:8px;height:8px;background:var(--accent);border-radius:50%}
+.aaa-companion-detail{flex-shrink:0;max-height:150px;overflow-y:auto;border-top:1px solid var(--border);padding:9px 11px;display:grid;gap:8px;font-size:12px}
+.aaa-companion-detail small{color:var(--muted)}
+.aaa-companion-detail .aaa-companion-actions{justify-content:space-between}
+.aaa-companion-task{display:flex;align-items:center;gap:6px;font-size:11px}
+.aaa-companion-context,.aaa-companion-thoughts{display:flex;flex-direction:column;height:100%;min-height:0;overflow:auto;padding:10px;gap:10px;scrollbar-width:thin}
+.aaa-companion-reference{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:11px;display:flex;flex-direction:column;gap:5px}
+.aaa-companion-reference>strong{font-size:15px}
+.aaa-companion-reference>small,.aaa-companion-context small,.aaa-companion-thoughts small{font-size:10px;color:var(--muted)}
+.aaa-companion-sections{display:flex;flex-direction:column;gap:8px}
+.aaa-companion-reference-section{border:1px solid var(--border);border-radius:7px;overflow:hidden}
+.aaa-companion-section-title{display:flex;align-items:center;justify-content:space-between;gap:6px;background:var(--surface-2);padding:9px}
+.aaa-companion-section-title button{text-align:left;font-weight:650;font-size:11px;flex:1}
+.aaa-companion-section-body{padding:10px;display:grid;gap:8px}
+.aaa-companion-section-body p{font-size:12px;white-space:pre-wrap}
+.aaa-companion-field{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:11px}
+.aaa-companion-field span{color:var(--muted);flex:0 1 45%}
+.aaa-companion-field strong{font-weight:500;text-align:right;overflow-wrap:anywhere}
+.aaa-section-hidden{opacity:.55;border-style:dashed}
+.aaa-companion-config,.aaa-companion-section-editor{border:1px dashed var(--border);border-radius:7px;padding:9px;display:grid;gap:8px}
+.aaa-companion-config label,.aaa-companion-section-editor label{display:grid;gap:4px;font-size:11px}
+.aaa-companion-config form{display:flex;gap:6px}
+.aaa-companion-config form input{flex:1;width:0}
+.aaa-companion-section-editor label:has(input[type=checkbox]){display:flex;align-items:center;gap:5px}
+.aaa-companion-section-editor textarea{width:100%;min-height:42px}
+.aaa-companion-config-fields{max-height:110px;overflow-y:auto;border-top:1px solid var(--border);padding-top:5px;display:grid;gap:5px}
+.aaa-companion-thought-list{display:grid;gap:6px;max-height:50%;overflow-y:auto}
+.aaa-companion-thought-list button{display:flex;align-items:flex-start;gap:7px;text-align:left;border:1px solid var(--border);border-radius:6px;padding:9px;font-size:11px}
+.aaa-companion-thought-list button span{min-width:0;overflow-wrap:anywhere}
+.aaa-companion-thought-list p{font-size:11px;color:var(--muted)}
+.aaa-companion-capture{display:grid;gap:8px;margin-top:auto}
+.aaa-companion-capture textarea{min-height:63px;width:100%}
+.aaa-companion-capture label{display:flex;align-items:center;gap:7px;font-size:11px}
+.aaa-companion-capture button{justify-self:end;background:var(--accent);color:var(--on-accent)}
+.aaa-companion-message{padding:8px 11px;display:flex;align-items:center;justify-content:space-between;font-size:11px;border-top:1px solid var(--border)}
+.aaa-companion-toolbar-button{flex-shrink:0;min-width:43px;min-height:43px;color:var(--text);transition:background-color .15s ease,border-color .15s ease}
+.aaa-companion-toolbar-button:hover{background:var(--ui-hover)}
+.aaa-page-toolbar .aaa-companion-toolbar-button{color:var(--text)}
+
+/* Align the global Companion launcher across calendar and non-calendar headers.
+   Page-toolbar buttons inherit a flex rule with no horizontal centering; override it. */
+.aaa-page-toolbar .aaa-companion-toolbar-button,
+.aaa-calendar-content .pr11-calendar-toolbar .aaa-companion-toolbar-button{
+  display:grid;
+  place-items:center;
+  justify-items:center;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 43px;
+  width:43px;
+  height:43px;
+  padding:0!important;
+  margin:0;
+  line-height:1;
+}
+.aaa-companion-toolbar-button svg{display:block;flex-shrink:0}
+/* 68px matches the existing calendar surface's 14px top inset + 54px toolbar.
+   It also lines up the non-calendar bottom border with the Companion header. */
+@media (min-width:768px){
+  .aaa-page-toolbar,
+  .aaa-hybrid-header{
+    box-sizing:border-box;
+    height:68px;
+    min-height:68px;
+  }
+  .aaa-page-toolbar{padding-block:0}
+  .aaa-hybrid-header{padding-block:0}
+}
+
+.aaa-agenda-edge.aaa-companion-edge-launcher{position:fixed!important;right:0!important;top:45%!important;bottom:auto!important}
+.aaa-companion-settings{display:grid;gap:12px}
+.aaa-companion-settings>label{display:grid;gap:7px}
+.aaa-companion-settings select,.aaa-companion-settings input[type=range]{width:100%}
+.aaa-companion-settings .aaa-companion-check{display:flex;align-items:center;gap:8px}
+@media(max-width:767px){
+ .aaa-hybrid-companion{width:100vw;min-width:0;position:fixed;inset:0;z-index:80}
+ .aaa-hybrid-header{padding-top:60px}
+ .aaa-hybrid-pinned{position:fixed}
+
+}
+
+
+/* Companion V6: familiar Agenda styling, header tabs and a bottom-pull secondary drawer. */
+.aaa-hybrid-header{
+  height:68px;min-height:68px;box-sizing:border-box;
+  padding:0 10px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.aaa-companion-header-tabs{
+  flex:1;min-width:0;align-self:stretch;
+  display:flex;align-items:stretch;gap:1px;
+  overflow-x:auto;scrollbar-width:none;
+}
+.aaa-companion-header-tabs::-webkit-scrollbar{display:none}
+.aaa-hybrid-header .aaa-companion-header-tabs button{
+  flex:0 0 auto;width:auto;height:auto;min-width:0;
+  padding:2px 8px 0;border:0;border-bottom:2px solid transparent;
+  border-radius:0;color:var(--muted);background:transparent;
+  font-size:10px;letter-spacing:.07em;font-weight:500;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap;
+}
+.aaa-hybrid-header .aaa-companion-header-tabs button:first-child{letter-spacing:.12em}
+.aaa-hybrid-header .aaa-companion-header-tabs button.active{
+  color:var(--text);border-bottom-color:var(--accent-text);font-weight:650;
+}
+.aaa-hybrid-header .aaa-companion-header-tabs button:hover{color:var(--text)}
+.aaa-companion-header-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:5px}
+.aaa-hybrid-header .aaa-companion-header-actions button{
+  flex:none;display:grid;place-items:center;width:28px;height:28px;
+  border:1px solid var(--border);border-radius:5px;
+}
+.aaa-hybrid-primary{flex:1 1 0;min-height:0}
+.aaa-hybrid-secondary{flex-shrink:0;min-height:0}
+.aaa-companion-pull{
+  flex:0 0 18px;min-height:18px;height:18px;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;margin:0;padding:0;
+  border:0;border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background:var(--ui-sidebar);color:var(--muted);
+  cursor:ns-resize;touch-action:none;user-select:none;
+}
+.aaa-companion-pull:hover,.aaa-companion-pull:focus-visible{background:var(--ui-hover);color:var(--text)}
+.aaa-companion-pull-track{width:37px;height:1px;background:var(--border)}
+.aaa-companion-pull-pill{
+  width:45px;height:14px;border-radius:9px;
+  display:grid;place-items:center;
+  border:1px solid var(--border);background:var(--surface-2);
+}
+.aaa-companion-pull.is-open .aaa-companion-pull-pill{background:var(--ui-sidebar)}
+.aaa-companion-tool-head{height:39px;min-height:39px;background:var(--ui-sidebar);gap:8px}
+.aaa-companion-tool-head>span{color:var(--muted);font-size:9px;letter-spacing:.08em;white-space:nowrap}
+.aaa-companion-tool-head select{min-width:0;flex:1}
+.aaa-companion-tool-head button{flex:none}
+.aaa-companion-agenda-top{
+  flex-shrink:0;padding:0 11px 10px;
+  border-bottom:1px solid var(--border);
+}
+.aaa-companion-date{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:5px;padding:13px 0 10px;min-height:46px;
+}
+.aaa-companion-date-label{
+  display:block;flex:1;min-width:0;position:relative;
+  font-size:17px;font-weight:700;line-height:1.25;
+  color:var(--text);cursor:pointer;
+}
+.aaa-companion-date-label>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aaa-hybrid-companion .aaa-companion-date-label input[type=date]{
+  position:absolute;inset:0;width:100%;height:100%;
+  opacity:0;cursor:pointer;border:0;padding:0;z-index:1;
+}
+.aaa-companion-date-label:focus-within{outline:2px solid var(--accent-text);outline-offset:3px;border-radius:2px}
+.aaa-companion-date-arrows{display:flex;align-items:center;gap:2px;flex:none}
+.aaa-hybrid-companion .aaa-companion-date-arrows button{
+  display:grid;place-items:center;width:25px;height:28px;
+  border:0;border-radius:5px;background:transparent;color:var(--muted);
+}
+.aaa-hybrid-companion .aaa-companion-date-arrows button:hover{background:var(--ui-hover);color:var(--text)}
+.aaa-companion-agenda-actions{display:flex;align-items:center;gap:5px;min-height:27px}
+.aaa-companion-agenda-actions small{
+  flex:1;min-width:0;font-size:10px;color:var(--muted);white-space:nowrap;
+}
+.aaa-companion-agenda-actions button{
+  flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+  gap:4px;padding:5px 7px;font-size:10px;line-height:1.1;
+  border:1px solid var(--border);border-radius:5px;
+  white-space:nowrap;
+}
+.aaa-companion-agenda-actions button:hover{background:var(--ui-hover)}
+.aaa-companion-allday{
+  flex-shrink:0;border-top:0;border-bottom:1px solid var(--border);
+  gap:7px;padding:11px 9px 10px;
+}
+.aaa-companion-allday .event-chip{width:100%;border-radius:14px!important}
+.aaa-companion-hour{border-top:1px solid var(--border)}
+.aaa-companion-hour span{top:3px;left:5px;font-size:9px}
+.aaa-companion-grid{border-left:0}
+.aaa-companion-grid::before{
+  content:"";position:absolute;left:52px;top:0;bottom:0;
+  border-left:1px solid var(--border);pointer-events:none;
+}
+.aaa-companion-block{
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  border-radius:5px!important;gap:2px;
+  min-height:22px;padding:5px;
+  overflow:hidden;text-align:left;
+}
+.aaa-companion-block strong{font-size:11px}
+.aaa-companion-block small{font-size:10px;line-height:1.3}
+.aaa-companion-empty-day{padding:9px 11px;font-size:11px;color:var(--muted)}
+/* The implied line at the bottom of the 68px Companion header is also the
+   reference line for the calendar toolbar. Keep the grid where it was:
+   remove the old 14px top inset and give it back to the toolbar height. */
+@media(min-width:768px){
+  .aaa-calendar-host>.aaa-main-surface:not(.aaa-working-surface){padding-top:0}
+  .aaa-calendar-content>.pr11-calendar-toolbar{
+    box-sizing:border-box;flex:0 0 68px;
+    min-height:68px;height:68px;align-items:center;
+  }
+}
+@media(max-width:767px){
+  .aaa-hybrid-header{height:108px;min-height:108px;padding-top:58px}
+  .aaa-hybrid-header .aaa-companion-header-tabs button{padding-inline:6px;font-size:9px}
+  .aaa-companion-date-label{font-size:15px}
+  .aaa-companion-agenda-actions button{padding:5px}
+}
+
+
+/* Companion V7 — matching tabs, a non-click-through date popover, and adjustable column width. */
+.aaa-hybrid-companion{position:relative;max-width:calc(100vw - 280px)}
+.aaa-companion-secondary-header{
+  flex:0 0 46px;height:46px!important;min-height:46px!important;
+  border-top:1px solid var(--border);background:var(--ui-sidebar);
+  padding:0 10px!important;gap:4px;
+}
+.aaa-companion-secondary-header .aaa-companion-header-tabs button{
+  font-size:10px;letter-spacing:.07em;padding:2px 8px 0;
+}
+.aaa-companion-secondary-header .aaa-companion-header-actions button{width:26px;height:26px}
+.aaa-hybrid-companion .aaa-companion-date{display:flex;align-items:center;gap:6px;min-height:48px;padding:12px 0 10px}
+.aaa-hybrid-companion .aaa-companion-date-trigger{
+  display:flex;align-items:center;justify-content:flex-start;
+  flex:1;min-width:0;min-height:30px;line-height:30px;
+  font-size:16px;font-weight:700;text-align:left;
+  border:0;padding:0;background:none;color:var(--text);
+  text-overflow:ellipsis;overflow:hidden;white-space:nowrap;
+}
+.aaa-hybrid-companion .aaa-companion-date-trigger:hover{text-decoration:underline;text-underline-offset:3px}
+.aaa-companion-date-arrows{align-self:center;align-items:center;display:flex;gap:3px;height:30px;margin:0}
+.aaa-hybrid-companion .aaa-companion-date-arrows button{
+  height:30px;width:27px;min-height:30px;min-width:27px;
+  display:grid;place-items:center;align-self:center;margin:0;padding:0;
+}
+.aaa-companion-date-dismiss{
+  position:fixed;inset:0;z-index:1500;width:100%;height:100%;
+  border:0;background:transparent;cursor:default;
+}
+.aaa-companion-date-popover{
+  position:fixed;z-index:1501;width:296px;max-width:calc(100vw - 20px);
+  padding:12px;background:var(--surface);color:var(--text);
+  border:1px solid var(--border);border-radius:11px;
+  box-shadow:0 18px 48px #0007;
+  user-select:none;
+}
+.aaa-companion-picker-head{
+  display:grid;grid-template-columns:32px 1fr 32px;
+  align-items:center;gap:5px;margin-bottom:10px;
+}
+.aaa-companion-picker-head strong{font-size:13px;text-align:center}
+.aaa-companion-picker-head button{
+  display:grid;place-items:center;width:32px;height:32px;
+  border:1px solid var(--border);border-radius:6px;
+}
+.aaa-companion-picker-weekdays,.aaa-companion-picker-days{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;
+}
+.aaa-companion-picker-weekdays{margin-bottom:4px}
+.aaa-companion-picker-weekdays span{
+  text-align:center;color:var(--muted);font-size:10px;font-weight:650;padding:4px 0;
+}
+.aaa-companion-picker-days button{
+  height:32px;min-width:0;display:grid;place-items:center;
+  padding:0;border:1px solid transparent;border-radius:6px;
+  font-size:11px;line-height:1;
+}
+.aaa-companion-picker-days button:hover{background:var(--surface-2)}
+.aaa-companion-picker-days button.outside{opacity:.38}
+.aaa-companion-picker-days button.today{border-color:var(--accent-text)}
+.aaa-companion-picker-days button.selected{background:var(--accent);color:var(--on-accent);font-weight:750}
+.aaa-companion-picker-footer{
+  display:flex;justify-content:space-between;gap:8px;
+  border-top:1px solid var(--border);margin-top:10px;padding-top:10px;
+}
+.aaa-companion-picker-footer button{
+  padding:6px 10px;border:1px solid var(--border);
+  border-radius:6px;font-size:11px;
+}
+.aaa-companion-picker-footer button:hover{background:var(--surface-2)}
+.aaa-companion-width-resizer{
+  position:absolute;left:-6px;top:0;bottom:0;width:11px;
+  z-index:85;cursor:ew-resize;touch-action:none;outline-offset:2px;
+}
+.aaa-companion-width-resizer::after{
+  content:"";position:absolute;top:calc(50% - 28px);left:4px;
+  height:56px;width:3px;background:var(--border);border-radius:3px;
+  opacity:.4;transition:opacity .15s,background .15s;
+}
+.aaa-companion-width-resizer:hover::after,
+.aaa-companion-width-resizer:focus-visible::after{
+  opacity:1;background:var(--accent-text);
+}
+@media(max-width:767px){
+  .aaa-hybrid-companion{width:100vw!important;max-width:none!important;min-width:0!important;flex-basis:auto!important}
+  .aaa-companion-width-resizer{display:none}
+  .aaa-companion-date-trigger{font-size:14px!important}
+  .aaa-companion-secondary-header{height:46px!important;min-height:46px!important;padding-top:0!important}
+  .aaa-companion-secondary-header .aaa-companion-header-tabs button{padding-inline:6px;font-size:9px}
+}
+
+
+/* Companion V8 — independent reference panes, contextual copy-to-other menu and scalable tabs. */
+.aaa-companion-header-tabs button{gap:6px}
+.aaa-companion-header-tabs button svg{display:block;flex-shrink:0}
+.aaa-companion-tabs-icons{justify-content:flex-start;gap:4px}
+.aaa-hybrid-header .aaa-companion-tabs-icons button{
+  padding:0 11px;min-width:39px;min-height:33px;
+}
+.aaa-companion-tabs-icon-labels{gap:2px}
+.aaa-hybrid-header .aaa-companion-tabs-icon-labels button{gap:5px;padding-inline:7px}
+.aaa-companion-tab-menu-shield{
+  position:fixed;inset:0;z-index:1510;border:0;
+  background:transparent;cursor:default;
+}
+.aaa-companion-tab-menu{
+  position:fixed;z-index:1511;min-width:205px;
+  padding:5px;border:1px solid var(--border);
+  background:var(--surface);color:var(--text);
+  border-radius:8px;box-shadow:0 14px 40px #0008;
+}
+.aaa-companion-tab-menu button{
+  display:flex;align-items:center;gap:9px;width:100%;
+  padding:10px 9px;font-size:12px;text-align:left;
+  border:0;background:transparent;border-radius:6px;color:var(--text);
+}
+.aaa-companion-tab-menu button:hover,.aaa-companion-tab-menu button:focus-visible{background:var(--ui-hover)}
+.aaa-companion-reference-chooser{
+  display:grid;grid-template-columns:1fr;gap:5px;
+  font-size:11px;color:var(--muted);
+}
+.aaa-companion-reference-chooser select{
+  width:100%;max-width:100%;min-width:0;
+  color:var(--text);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:6px;
+  padding:7px 8px;font-size:11px;
+}
+.aaa-companion-context .aaa-companion-actions,
+.aaa-companion-thoughts .aaa-companion-actions{justify-content:flex-start}
+@media(max-width:767px){
+  .aaa-hybrid-header .aaa-companion-tabs-icon-labels button{gap:3px;padding-inline:4px;font-size:9px}
+  .aaa-hybrid-header .aaa-companion-tabs-icons button{min-width:34px;padding-inline:8px}
+}
+
+
+/* Companion V8 polish: popovers use the themed palette and anchor to the tab instead of the pointer. */
+.aaa-companion-tab-menu{
+  box-sizing:border-box;
+  width:218px;
+  min-width:0;
+  background:var(--surface);
+  color:var(--text);
+  border-color:var(--border);
+}
+.aaa-companion-tab-tooltip{
+  position:fixed;
+  z-index:1520;
+  pointer-events:none;
+  box-sizing:border-box;
+  display:grid;
+  place-items:center;
+  width:116px;
+  height:34px;
+  padding:7px 9px;
+  color:var(--text);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 10px 30px #0006;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.01em;
+  line-height:1.2;
+  white-space:nowrap;
+  text-align:center;
+}
