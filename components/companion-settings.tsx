@@ -32,6 +32,6 @@ export default function CompanionSettings({options,onChange,preference,onPrefere
     <option value="rules">Configurable rules</option><option value="empty">Hide empty sections</option><option value="manual">Manual visibility only</option>
   </select></label>
   <label className="aaa-companion-check"><input type="checkbox" checked={c.quickLink} onChange={e=>onChange({quickLink:e.target.checked})}/> Suggest linking captured Thoughts to the current reference</label>
-  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"split",primary:"agenda",secondary:"context",splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
+  <button className="calendar-panel rounded-lg px-3 py-2" onClick={()=>onChange({layout:"single",primary:"agenda",secondary:"context",splitPercent:52,jump:"first",visibility:"rules",follow:"page",quickLink:true,launcher:"top"})}>Restore recommended defaults</button>
  </div>;
 }
