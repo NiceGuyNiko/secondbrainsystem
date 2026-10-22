@@ -1048,3 +1048,36 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
   .aaa-hybrid-header .aaa-companion-tabs-icon-labels button{gap:3px;padding-inline:4px;font-size:9px}
   .aaa-hybrid-header .aaa-companion-tabs-icons button{min-width:34px;padding-inline:8px}
 }
+
+
+/* Companion V8 polish: popovers use the themed palette and anchor to the tab instead of the pointer. */
+.aaa-companion-tab-menu{
+  box-sizing:border-box;
+  width:218px;
+  min-width:0;
+  background:var(--surface);
+  color:var(--text);
+  border-color:var(--border);
+}
+.aaa-companion-tab-tooltip{
+  position:fixed;
+  z-index:1520;
+  pointer-events:none;
+  box-sizing:border-box;
+  display:grid;
+  place-items:center;
+  width:116px;
+  height:34px;
+  padding:7px 9px;
+  color:var(--text);
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:0 10px 30px #0006;
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.01em;
+  line-height:1.2;
+  white-space:nowrap;
+  text-align:center;
+}
