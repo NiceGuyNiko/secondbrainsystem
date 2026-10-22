@@ -1,21 +1,16 @@
 "use client";
-import {useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {ChevronLeft,ChevronRight,ChevronUp,ChevronDown,Lightbulb,Lock,LockOpen,Pin,PinOff,Plus,RotateCcw,Settings2,X,LocateFixed} from "lucide-react";
+import {useCallback,useEffect,useRef,useState} from "react";
+import {ChevronUp,ChevronDown,Lightbulb,Lock,LockOpen,Pin,PinOff,Plus,RotateCcw,Settings2,X} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
 import type {AgendaMode} from "@/components/agenda";
-import {occurrenceKey,timedLanes,type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
+import {type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
+import CompanionAgendaView from "@/components/companion-agenda-view";
 import {thoughtStore,type Thought} from "@/lib/thoughts";
 import {contextKey,defaultSections,resolveSections,scopeKey,sectionVisible,type CompanionPreferences,type CompanionTool,type CompanionTarget,type ContextScope,type ContextSection,type ContextConfigurations,type CompanionCondition} from "@/lib/companion-config";
 
 const tools: {key:CompanionTool;title:string}[] = [
   {key:"agenda",title:"The Agenda"},{key:"context",title:"Context"},{key:"thoughts",title:"Thoughts"}
 ];
-const dayShift=(date:string,days:number)=>{
-  const d=new Date(date+"T12:00:00");d.setDate(d.getDate()+days);
-  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
-};
-const minuteOf=(time:string)=>Number(time.slice(0,2))*60+Number(time.slice(3,5));
-const labelDate=(date:string)=>new Date(date+"T12:00:00").toLocaleDateString("en-CA",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
 type Props={
   preference:AgendaPreference;mode:AgendaMode;onMode:(mode:AgendaMode)=>void;
   today:string;now:Date;timeZone:string;
@@ -42,8 +37,10 @@ export default function Companion(p:Props){
     const value=p.options.layout==="split"?100-p.options.splitPercent:0;
     drawerHeightRef.current=value;setDrawerHeight(value);
   },[p.options.layout,p.options.splitPercent]);
-  const [chosenDate,setChosenDate]=useState(p.today);
-  const [selected,setSelected]=useState<string|null>(null);
+  const [topDate,setTopDate]=useState(p.today);
+  const [bottomDate,setBottomDate]=useState(p.today);
+  const [topSelected,setTopSelected]=useState<string|null>(null);
+  const [bottomSelected,setBottomSelected]=useState<string|null>(null);
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState("");
   const [locked,setLocked]=useState<CompanionTarget|null>(null);
@@ -57,8 +54,15 @@ export default function Companion(p:Props){
   const [draft,setDraft]=useState("");
   const [linkDraft,setLinkDraft]=useState(p.options.quickLink);
   const [loadingThoughts,setLoadingThoughts]=useState(false);
-  const scroll=useRef<HTMLDivElement>(null);
   const panel=useRef<HTMLElement>(null);
+  const columnResizeStart=useRef<{x:number;width:number}|null>(null);
+  const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
+  useEffect(()=>setPreviewWidth(p.options.widthPx),[p.options.widthPx]);
+  const columnMin=300;
+  const clampWidth=(w:number)=>Math.max(columnMin,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
+  const updateWidth=(w:number)=>{
+    const next=clampWidth(w);setPreviewWidth(next);return next;
+  };
   const target=locked || (p.options.follow==="workspace" ? {
     id:"workspace:"+p.target.workspaceId,title:p.target.workspaceName,databaseId:"workspace",
     databaseName:"Workspace",workspaceId:p.target.workspaceId,workspaceName:p.target.workspaceName,
@@ -77,20 +81,6 @@ export default function Companion(p:Props){
   };
   const sections=resolveSections(target,configs);
   const visibleSections=sections.filter(section=>sectionVisible(section,target,p.options.visibility));
-  const today=p.today;
-  const occurrences=p.occurrencesForDate(chosenDate);
-  const timed=timedLanes(occurrences,chosenDate);
-  const actual=occurrences.find(o=>occurrenceKey(o)===selected);
-  const parts=new Intl.DateTimeFormat("en-US",{timeZone:p.timeZone,hour:"2-digit",minute:"2-digit",hourCycle:"h23"}).formatToParts(p.now);
-  const clockTime=(parts.find(x=>x.type==="hour")?.value||"00")+":"+(parts.find(x=>x.type==="minute")?.value||"00");
-  const nowMinute=minuteOf(clockTime);
-  const beginning=useMemo(()=>{
-    if(chosenDate===today)return Math.max(0,nowMinute-120);
-    if(p.options.jump==="midnight")return 0;
-    const first=occurrences.filter(o=>!o.event.allDay).map(o=>minuteOf(o.start||o.event.start)).sort((a,b)=>a-b)[0];
-    return Math.max(0,(first??0)-80);
-  },[chosenDate,today,nowMinute,p.options.jump,occurrences.length]);
-  useEffect(()=>{if(p.mode!=="closed" && scroll.current)scroll.current.scrollTop=beginning;},[chosenDate,p.mode,p.options.jump,top,bottom]);
   useEffect(()=>{if(p.mode==="closed")return;const onKey=(e:KeyboardEvent)=>{if(e.key==="Escape" && !configure){if(p.preference!=="column")p.onMode("closed");}};window.addEventListener("keydown",onKey);return()=>window.removeEventListener("keydown",onKey);},[p.mode,p.preference,p.onMode,configure]);
   const loadThoughts=useCallback(async()=>{
     setLoadingThoughts(true);
@@ -117,9 +107,12 @@ export default function Companion(p:Props){
   };
   const selectTool=(slot:"top"|"bottom",tool:CompanionTool)=>{
     if(slot==="bottom"&&fixed===bottom)return;
-    const nextTop=slot==="top"?tool:(tool===top?bottom:top);
-    const nextBottom=slot==="bottom"?tool:(tool===bottom?top:bottom);
-    if(nextTop===nextBottom)return;
+    let nextTop=slot==="top"?tool:top;
+    let nextBottom=slot==="bottom"?tool:bottom;
+    if(p.options.matchingTool==="swap" && nextTop===nextBottom){
+      if(fixed===bottom && slot==="top")return;
+      if(slot==="top")nextBottom=top;else nextTop=bottom;
+    }
     setTop(nextTop);setBottom(nextBottom);
     p.onOptions({primary:nextTop,secondary:nextBottom});
   };
@@ -130,71 +123,31 @@ export default function Companion(p:Props){
     if(next===0)p.onOptions({layout:"single"});
     else p.onOptions({layout:"split",splitPercent:100-next});
   };
-  const toolHeader=()=><div className="aaa-companion-tool-head">
-    <span>SECOND TOOL</span>
-    <select value={bottom} aria-label="Choose second Companion tool"
-      onChange={e=>selectTool("bottom",e.target.value as CompanionTool)}
-      disabled={fixed===bottom}>
-      {tools.filter(t=>t.key!==top).map(t=><option key={t.key} value={t.key}>{t.title}</option>)}
-    </select>
-    <button title={fixed===bottom?"Unpin second tool":"Pin second tool"} aria-label={fixed===bottom?"Unpin second tool":"Pin second tool"}
-      aria-pressed={fixed===bottom} onClick={()=>setFixed(fixed===bottom?null:bottom)}>
-      {fixed===bottom?<Pin size={15}/>:<PinOff size={15}/>}
-    </button>
-  </div>;
-  const agenda=<div className="aaa-companion-agenda">
-    <div className="aaa-companion-agenda-top">
-      <div className="aaa-companion-date">
-        <label className="aaa-companion-date-label">
-          <span>{labelDate(chosenDate)}</span>
-          <input type="date" aria-label="Choose Agenda date" value={chosenDate}
-            onChange={e=>{if(e.target.value){setChosenDate(e.target.value);setSelected(null);}}}/>
-        </label>
-        <div className="aaa-companion-date-arrows">
-          <button aria-label="Previous day" onClick={()=>{setChosenDate(v=>dayShift(v,-1));setSelected(null);}}><ChevronLeft size={19}/></button>
-          <button aria-label="Next day" onClick={()=>{setChosenDate(v=>dayShift(v,1));setSelected(null);}}><ChevronRight size={19}/></button>
-        </div>
-      </div>
-      <div className="aaa-companion-agenda-actions">
-        <small>{occurrences.length} visible blocks</small>
-        <button onClick={()=>p.onNew(chosenDate)}><Plus size={14}/> New event</button>
-        <button onClick={()=>{
-          setChosenDate(today);setSelected(null);
-          requestAnimationFrame(()=>{if(scroll.current)scroll.current.scrollTop=Math.max(0,nowMinute-120);});
-        }}><LocateFixed size={14}/> Now {p.format(clockTime)}</button>
-      </div>
+  const tabList=(slot:"top"|"bottom",value:CompanionTool)=>
+    <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"} className="aaa-companion-header-tabs">
+      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={value===t.key}
+        disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
+        className={value===t.key?"active":""} onClick={()=>selectTool(slot,t.key)}>
+        {t.title.toUpperCase()}
+      </button>)}
+    </nav>;
+  const secondaryHeader=()=><header className="aaa-hybrid-header aaa-companion-secondary-header">
+    {tabList("bottom",bottom)}
+    <div className="aaa-companion-header-actions">
+      <button title={fixed===bottom?"Unpin second tool":"Keep second tool selected"} aria-label={fixed===bottom?"Unpin second tool":"Pin second tool"}
+        aria-pressed={fixed===bottom} onClick={()=>setFixed(fixed===bottom?null:bottom)}>
+        {fixed===bottom?<Pin size={15}/>:<PinOff size={15}/>}
+      </button>
     </div>
-    {occurrences.some(o=>o.event.allDay)&&<div className="aaa-companion-allday">
-      <small>All day</small>
-      {occurrences.filter(o=>o.event.allDay).map(o=><button key={occurrenceKey(o)} className={"event-chip event-"+p.colour(o.event)}
-        onClick={()=>setSelected(occurrenceKey(o))}>{o.event.title}</button>)}
-    </div>}
-    <div className="aaa-companion-timeline" ref={scroll}>
-      <div className="aaa-companion-grid">
-        {Array.from({length:24},(_,h)=><div className="aaa-companion-hour" style={{top:h*60}} key={h}>
-          <span>{p.format(String(h).padStart(2,"0")+":00")}</span>
-        </div>)}
-        {timed.map(({o,start,end,lane,lanes})=><button key={occurrenceKey(o)}
-          className={"event-chip event-"+p.colour(o.event)+" aaa-companion-block"}
-          style={{top:start,height:Math.max(24,end-start),left:"calc(52px + (100% - 55px) * "+(lane/lanes)+")",width:"calc((100% - 55px) * "+(1/lanes)+")"}}
-          onClick={()=>setSelected(occurrenceKey(o))}><strong>{o.event.title}</strong>
-          <small>{p.format(o.start||o.event.start)} – {p.format(o.end||o.event.end)}</small>
-          {!!o.event.tasks.length&&<small>{o.event.tasks.filter(t=>t.done).length}/{o.event.tasks.length} tasks</small>}
-        </button>)}
-        {chosenDate===today&&<div className="aaa-companion-now" style={{top:nowMinute}}><i/></div>}
-      </div>
-    </div>
-    {chosenDate!==today&&!occurrences.length&&<p className="aaa-companion-empty-day">No events or timed blocks this day.</p>}
-    {actual&&<div className="aaa-companion-detail">
-      <div className="aaa-companion-actions"><strong>{actual.event.title}</strong><button onClick={()=>setSelected(null)} aria-label="Close block details"><X size={15}/></button></div>
-      <small>{actual.event.allDay?"All day":p.format(actual.start||actual.event.start)+" – "+p.format(actual.end||actual.event.end)}</small>
-      {actual.event.tasks.map(task=><label key={task.taskId||task.id} className="aaa-companion-task">
-        <input type="checkbox" checked={task.done} disabled={busy} onChange={async()=>{setBusy(true);try{await p.onToggleTask(actual.event,task);}catch(e){setMessage(String(e));}finally{setBusy(false);}}}/>
-        <span>{task.title}</span>
-      </label>)}
-      {actual.event.thoughtId&&p.onOpenThought&&<button onClick={()=>p.onOpenThought?.(actual.event.thoughtId!)}>Open linked working page ↗</button>}
-    </div>}
-  </div>;
+  </header>;
+  const agenda=(slot:"top"|"bottom")=><CompanionAgendaView
+    date={slot==="top"?topDate:bottomDate}
+    today={p.today} now={p.now} timeZone={p.timeZone} jump={p.options.jump}
+    onDate={slot==="top"?setTopDate:setBottomDate}
+    selected={slot==="top"?topSelected:bottomSelected}
+    onSelected={slot==="top"?setTopSelected:setBottomSelected}
+    occurrencesForDate={p.occurrencesForDate} colour={p.colour} format={p.format}
+    onNew={p.onNew} onToggleTask={p.onToggleTask} onOpenThought={p.onOpenThought}/>;
   const context=<div className="aaa-companion-context">
     <div className="aaa-companion-actions">
       <button onClick={()=>setLocked(locked?null:{...target})} aria-pressed={!!locked}>
@@ -291,18 +244,38 @@ export default function Companion(p:Props){
       <button type="submit" disabled={busy||!draft.trim()}><Plus size={14}/> Capture thought</button>
     </form>
   </div>;
-  const body=(tool:CompanionTool)=>tool==="agenda"?agenda:tool==="context"?context:thoughtPane;
+  const body=(slot:"top"|"bottom",tool:CompanionTool)=>tool==="agenda"?agenda(slot):tool==="context"?context:thoughtPane;
   if(p.mode==="closed")return null;
   return <>
     {p.mode==="overlay"&&<button className="aaa-companion-backdrop" aria-label="Close The Companion" onClick={()=>p.onMode("closed")}/>}
-    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode} aria-label="The Companion">
+    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode} aria-label="The Companion"
+      style={{width:previewWidth+"px",flexBasis:previewWidth+"px"}}>
+      {p.mode==="pinned"&&p.options.resizableColumn&&<div className="aaa-companion-width-resizer"
+        role="separator" aria-label="Resize Companion width" aria-orientation="vertical" tabIndex={0}
+        aria-valuemin={300} aria-valuemax={720} aria-valuenow={previewWidth}
+        onPointerDown={e=>{
+          if(e.button!==0)return;
+          columnResizeStart.current={x:e.clientX,width:previewWidth};
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={e=>{
+          const start=columnResizeStart.current;if(!start)return;
+          updateWidth(start.width+start.x-e.clientX);
+        }}
+        onPointerUp={e=>{
+          if(!columnResizeStart.current)return;
+          columnResizeStart.current=null;
+          p.onOptions({widthPx:previewWidth});
+        }}
+        onPointerCancel={()=>{columnResizeStart.current=null;p.onOptions({widthPx:previewWidth});}}
+        onKeyDown={e=>{
+          if(!["ArrowLeft","ArrowRight","Home"].includes(e.key))return;
+          e.preventDefault();
+          const next=e.key==="Home"?380:updateWidth(previewWidth+(e.key==="ArrowLeft"?20:-20));
+          setPreviewWidth(next);p.onOptions({widthPx:next});
+        }}/>} 
       <header className="aaa-hybrid-header">
-        <nav role="tablist" aria-label="Companion tools" className="aaa-companion-header-tabs">
-          {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={top===t.key}
-            className={top===t.key?"active":""} onClick={()=>selectTool("top",t.key)}>
-            {t.title.toUpperCase()}
-          </button>)}
-        </nav>
+        {tabList("top",top)}
         <div className="aaa-companion-header-actions">
           {canPin(p.preference,p.mode)&&<button aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
             title={p.mode==="pinned"?"Unpin":"Pin"} onClick={()=>p.onMode(p.mode==="pinned"?"overlay":"pinned")}>
@@ -312,7 +285,7 @@ export default function Companion(p:Props){
       </header>
       <div className="aaa-hybrid-sections">
         <div className="aaa-hybrid-slot aaa-hybrid-primary">
-          <div className="aaa-hybrid-slot-body">{body(top)}</div>
+          <div className="aaa-hybrid-slot-body">{body("top",top)}</div>
         </div>
         <button type="button" className={"aaa-companion-pull"+(drawerHeight>0?" is-open":"")}
           role="separator" aria-label={drawerHeight>0?"Drag down to hide second tool":"Drag up to reveal second tool"}
@@ -357,8 +330,8 @@ export default function Companion(p:Props){
           </span><span className="aaa-companion-pull-track"/>
         </button>
         {drawerHeight>0&&<div className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
-          {toolHeader()}
-          <div className="aaa-hybrid-slot-body">{body(bottom)}</div>
+          {secondaryHeader()}
+          <div className="aaa-hybrid-slot-body">{body("bottom",bottom)}</div>
         </div>}
       </div>
       {message&&<div className="aaa-companion-message" role="status">{message}<button onClick={()=>setMessage("")} aria-label="Dismiss"><X size={13}/></button></div>}
