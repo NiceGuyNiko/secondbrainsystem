@@ -2,10 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PGlite} from "@electric-sql/pglite";
 import {readFileSync,readdirSync} from "node:fs";
-import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetIsSynced,widgetPlacementConfig,type PageWidget} from "../lib/widget-system";
+import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,type PageWidget} from "../lib/widget-system";
 import {placeWidget,resizeWidgetLane,widgetLayoutBands} from "../lib/widget-layout";
 
-test("live layout previews split columns, stack widgets and conserve neighboring widths",()=>{
+test("stable drop placements snap columns, stack widgets and conserve neighboring widths",()=>{
   const widget=(id:string,width:number,position:number,sectionId="history"):PageWidget=>({id,page_id:"world",definition_id:id,
     kind:"database",title:id,config:{sectionId},width,height:2,position});
   const sections=[{id:"history",page_id:"world",title:"History",position:0},{id:"characters",page_id:"world",title:"Characters",position:1}];
@@ -17,9 +17,13 @@ test("live layout previews split columns, stack widgets and conserve neighboring
   assert.deepEqual(bands[0].lanes.map(l=>l.width),[6,6]);
   const middle=placeWidget(original,sections,"moment",{sectionId:"history",targetId:"event",edge:"left"});
   assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.widgets[0].id),["era","moment","event"]);
-  assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.width),[6,3,3]);
+  assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.width),[4,4,4],"three columns automatically snap to thirds");
   const stretched=resizeWidgetLane(middle,sections,"era",2);
-  assert.deepEqual(widgetLayoutBands(stretched)[0].lanes.map(l=>l.width),[7,2,3],"a divider expands the left lane as it contracts the neighbor");
+  assert.deepEqual(widgetLayoutBands(stretched)[0].lanes.map(l=>l.width),[6,2,4],"a divider expands the left lane as it contracts the neighbor");
+  const thirds=resizeWidgetLane(resizeWidgetLane(middle,sections,"era",-1),sections,"moment",1);
+  assert.deepEqual(widgetLayoutBands(thirds)[0].lanes.map(l=>l.width),[3,6,3],"custom 25/50/25 layout stays possible after snapping to thirds");
+  const oneColumn=placeWidget(original.slice(0,2),sections,"event",{sectionId:"history",targetId:"era",edge:"below"});
+  assert.deepEqual(widgetLayoutBands(oneColumn)[0].lanes.map(l=>l.width),[12],"stacking two half widgets restores a full-width column");
   const moved=placeWidget(stacked,sections,"moment",{sectionId:"characters",targetId:null,edge:"section-end"});
   assert.equal(moved.find(w=>w.id==="moment")?.config.sectionId,"characters");
   assert.equal(moved.find(w=>w.id==="event")?.config.sectionId,"history");
@@ -36,6 +40,8 @@ test("widget views normalize rendering, filters, sort priority and edit controls
   assert.equal(parsed.density,"compact");
   assert.equal(parsed.editable,false);
   assert.equal(parsed.allowCreate,true);
+  assert.equal(parsed.showDatabase,false,"database name is optional and hidden by default");
+  assert.equal(parsed.showViewTag,false,"connected-view label is hidden by default");
   assert.equal(parsed.filterMode,"any");
   assert.deepEqual(parsed.sorts.map(s=>s.direction),["desc"]);
   assert.deepEqual(parsed.visibleProperties,["prop-a"]);
@@ -53,6 +59,10 @@ test("page sections preserve widget identity and grid heights are bounded",()=>{
   assert.deepEqual(widgetGridSize({...widget("a"),width:12,height:4}),{width:12,height:4});
   assert.deepEqual(widgetGridSize({...widget("a"),width:100,height:50}),{width:12,height:12});
   assert.deepEqual(widgetGridSize({...widget("a"),width:1,height:0}),{width:2,height:2});
+  assert.equal(widgetHeightPx(widget("a")),280);
+  assert.equal(widgetHeightPx({...widget("a"),config:{heightPx:547}}),547,"heights are continuous pixels, not rows");
+  assert.equal(widgetHeightPx({...widget("a"),config:{heightPx:7000}}),1200,"height is safely capped");
+  assert.deepEqual(placementConfigAfterPublish({...widget("a","s1"),config:{sectionId:"s1",heightPx:416}}),{sectionId:"s1",heightPx:416});
   assert.deepEqual(placementConfigAfterPublish({...widget("a","s1"),config:{sectionId:"s1",filters:["temporary"]}}),{sectionId:"s1"},"publishing a view cannot remove its page section");
   assert.deepEqual(groupPageWidgets("empty",sections,[widget("a")]).map(group=>group.section.title),["Overview"]);
   const synced={...widget("a","s1"),config:{sectionId:"s1",syncMode:"synced",renderer:"cards",filters:["local"]}};

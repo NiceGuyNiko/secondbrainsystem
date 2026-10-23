@@ -7,6 +7,8 @@ export type WidgetConfig={
   density:"comfortable"|"compact";
   color:"theme"|"gold"|"blue"|"green";
   showTitle:boolean;
+  showDatabase:boolean;
+  showViewTag:boolean;
   editable:boolean;
   allowCreate:boolean;
   exposeFilters:boolean;
@@ -20,7 +22,7 @@ export type WidgetConfig={
   sorts:ViewSort[];
 };
 export const defaultWidgetConfig:WidgetConfig={
-  renderer:"table",density:"comfortable",color:"theme",showTitle:true,
+  renderer:"table",density:"comfortable",color:"theme",showTitle:true,showDatabase:false,showViewTag:false,
   editable:true,allowCreate:false,exposeFilters:false,exposeSorts:false,
   visibleProperties:[],openBehavior:"detail",scopeField:"",scopeValue:"",
   filters:[],filterMode:"all",sorts:[]
@@ -36,6 +38,8 @@ export function widgetConfig(raw:unknown):WidgetConfig{
     density:pick("density",["comfortable","compact"] as const,"comfortable"),
     color:pick("color",["theme","gold","blue","green"] as const,"theme"),
     showTitle:typeof obj.showTitle==="boolean"?obj.showTitle:true,
+    showDatabase:obj.showDatabase===true,
+    showViewTag:obj.showViewTag===true,
     editable:typeof obj.editable==="boolean"?obj.editable:true,
     allowCreate:obj.allowCreate===true,
     exposeFilters:obj.exposeFilters===true,
@@ -58,14 +62,19 @@ export function widgetSectionId(widget:PageWidget):string{
 export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionId(widget)){
   const band=typeof widget.config.layoutBand==="string"?widget.config.layoutBand:null;
   const lane=typeof widget.config.layoutLane==="string"?widget.config.layoutLane:null;
+  const heightPx=typeof widget.config.heightPx==="number"&&Number.isFinite(widget.config.heightPx)?widget.config.heightPx:null;
   return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{}),
-    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{})};
+    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
   return widgetPlacementConfig(widget);
 }
 export function widgetGridSize(widget:PageWidget){
   return {width:Math.max(2,Math.min(12,Number(widget.width)||6)),height:Math.max(1,Math.min(12,Number(widget.height)||2))};
+}
+export function widgetHeightPx(widget:PageWidget){
+  const raw=Number(widget.config.heightPx);
+  return Number.isFinite(raw)&&raw>=120?Math.max(160,Math.min(1200,raw)):140*widgetGridSize(widget).height;
 }
 export function groupPageWidgets(pageId:string,sections:WidgetPageSection[],widgets:PageWidget[]){
   const ordered=sections.filter(section=>section.page_id===pageId).sort((a,b)=>a.position-b.position);
@@ -89,12 +98,13 @@ export type WidgetConfigureTarget={
   /** When a widget is built from inside a database, expose source properties alongside Configure. */
   autoEditDatabase?:boolean;
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
-  width?:number;height?:number;
+  width?:number;height?:number;heightPx?:number;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   onConfig:(patch:Partial<WidgetConfig>)=>void;
   onSource:(databaseId:string|null,viewId:string|null)=>void;
   onRename:(name:string)=>void;
   onSize?:(width:number,height:number)=>void;
+  onHeightPx?:(pixels:number)=>void;
   onSaveToDefinition?:()=>void;
   onCreateDatabase?:(name:string)=>Promise<string>;
   onAddProperty?:(databaseId:string,name:string,type:string)=>Promise<void>;

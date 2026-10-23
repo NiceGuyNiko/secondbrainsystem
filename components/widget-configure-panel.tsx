@@ -90,12 +90,17 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
     <div className="aaa-widget-config-group"><strong>Appearance &amp; size</strong>
       <div className="aaa-widget-config-pair"><label className="aaa-widget-field">Density<select value={cfg.density} onChange={e=>change({density:e.target.value as WidgetConfig["density"]})}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
       <label className="aaa-widget-field">Accent<select value={cfg.color} onChange={e=>change({color:e.target.value as WidgetConfig["color"]})}><option value="theme">Theme</option><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option></select></label></div>
-      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>{[2,3,4,5,6,7,8,9,10,11,12].map(x=><option key={x} value={x}>{x===12?"Full width":x+" / 12 columns"}</option>)}</select></label>
-      <label className="aaa-widget-field">Height<select value={selection.height??2} onChange={e=>selection.onSize?.(selection.width??6,Number(e.target.value))}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(x=><option key={x} value={x}>{x+" rows"}</option>)}</select></label></div>}
+      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>
+        {[3,4,6,8,9,12].map(x=><option key={x} value={x}>{x===12?"Full · 100%":x===3?"Small · 25%":x===4?"Third · 33%":x===6?"Medium · 50%":x===8?"Wide · 67%":"Large · 75%"}</option>)}
+        {![3,4,6,8,9,12].includes(selection.width??6)&&<option value={selection.width}>{Math.round((selection.width??6)/12*100)}% custom</option>}
+      </select></label><label className="aaa-widget-field">Height (px)
+        <input type="number" min={160} max={1200} step={8} value={selection.heightPx??280} onChange={e=>selection.onHeightPx?.(Number(e.target.value))} />
+      </label></div>}
+      {selection.onHeightPx&&<p>Width snaps to useful column sizes. Drag the corner for fluid height and width adjustments; neighboring stacks keep their own heights.</p>}
       {selection.synced&&<p className="aaa-widget-sync-notice">Widget Sync is on. Configuration changes here update every member of this sync group. Position, section, width and height stay local to each page.</p>}
     </div>
     <div className="aaa-widget-config-group"><strong>Interaction</strong>
-      {([["showTitle","Show title"],["editable","Allow record editing"],["allowCreate","Allow new records"],["exposeFilters","Show filter controls in Use mode"],["exposeSorts","Show sort controls in Use mode"]] as const).map(([key,label])=><label className="aaa-widget-switch" key={key}><span>{label}</span><input type="checkbox" checked={cfg[key]} onChange={e=>change({[key]:e.target.checked})}/></label>)}
+      {([["showTitle","Show widget title"],["showDatabase","Show database name under title"],["showViewTag","Show connected-view label"],["editable","Allow record editing"],["allowCreate","Allow new records"],["exposeFilters","Show filter controls in Use mode"],["exposeSorts","Show sort controls in Use mode"]] as const).map(([key,label])=><label className="aaa-widget-switch" key={key}><span>{label}</span><input type="checkbox" checked={cfg[key]} onChange={e=>change({[key]:e.target.checked})}/></label>)}
       <label className="aaa-widget-field">Open records
         <select value={cfg.openBehavior} onChange={e=>change({openBehavior:e.target.value as WidgetConfig["openBehavior"]})}><option value="detail">Quick detail</option><option value="source">Original database page</option></select>
       </label>

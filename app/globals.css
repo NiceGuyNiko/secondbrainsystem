@@ -1670,3 +1670,76 @@ input[type="range"]{
 .aaa-widget-studio-lab .aaa-widget-page-tabs{background:linear-gradient(125deg,var(--studio-tint),var(--surface-2))}
 .aaa-widget-studio-lab .aaa-widget-section-header h2{font-size:21px;font-weight:800}
 @media(max-width:640px){.aaa-widget-page-tabs{padding:8px;gap:6px}.aaa-widget-page-tabs button{min-height:33px;padding:7px 9px;font-size:11px}.aaa-widget-section-header{align-items:flex-start;flex-direction:column}.aaa-widget-section-actions{flex-wrap:wrap}.aaa-widget-section-toolbar{align-items:flex-start;flex-direction:column}.aaa-widget-card-resize{flex-wrap:wrap}.aaa-widget-copy-modes{grid-template-columns:1fr}}
+
+/* Stable drag insertion guides. A hover never rearranges or resizes the layout. */
+.aaa-widget-layout-band{transition:none}
+.aaa-widget-layout-lane-shell{transition:none}
+.aaa-widget-layout-item{flex:0 0 auto!important;transition:none}
+.aaa-widget-layout-item>.aaa-widget-card{height:100%!important;flex:0 0 auto!important;transition:opacity .12s ease}
+.aaa-widget-dragging{opacity:.46;outline:1px dashed var(--accent-bright)}
+.aaa-widget-card[class*="aaa-widget-target-"]{box-shadow:none!important}
+.aaa-widget-card[class*="aaa-widget-target-"]::after{content:"";position:absolute;z-index:10;pointer-events:none;border-radius:99px;background:var(--accent-bright);box-shadow:0 0 8px color-mix(in srgb,var(--accent-bright) 45%,transparent)}
+.aaa-widget-card.aaa-widget-target-left::after{left:2px;top:7px;bottom:7px;width:3px}
+.aaa-widget-card.aaa-widget-target-right::after{right:2px;top:7px;bottom:7px;width:3px}
+.aaa-widget-card.aaa-widget-target-above::after{left:7px;right:7px;top:2px;height:3px}
+.aaa-widget-card.aaa-widget-target-below::after{left:7px;right:7px;bottom:2px;height:3px}
+.aaa-widget-canvas{position:relative}
+.aaa-widget-canvas.aaa-widget-section-end-highlight::after{content:"";position:relative;display:block;height:3px;width:100%;background:var(--accent-bright);border-radius:99px;box-shadow:0 0 8px var(--accent-soft)}
+.aaa-widget-title-group,.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group{display:flex;align-items:center;gap:9px;min-width:0}
+.aaa-widget-title-stack{display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:2px}
+.aaa-widget-title-button{max-width:100%;font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;cursor:pointer}
+.aaa-widget-title-button:hover,.aaa-widget-source-button:hover{color:var(--accent-text);text-decoration:underline}
+.aaa-widget-source-button{max-width:100%;font-size:10px;color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aaa-widget-title-stack>.aaa-widget-lab-kicker{display:block!important;grid-column:auto!important}
+.aaa-widget-height-caption{font-size:10px;color:var(--subtle);white-space:nowrap}
+.aaa-widget-dialog:has(.aaa-widget-delete-core-toggle){width:min(475px,100%)}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle{flex-direction:row!important;align-items:center;gap:10px;padding:11px 12px}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle span{display:inline;line-height:1.3;font-size:12px}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle input{margin:0;flex:0 0 16px}
+
+/* Database workshop: the sidebar owns database navigation; center is all source content. */
+.aaa-demo-db-workshop-v2 .aaa-demo-db-detail{width:100%;min-width:0}
+.aaa-demo-db-workshop-v2 .aaa-demo-db-detail>header{align-items:flex-start;gap:14px;flex-wrap:wrap}
+.aaa-demo-db-view-tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);margin:22px 0 0}
+.aaa-demo-db-view-tabs button{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-weight:700}
+.aaa-demo-db-view-tabs button.active{border-bottom-color:var(--accent-bright);color:var(--accent-text)}
+.aaa-demo-db-view-tabs button span{padding:2px 6px;border-radius:99px;background:var(--surface-2);font-size:10px}
+.aaa-demo-db-record-view,.aaa-demo-db-property-view{padding-top:20px}
+.aaa-demo-db-view-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.aaa-demo-db-view-heading h3{font-size:15px;font-weight:800;color:var(--text)}
+.aaa-demo-db-view-heading p{font-size:11px;margin-top:3px}
+.aaa-demo-db-view-heading>button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:7px;padding:9px 12px;background:var(--surface-2);font-size:11px;font-weight:700;color:var(--text)}
+.aaa-demo-db-table-wrap{overflow:auto;max-width:100%;border:1px solid var(--border);border-radius:9px}
+.aaa-demo-db-record-table{border-collapse:collapse;min-width:650px;width:100%;font-size:12px;text-align:left}
+.aaa-demo-db-record-table th{background:var(--surface-2);position:sticky;top:0;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}
+.aaa-demo-db-record-table th,.aaa-demo-db-record-table td{padding:11px 13px;white-space:nowrap;border-bottom:1px solid var(--border);max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.aaa-demo-db-record-table tbody tr:last-child td{border-bottom:0}
+.aaa-demo-db-record-table tr.selected{background:var(--accent-soft)}
+.aaa-demo-db-record-table tbody tr:hover{background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.aaa-demo-db-record-name{font-weight:750;color:var(--text);max-width:230px;overflow:hidden;text-overflow:ellipsis;display:block;text-align:left}
+.aaa-demo-db-record-name:hover{text-decoration:underline;color:var(--accent-text)}
+.aaa-demo-db-empty-value{color:var(--subtle)}
+.aaa-demo-db-record-page{margin-top:20px;border:1px solid var(--accent);border-radius:13px;background:var(--surface-2);overflow:hidden}
+.aaa-demo-db-record-page>header{padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)}
+.aaa-demo-db-record-page>header small{font-size:10px;color:var(--accent-text);letter-spacing:.1em;font-weight:800}
+.aaa-demo-db-record-page>header input{display:block;width:100%;max-width:500px;background:transparent;color:var(--text);font-size:22px;font-weight:800;outline:none;margin:7px 0}
+.aaa-demo-db-record-page>header>button{color:var(--muted);padding:5px}
+.aaa-demo-db-record-properties{padding:10px 20px 18px;display:flex;flex-direction:column}
+.aaa-demo-db-record-property{display:grid;grid-template-columns:minmax(115px,32%) minmax(0,1fr);align-items:center;gap:15px;padding:11px 0;border-bottom:1px solid var(--border)}
+.aaa-demo-db-record-property:last-child{border-bottom:0}
+.aaa-demo-db-record-property>div:first-child{display:flex;flex-direction:column;gap:2px}
+.aaa-demo-db-record-property strong{font-size:12px;color:var(--text)}
+.aaa-demo-db-record-property small{color:var(--muted);font-size:10px}
+.aaa-demo-db-record-property input:not([type=checkbox]),.aaa-demo-db-record-property select,.aaa-demo-db-record-property textarea{width:100%;min-width:0;max-width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px}
+.aaa-demo-db-record-property input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.aaa-demo-db-relation-editor{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.aaa-demo-db-property-list{display:flex;flex-direction:column;gap:10px}
+.aaa-demo-db-property-row{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.aaa-demo-db-property-primary{display:grid;grid-template-columns:minmax(0,1fr) minmax(125px,33%);gap:12px}
+.aaa-demo-db-property-row label{font-size:10px;color:var(--muted);font-weight:750;display:flex;flex-direction:column;gap:5px}
+.aaa-demo-db-property-row input,.aaa-demo-db-property-row select{width:100%;min-width:0;border:1px solid var(--border);border-radius:7px;padding:9px;background:var(--surface);color:var(--text);font-size:12px}
+.aaa-demo-db-property-extra{padding-top:10px;border-top:1px solid var(--border)}
+.aaa-demo-db-property-extra small{color:var(--subtle);font-size:10px;font-weight:400}
+.aaa-demo-db-blank{padding:26px 15px;color:var(--muted);font-size:12px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;gap:10px}
+.aaa-demo-db-new-property{flex-wrap:wrap}
+@media(max-width:680px){.aaa-demo-db-record-property{grid-template-columns:1fr;gap:7px}.aaa-demo-db-property-primary{grid-template-columns:1fr}}

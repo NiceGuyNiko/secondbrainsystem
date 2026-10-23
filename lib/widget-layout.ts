@@ -12,6 +12,14 @@ const MIN_WIDTH=2;
 const safeWidth=(value:number)=>Math.max(MIN_WIDTH,Math.min(12,Math.round(value)));
 const bandId=(item:PageWidget)=>typeof item.config.layoutBand==="string"?item.config.layoutBand:"band-"+item.id;
 const laneId=(item:PageWidget)=>typeof item.config.layoutLane==="string"?item.config.layoutLane:"lane-"+item.id;
+const rebalance=(band:WidgetLayoutBand)=>{
+  // Adding/removing a column redistributes the available width once, on drop.
+  // Deliberately never run this as part of a drag-over preview.
+  const lanes=band.lanes;
+  if(!lanes.length)return;
+  const each=Math.floor(12/lanes.length);
+  lanes.forEach((lane,index)=>{lane.width=each+(index<12%lanes.length?1:0)});
+};
 
 export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[]{
   const bands:WidgetLayoutBand[]=[];
@@ -71,12 +79,11 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
     const laneIndex=destinationBand.lanes.indexOf(destinationLane);
     if(target.edge==="left"||target.edge==="right"){
-      if(destinationLane.width>=4){
-        const part=Math.floor(destinationLane.width/2);
-        destinationLane.width-=part;
-        destinationBand.lanes.splice(laneIndex+(target.edge==="right"?1:0),0,{id:"lane-"+id,width:part,widgets:[moving]});
+      if(destinationBand.lanes.length<4){
+        destinationBand.lanes.splice(laneIndex+(target.edge==="right"?1:0),0,{id:"lane-"+id,width:3,widgets:[moving]});
+        rebalance(destinationBand);
       }else{
-        // A two-unit column can't split further, so stack without overlap.
+        // Four columns are the smallest usable snap. Stack rather than overflow.
         destinationLane.widgets.splice(target.edge==="left"?0:destinationLane.widgets.length,0,moving);
       }
     }else{
@@ -85,6 +92,13 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     }
   }else{
     destination.push({id:"band-"+id,lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]});
+  }
+  // Existing columns regain available width if an entire lane was moved away.
+  // Don't overwrite the widths of a destination band that was only stacked.
+  for(const bands of group.values())for(const band of bands){
+    if(band===destinationBand&&band.lanes.reduce((sum,l)=>sum+l.width,0)===12)continue;
+    if(band.lanes.length===1)band.lanes[0].width=12;
+    else if(band.lanes.reduce((sum,l)=>sum+l.width,0)<12)rebalance(band);
   }
   group.set(target.sectionId,destination);
   return publish(sections,items,group);
@@ -105,6 +119,10 @@ export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly W
   if(neighbor){
     const adjusted=Math.max(MIN_WIDTH-lane.width,Math.min(neighbor.width-MIN_WIDTH,delta));
     lane.width+=adjusted;neighbor.width-=adjusted;
+  }else if(index>0){
+    const previous=band.lanes[index-1];
+    const adjusted=Math.max(MIN_WIDTH-lane.width,Math.min(previous.width-MIN_WIDTH,delta));
+    lane.width+=adjusted;previous.width-=adjusted;
   }else{
     const remaining=12-band.lanes.reduce((n,l)=>n+l.width,0);
     lane.width=safeWidth(Math.min(12,lane.width+Math.max(-lane.width+MIN_WIDTH,Math.min(delta,remaining))));

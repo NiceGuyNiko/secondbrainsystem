@@ -1,10 +1,10 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,Grip,LayoutGrid,Link2,Minus,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
+import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,Grip,LayoutGrid,Link2,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
-import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
+import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import {placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
 import PlanningWorkspace from "@/components/planning-workspace";
 
@@ -53,7 +53,7 @@ export default function WidgetStudio(p:Props){
   const [dropHint,setDropHint]=useState<WidgetDropTarget|null>(null);
   const [resizePreview,setResizePreview]=useState<PageWidget[]|null>(null);
   const resizePreviewRef=useRef<PageWidget[]|null>(null);
-  const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;unitY:number;axis:"x"|"y"|"both";initial:PageWidget[]}|null>(null);
+  const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;heightPx:number;axis:"x"|"y"|"both";initial:PageWidget[]}|null>(null);
   const [duplicate,setDuplicate]=useState<PageWidget|null>(null);
   const [duplicateMode,setDuplicateMode]=useState<"independent"|"synced">("independent");
   const [duplicatePageId,setDuplicatePageId]=useState("");
@@ -142,7 +142,9 @@ export default function WidgetStudio(p:Props){
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
   const instanceList=data.instances.filter(w=>w.page_id===page?.id).sort((a,b)=>a.position-b.position);
   const pageSections=data.sections.filter(s=>s.page_id===page?.id).sort((a,b)=>a.position-b.position);
-  const layoutItems=drag&&dropHint?placeWidget(instanceList,pageSections,drag,dropHint):resizePreview??instanceList;
+  // Dragging never changes the rendered layout. Only a thin insertion guide moves;
+  // the actual placement is calculated once when the pointer is released.
+  const layoutItems=resizePreview??instanceList;
   const sectionGroups=page?groupPageWidgets(page.id,pageSections,layoutItems):[];
   const activePlacementSection=pageSections.some(s=>s.id===pickerSection)?pickerSection:pageSections[0]?.id??"";
   useEffect(()=>{
@@ -396,18 +398,21 @@ export default function WidgetStudio(p:Props){
     }
   };
   const commitDrop=(fallback?:WidgetDropTarget)=>{
-    const target=dropHint??fallback;
+    const target=fallback??dropHint;
     if(drag&&target)saveLayout(placeWidget(instanceList,pageSections,drag,target));
     setDrag(null);setDropHint(null);
   };
   const hint=(value:WidgetDropTarget)=>setDropHint(old=>old?.sectionId===value.sectionId&&old.targetId===value.targetId&&old.edge===value.edge?old:value);
-  const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
-    if(!arrange||!drag||drag===widget.id)return;
-    event.preventDefault();event.stopPropagation();
+  const dropTargetFor=(event:React.DragEvent<HTMLElement>,widget:PageWidget):WidgetDropTarget=>{
     const bounds=event.currentTarget.getBoundingClientRect();
     const x=(event.clientX-bounds.left)/bounds.width,y=(event.clientY-bounds.top)/bounds.height;
     const edge:WidgetDropEdge=x<.24?"left":x>.76?"right":y<.5?"above":"below";
-    hint({sectionId:widgetSectionId(widget),targetId:widget.id,edge});
+    return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
+  };
+  const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
+    if(!arrange||!drag||drag===widget.id)return;
+    event.preventDefault();event.stopPropagation();
+    hint(dropTargetFor(event,widget));
   };
   const startResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,axis:"x"|"y"|"both")=>{
     e.preventDefault();e.stopPropagation();
@@ -415,15 +420,15 @@ export default function WidgetStudio(p:Props){
     const bounds=grid?.getBoundingClientRect();
     if(!bounds)return;
     resizeStart.current={id:widget.id,x:e.clientX,y:e.clientY,
-      unitX:bounds.width/12,unitY:140+14,axis,initial:instanceList};
+      unitX:bounds.width/12,heightPx:widgetHeightPx(widget),axis,initial:instanceList};
     resizePreviewRef.current=instanceList;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const resizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=resizeStart.current;if(!start)return;
-    const x=Math.round((e.clientX-start.x)/start.unitX),y=Math.round((e.clientY-start.y)/start.unitY);
+    const x=Math.round((e.clientX-start.x)/start.unitX);
     let result=start.axis==="y"?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x);
-    if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,height:Math.max(1,Math.min(12,widgetGridSize(w).height+y))}:w);
+    if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,config:{...w.config,heightPx:Math.max(160,Math.min(1200,Math.round((start.heightPx+e.clientY-start.y)/8)*8))}}:w);
     resizePreviewRef.current=result;setResizePreview(result);
   };
   const resizeEnd=()=>{
@@ -496,11 +501,12 @@ export default function WidgetStudio(p:Props){
     };
     p.onConfigure({id:selected.id,kind:selected.kind,title:instance?.title||def.name,synced:instance?widgetIsSynced(instance):false,
       databaseId:source.databaseId,viewId:source.viewId,config,
-      width:instance?.width,height:instance?.height,
+      width:instance?.width,height:instance?.height,heightPx:instance?widgetHeightPx(instance):undefined,
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
-      onSize:instance?(width,height)=>changeInstance(instance.id,{width,height}):undefined,
+      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,width-widgetGridSize(instance).width)):undefined,
+      onHeightPx:instance?pixels=>changeInstance(instance.id,{config:{...instance.config,heightPx:Math.max(160,Math.min(1200,Math.round(pixels)))}}):undefined,
       onSaveToDefinition:instance?saveMaster:undefined,
       onCreateDatabase:createSource,onAddProperty:addSourceProperty,onUpdateProperty:updateSourceProperty
     });
@@ -619,18 +625,21 @@ export default function WidgetStudio(p:Props){
   const widgetCard=(widget:PageWidget,index:number)=>{
     const def=definitionOf(widget);
     const cfg=def?effectiveConfig(def,widget):widgetConfig({});
-    const {height}=widgetGridSize(widget);
+    const height=widgetHeightPx(widget);
     const title=widget.title||def?.name||"Goals & projects";
     return <article key={widget.id} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${arrange?"aaa-widget-arranging":""} ${drag===widget.id?"aaa-widget-dragging":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
-      style={{flexGrow:height,flexBasis:0,minHeight:`${140*height}px`}}
+      style={{height:"100%",minHeight:0}}
       onDragStart={e=>{if(!arrange)return;setDrag(widget.id);e.dataTransfer.setData("text/plain",widget.id);e.dataTransfer.effectAllowed="move"}}
       onDragOver={e=>widgetHover(e,widget)}
-      onDrop={e=>{e.stopPropagation();e.preventDefault();commitDrop({sectionId:widgetSectionId(widget),targetId:widget.id,edge:"below"})}}
+      onDrop={e=>{e.stopPropagation();e.preventDefault();commitDrop(dropTargetFor(e,widget))}}
       onDragEnd={()=>{setDrag(null);setDropHint(null)}}>
       <header className="aaa-widget-card-head">
-        <div>{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><Grip size={17}/></span>}
-          <span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":widgetIsSynced(widget)?"WIDGET SYNC · LINKED":"CONNECTED VIEW"}</span><strong>{title}</strong>
-          {def&&<small>{data.databases.find(x=>x.id===sourceOf(widget).databaseId)?.name||"Unconnected"}</small>}</div>
+        <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><Grip size={17}/></span>}
+          <div className="aaa-widget-title-stack">
+            {cfg.showViewTag&&<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":widgetIsSynced(widget)?"WIDGET SYNC · LINKED":"CONNECTED VIEW"}</span>}
+            {cfg.showTitle&&<button type="button" className="aaa-widget-title-button" title="Configure this widget" onClick={()=>def&&select("instance",widget.id)}>{title}</button>}
+            {cfg.showDatabase&&def&&<button className="aaa-widget-source-button" type="button" onClick={()=>select("instance",widget.id)}>{data.databases.find(x=>x.id===sourceOf(widget).databaseId)?.name||"Unconnected"}</button>}
+          </div></div>
         <div className="aaa-widget-card-actions">
           {arrange&&<><button aria-label="Move widget earlier" disabled={index===0} onClick={()=>shift(widget.id,-1)}><ArrowUp size={15}/></button><button aria-label="Move widget later" disabled={index===instanceList.length-1} onClick={()=>shift(widget.id,1)}><ArrowDown size={15}/></button></>}
           {def&&<button title="Configure in The Companion" aria-label="Configure widget" onClick={()=>select("instance",widget.id)}><Settings2 size={16}/></button>}
@@ -646,11 +655,7 @@ export default function WidgetStudio(p:Props){
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
           <option value="">Overview</option>{pageSections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
         </select></label>
-        <div className="aaa-widget-height-stepper" aria-label={`${title} height`}>
-          <button disabled={height<=1} aria-label={`Make ${title} shorter`} onClick={()=>changeInstance(widget.id,{height:Math.max(1,height-1)})}><Minus size={14}/></button>
-          <span>{height} {height===1?"row":"rows"}</span>
-          <button disabled={height>=12} aria-label={`Make ${title} taller`} onClick={()=>changeInstance(widget.id,{height:Math.min(12,height+1)})}><Plus size={14}/></button>
-        </div>
+        <span className="aaa-widget-height-caption">{Math.round(height)}px tall · drag corner to resize</span>
       </footer>}
       {arrange&&<>
         <button type="button" className="aaa-widget-resize-corner" aria-label={`Resize ${title} width and height`} title="Drag to resize both dimensions"
@@ -677,7 +682,7 @@ export default function WidgetStudio(p:Props){
         <div className="aaa-widget-dialog-icon"><Trash2 size={22}/></div><h2 id="aaa-remove-widget-title">Remove “{title}”?</h2>
         <p id="aaa-remove-widget-desc">{removeTarget.kind==="instance"?"This removes the widget view from this page. The reusable widget, its database, and all records stay intact.":"This removes the reusable widget design from Developing IT. No source database records are deleted."}</p>
         {!canRemove&&!removeCore&&<p className="aaa-widget-danger-copy">This master still has views on pages. Remove those first, or choose the source deletion option if appropriate.</p>}
-        {db&&<label className="aaa-widget-delete-core-toggle"><input type="checkbox" checked={removeCore} onChange={e=>{setRemoveCore(e.target.checked);setDeleteConfirmation("")}}/> <span>Also delete core <strong>“{db.name}”</strong> database</span></label>}
+        {db&&<label className="aaa-widget-delete-core-toggle"><input type="checkbox" checked={removeCore} onChange={e=>{setRemoveCore(e.target.checked);setDeleteConfirmation("")}}/><span>Delete core <strong>“{db.name}”</strong> database instead</span></label>}
         {removeCore&&db&&<div className="aaa-widget-core-warning"><p><strong>Permanent deletion:</strong> This deletes the entire {db.name} database, {count} records, properties and {views} connected widget masters across all pages, including Widget Sync copies. This cannot be undone.</p>
           <label>Type <strong>{db.name}</strong> to confirm<input autoFocus aria-label="Confirm core database name" value={deleteConfirmation} onChange={e=>setDeleteConfirmation(e.target.value)}/></label></div>}
         <div className="aaa-widget-dialog-actions"><button onClick={()=>{setRemoveTarget(null);setRemoveCore(false);setDeleteConfirmation("")}}>Cancel</button>
@@ -757,7 +762,7 @@ export default function WidgetStudio(p:Props){
         {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
       {page?<div className="aaa-widget-sections">
-        {arrange&&<div className="aaa-widget-section-toolbar"><span>Drag widgets within or between sections. Pull their edges to resize; compact widgets stack beside taller cards.</span>
+        {arrange&&<div className="aaa-widget-section-toolbar"><span>Drag a widget to an insertion line. Release to rearrange; drag its corner or column dividers to resize.</span>
           <button className="aaa-widget-secondary" onClick={()=>setCreatingSection(true)}><Plus size={15}/> Add section</button></div>}
         {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
           <input autoFocus aria-label="New section name" placeholder="e.g. World History, Project Progress…" maxLength={100} value={newSection} onChange={e=>setNewSection(e.target.value)}/>
@@ -780,7 +785,7 @@ export default function WidgetStudio(p:Props){
               <button className="aaa-widget-secondary" onClick={()=>void createAndPlaceWidget(section.id)} disabled={busy}><Plus size={14}/> Widget</button>
             </div>}
           </header>
-          <div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""}`} aria-label={section.title+" widgets"}
+          <div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
             onDragOver={e=>{if(!arrange||!drag)return;e.preventDefault();hint({sectionId:section.id,targetId:null,edge:"section-end"})}}
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {widgetLayoutBands(widgets).map(band=>{
@@ -788,7 +793,7 @@ export default function WidgetStudio(p:Props){
               return <div className="aaa-widget-layout-band" key={band.id}>
                 {band.lanes.map((lane,laneIndex)=><div className="aaa-widget-layout-lane-shell" key={lane.id} style={{flex:`${lane.width} 1 0`}}>
                   <div className="aaa-widget-layout-lane">
-                    {lane.widgets.map((widget,widgetIndex)=><div className="aaa-widget-layout-item" key={widget.id} style={{flexGrow:widgetGridSize(widget).height}}>
+                    {lane.widgets.map((widget,widgetIndex)=><div className="aaa-widget-layout-item" key={widget.id} style={{height:widgetHeightPx(widget)}}>
                       {widgetIndex>0&&arrange&&<button className="aaa-widget-stack-divider" type="button" title="Drag to change the widget height above" aria-label={`Resize height above ${widget.title||"widget"}`}
                         onPointerDown={e=>startResize(e,lane.widgets[widgetIndex-1],"y")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}
                       {widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id))}
