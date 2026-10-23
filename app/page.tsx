@@ -582,7 +582,13 @@ function Workspace() {
               {section === "Developing IT" && contextId === "databases" && engineEnabled ? (
                 <section className="aaa-widget-database-development">
                   <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
-                  <select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                  <div className="aaa-widget-hero-actions"><select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                    <button className="aaa-widget-secondary" onClick={()=>setNewDatabaseOpen(open=>!open)}><Plus size={16}/> New database</button></div></div>
+                  {newDatabaseOpen&&<form className="aaa-widget-create-row aaa-widget-database-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
+                    <input autoFocus aria-label="New database name" placeholder="Database name…" maxLength={80} value={newDatabaseName} onChange={e=>setNewDatabaseName(e.target.value)}/>
+                    <button type="submit" disabled={!newDatabaseName.trim()||creatingDatabase}>{creatingDatabase?"Creating…":"Create database"}</button>
+                    <button type="button" onClick={()=>setNewDatabaseOpen(false)} aria-label="Cancel"><X size={15}/></button>
+                  </form>}
                   <DatabaseLabErrorBoundary><StagingDatabaseLab key={"development-"+stagingDatabaseName} surface="database" databaseName={stagingDatabaseName}
                     onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/></DatabaseLabErrorBoundary>
                 </section>

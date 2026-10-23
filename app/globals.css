@@ -1471,6 +1471,7 @@ input[type="range"]{
 .aaa-widget-alert{border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-bottom:13px;display:flex;justify-content:space-between;gap:12px;font-size:12px}
 .aaa-widget-alert button{color:var(--accent-text)}.aaa-widget-error h2{font-size:19px}.aaa-widget-error p{font-size:13px;color:var(--muted);margin:12px 0}
 .aaa-widget-database-development{min-width:0}.aaa-widget-database-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:28px 26px 16px}.aaa-widget-database-heading select{min-width:180px}
+.aaa-widget-database-create{max-width:570px;margin:0 26px 15px}
 /* Configure is a contextual Companion tool, not a separate sidebar. */
 .aaa-widget-config{overflow-y:auto;flex:1;min-height:0;padding:14px 15px 32px;display:flex;flex-direction:column;gap:15px;scrollbar-width:thin}
 .aaa-widget-config-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.aaa-widget-config-head span,.aaa-widget-config-head button{display:flex;align-items:center;gap:7px}
