@@ -410,8 +410,9 @@ export default function WidgetStudio(p:Props){
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
   };
   const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
-    if(!arrange||!drag||drag===widget.id)return;
+    if(!arrange||!drag)return;
     event.preventDefault();event.stopPropagation();
+    if(drag===widget.id){setDropHint(null);return}
     hint(dropTargetFor(event,widget));
   };
   const startResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,axis:"x"|"y"|"both")=>{
@@ -631,7 +632,7 @@ export default function WidgetStudio(p:Props){
       style={{height:"100%",minHeight:0}}
       onDragStart={e=>{if(!arrange)return;setDrag(widget.id);e.dataTransfer.setData("text/plain",widget.id);e.dataTransfer.effectAllowed="move"}}
       onDragOver={e=>widgetHover(e,widget)}
-      onDrop={e=>{e.stopPropagation();e.preventDefault();commitDrop(dropTargetFor(e,widget))}}
+      onDrop={e=>{e.stopPropagation();e.preventDefault();if(drag===widget.id){setDrag(null);setDropHint(null)}else commitDrop(dropTargetFor(e,widget))}}
       onDragEnd={()=>{setDrag(null);setDropHint(null)}}>
       <header className="aaa-widget-card-head">
         <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><Grip size={17}/></span>}
