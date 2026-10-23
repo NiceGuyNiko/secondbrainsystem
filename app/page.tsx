@@ -422,11 +422,11 @@ function Workspace() {
           {(
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
-              { name: "Goals", icon: Target, badge: "NA" },
+              { name: "Goals", icon: Target, badge: "BETA" },
               { name: "Library", icon: LibraryBig, badge: "BETA" },
               { name: "Developing IT", icon: Settings2, badge: "BETA" },
-              { name: "Workspaces", icon: Layers3, badge: engineEnabled ? "BETA" : "NA" },
               { name: "Databases", icon: Database, badge: "BETA" },
+              { name: "Workspaces", icon: Layers3, badge: "NA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },

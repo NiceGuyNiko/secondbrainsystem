@@ -149,6 +149,39 @@ export default function WidgetStudio(p:Props){
       setSelected({kind:"definition",id:row.id});p.onOpenConfigure();
     }catch(e){report(e)}finally{setBusy(false)}
   };
+  const createAndPlaceWidget=async()=>{
+    if(!page||busy)return;
+    setBusy(true);
+    let createdDefinition:WidgetDefinition|null=null;
+    try{
+      const {data:definition,error:definitionError}=await supabase.from("aaa_widget_definitions")
+        .insert({name:"Untitled widget",database_id:data.databases[0]?.id??null,config:{renderer:"table"}})
+        .select("id,name,database_id,view_id,config").single();
+      if(definitionError)throw definitionError;
+      createdDefinition=definition as WidgetDefinition;
+      const {data:instance,error:instanceError}=await supabase.from("aaa_page_widgets")
+        .insert({page_id:page.id,definition_id:createdDefinition.id,kind:"database",
+          position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:6,height:2})
+        .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
+      if(instanceError)throw instanceError;
+      setData(s=>({...s,definitions:[...s.definitions,createdDefinition!],instances:[...s.instances,instance as PageWidget]}));
+      setAddWidget(false);
+      setArrange(true);
+      setSelected({kind:"instance",id:instance.id});
+      setError("");
+      p.onOpenConfigure();
+      setNotice("New reusable widget created. Configure it in The Companion, then save changes to the master widget if you'd like to reuse them.");
+    }catch(e){
+      if(createdDefinition){
+        // Undo only the untouched master made by this action if page placement fails.
+        const {error:rollbackError}=await supabase.from("aaa_widget_definitions").delete().eq("id",createdDefinition.id);
+        if(rollbackError){
+          setData(s=>({...s,definitions:[...s.definitions,createdDefinition!]}));
+          setError("Could not place the widget on this page. Its master was kept in Developing IT → Widgets: "+String(e));
+        }else report(e);
+      }else report(e);
+    }finally{setBusy(false)}
+  };
   const addDefinition=async(definition:WidgetDefinition)=>{
     if(!page||busy)return;setBusy(true);
     try{
@@ -373,18 +406,20 @@ export default function WidgetStudio(p:Props){
           <button aria-pressed={!arrange} className={!arrange?"active":""} onClick={()=>setArrange(false)}>Use mode</button>
           <button aria-pressed={arrange} className={arrange?"active":""} onClick={()=>setArrange(true)}>Arrange mode</button>
         </div><button className="aaa-widget-secondary" onClick={()=>setCreatingPage(true)}><Plus size={16}/> Page</button>
+        <button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> New widget</button>
         {arrange&&<button className="aaa-widget-primary" onClick={()=>setAddWidget(true)}><Plus size={16}/> Add widget</button>}</div>
       </div>
       {creatingPage&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createPage()}}><input aria-label="New page title" autoFocus placeholder={p.mode==="library"?"e.g. World View, Characters…":"New Goals page…"} maxLength={100} value={newPage} onChange={e=>setNewPage(e.target.value)}/><button type="submit" disabled={!newPage.trim()||busy}><Check size={16}/> Create page</button><button type="button" onClick={()=>setCreatingPage(false)} aria-label="Cancel"><X size={16}/></button></form>}
       {addWidget&&<div className="aaa-widget-add-picker"><div><strong>Add to {page?.title}</strong><button onClick={()=>setAddWidget(false)} aria-label="Close widget picker"><X size={16}/></button></div>
+        <button disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create a new reusable widget <small>Open Configure</small><ChevronRight size={16}/></button>
         {p.mode==="goals"&&<button onClick={()=>void addGoals()}><BookOpen size={16}/> Goals &amp; projects (existing planner)<Plus size={16}/></button>}
         {data.definitions.map(def=><button key={def.id} onClick={()=>void addDefinition(def)}><LayoutGrid size={16}/>{def.name}<small>{data.databases.find(db=>db.id===def.database_id)?.name||"Unconnected"}</small><Plus size={16}/></button>)}
-        {!data.definitions.length&&<p>First build a widget in Developing IT → Widgets, then return here to place it.</p>}
+        {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
       {page?<div className="aaa-widget-canvas" aria-label="Page widgets">
         {instanceList.map(widgetCard)}
         {arrange&&<button className="aaa-widget-empty-slot" style={{gridColumn:"span 6"}} onClick={()=>setAddWidget(true)}><Plus size={24}/> Add a widget</button>}
-        {!instanceList.length&&!arrange&&<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>This page has no widgets. Switch to Arrange mode to build your layout.</p><button onClick={()=>setArrange(true)}>Arrange page</button></div>}
+        {!instanceList.length&&!arrange&&<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>This page has no widgets. Create a new widget here or enter Arrange mode to add existing ones.</p><button disabled={busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create widget</button><button onClick={()=>setArrange(true)}>Arrange page</button></div>}
       </div>:<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>Create a page to start organizing your widgets.</p><button onClick={()=>setCreatingPage(true)}><Plus size={16}/> New page</button></div>}
     </>}
   </section>;
