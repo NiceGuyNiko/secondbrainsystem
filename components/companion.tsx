@@ -80,6 +80,19 @@ export default function Companion(p:Props){
   const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
   const previewWidthRef=useRef(p.options.widthPx);
   useEffect(()=>{previewWidthRef.current=p.options.widthPx;setPreviewWidth(p.options.widthPx);},[p.options.widthPx]);
+  // Keep iOS Safari from treating a swipe inside the lower tool as a page
+  // pull-to-refresh. The Companion's own panes remain independently scrollable.
+  useEffect(()=>{
+    if(p.mode==="closed"||typeof window==="undefined"||!window.matchMedia("(max-width:767px)").matches)return;
+    const previousOverflow=document.body.style.overflow;
+    const previousOverscroll=document.documentElement.style.overscrollBehaviorY;
+    document.body.style.overflow="hidden";
+    document.documentElement.style.overscrollBehaviorY="none";
+    return()=>{
+      document.body.style.overflow=previousOverflow;
+      document.documentElement.style.overscrollBehaviorY=previousOverscroll;
+    };
+  },[p.mode]);
   useEffect(()=>{
     const sourceId=p.configuration?.autoEditDatabase?p.configuration.databaseId:null;
     setDatabaseEditorId(sourceId??null);

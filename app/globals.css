@@ -1821,3 +1821,158 @@ input[type="range"]{
 .aaa-demo-db-display-settings>small{grid-column:1/-1;color:var(--muted)}
 .aaa-widget-db-property-format{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);grid-column:1/-1}
 .aaa-widget-db-property-format select{min-width:0;width:100%;color:var(--text)}
+
+
+/* Mobile navigation and Companion interaction corrections, Oct 2026.
+   The page title belongs in the fixed mobile header; the main navigation
+   remains unpersonalized and the desktop wordmark retains its profile subtitle. */
+@media (max-width:767px){
+  .aaa-shell{
+    position:relative;
+    height:100dvh;
+    padding-top:56px;
+    overflow:hidden;
+  }
+  .aaa-mobile-header{
+    position:fixed!important;
+    top:0;left:0;right:0;
+    height:56px;min-height:56px;
+    width:100%;
+    z-index:96;
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    align-items:center;
+    gap:8px;
+    padding:0 12px;
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-mobile-header .aaa-mobile-companion-launcher{
+    width:40px;height:40px;min-width:40px;padding:5px;
+    display:grid;place-items:center;border-radius:9px;
+    color:var(--text);
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher{justify-self:start}
+  .aaa-mobile-header .aaa-mobile-companion-launcher{justify-self:end}
+  .aaa-mobile-header .aaa-mobile-current-page{
+    display:block;min-width:0;max-width:100%;
+    text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:14px;font-weight:750;letter-spacing:-.2px;
+  }
+  .aaa-mobile-header .aaa-mobile-companion-launcher[aria-expanded="true"]{
+    background:var(--accent-soft);color:var(--accent-text);
+  }
+  /* The global mobile header owns the Companion launcher on every page. */
+  .aaa-page-toolbar .aaa-companion-toolbar-button,
+  .aaa-calendar-content .pr11-calendar-toolbar .aaa-companion-toolbar-button{
+    display:none!important;
+  }
+  /* Mobile Safari: the drawer handle is an independent drag surface. Content
+     below it must be a real native momentum scroller, not an overflow-hidden
+     flex child that bubbles the gesture to page pull-to-refresh. */
+  .aaa-hybrid-companion,
+  .aaa-hybrid-companion .aaa-hybrid-sections{
+    overscroll-behavior-y:none;
+    min-height:0;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary{
+    min-height:0!important;
+    overflow:hidden;
+    flex-shrink:0;
+    overscroll-behavior:contain;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary>.aaa-hybrid-slot-body{
+    display:block!important;
+    min-height:0;
+    height:100%;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-widget-db-editor{
+    display:flex;
+    height:auto;max-height:none;
+    min-height:min-content;
+    overflow:visible!important;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-context,
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-thoughts{
+    height:auto;min-height:100%;
+    overflow:visible;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-agenda{
+    min-height:260px;
+    overscroll-behavior-y:contain;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-timeline{
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+/* Inline record details: expand within each individual card, never in a single
+   shared detail pane appended to the bottom of the widget. */
+.aaa-widget-record-shell{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  min-width:0;
+  max-width:100%;
+  align-self:start;
+}
+.aaa-widget-record-shell>.aaa-widget-record{
+  width:100%;
+  min-width:0;
+  flex-shrink:0;
+}
+.aaa-widget-record-shell.is-expanded>.aaa-widget-record{
+  border-radius:9px 9px 0 0;
+  border-bottom-color:var(--accent);
+}
+.aaa-widget-record-shell .aaa-widget-record[aria-expanded="true"]>svg{
+  transform:rotate(90deg);
+}
+.aaa-widget-inline-detail{
+  border:1px solid var(--accent);
+  border-top:0;
+  border-radius:0 0 9px 9px;
+  padding:13px;
+  margin:0;
+  background:var(--surface);
+  width:100%;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.aaa-widget-inline-detail .aaa-widget-field{
+  max-width:100%;
+  min-width:0;
+}
+.aaa-widget-inline-detail input,
+.aaa-widget-inline-detail select{
+  max-width:100%;
+  min-width:0;
+}
+.aaa-widget-records-list .aaa-widget-record-shell.is-expanded{
+  background:var(--surface-2);
+  border-radius:9px;
+}
+.aaa-widget-records-timeline .aaa-widget-inline-detail{
+  margin-left:4px;
+  width:calc(100% - 4px);
+}
+.aaa-widget-inline-table-row>td{
+  padding:0 10px 12px!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  max-width:none!important;
+}
+.aaa-widget-inline-table-row .aaa-widget-inline-detail{
+  border:1px solid var(--accent);
+  border-radius:9px;
+  margin-top:5px;
+}

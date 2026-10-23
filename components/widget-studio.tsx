@@ -1,5 +1,5 @@
 "use client";
-import {useCallback,useEffect,useRef,useState} from "react";
+import {Fragment,useCallback,useEffect,useRef,useState} from "react";
 import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,LayoutGrid,Link2,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
 import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import {supabase} from "@/lib/supabase";
@@ -8,6 +8,7 @@ import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hi
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import {placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
+import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
 
 type Mode="library"|"goals"|"widgets";
@@ -51,7 +52,9 @@ export default function WidgetStudio(p:Props){
   const [addWidget,setAddWidget]=useState(false);
   const [search,setSearch]=useState<Record<string,string>>({});
   const [newRecord,setNewRecord]=useState<Record<string,string>>({});
-  const [detail,setDetail]=useState<{widget:string;record:string}|null>(null);
+  // Expanded records are independent, per widget and per record.
+  // Opening one record must not collapse its neighbors.
+  const [expandedRecords,setExpandedRecords]=useState<Record<string,string[]>>({});
   const [drag,setDrag]=useState<string|null>(null);
   const [dropHint,setDropHint]=useState<WidgetDropTarget|null>(null);
   const [resizePreview,setResizePreview]=useState<PageWidget[]|null>(null);
@@ -594,8 +597,36 @@ export default function WidgetStudio(p:Props){
       :String(record.values_json[prop.id]??"");
     const formattedField=(record:WidgetRecord,prop:WidgetProperty)=>prop.type==="relation"
       ?rawFieldValue(record,prop):<DatabasePropertyValue property={prop} value={record.values_json[prop.id]}/>;
-    const detailRecord=data.records.find(r=>r.record_id===detail?.record&&detail.widget===widgetId);
-    const open=(id:string)=>{if(cfg.openBehavior==="source"){p.onOpenRecord(id);return}setDetail({widget:widgetId,record:id})};
+    const expanded=(recordId:string)=>isWidgetRecordExpanded(expandedRecords,widgetId,recordId);
+    const open=(id:string)=>{
+      if(cfg.openBehavior==="source"){p.onOpenRecord(id);return}
+      setExpandedRecords(state=>toggleWidgetRecordExpanded(state,widgetId,id));
+    };
+    const inlineDetails=(record:WidgetRecord)=><div className="aaa-widget-detail aaa-widget-inline-detail"
+      id={"aaa-record-detail-"+widgetId+"-"+record.record_id} aria-label={"Properties of "+viewContext.name(record.record_id)}>
+      <div className="aaa-widget-detail-head"><strong>{viewContext.name(record.record_id)}</strong>
+        <button type="button" onClick={()=>open(record.record_id)} aria-label={"Collapse "+viewContext.name(record.record_id)}><X size={15}/></button>
+      </div>
+      <p>Record {record.sequence_no} · {db.name}</p>
+      {fields.map(f=><label key={f.id} className="aaa-widget-field">{f.name}
+        {cfg.editable&&f.type!=="relation"&&f.type!=="select"&&f.type!=="checkbox"
+          ?<input key={record.record_id+f.id+record.version} defaultValue={rawFieldValue(record,f)}
+            onBlur={e=>void saveProperty(record,f,e.target.value)}
+            onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
+          :cfg.editable&&f.type==="select"
+          ?<select value={rawFieldValue(record,f)} onChange={e=>void saveProperty(record,f,e.target.value)}>
+            <option value="">None</option>{Array.isArray(f.config.options)&&f.config.options.filter((o):o is string=>typeof o==="string").map(o=><option key={o}>{o}</option>)}
+          </select>
+          :cfg.editable&&f.type==="checkbox"
+          ?<select value={rawFieldValue(record,f)} onChange={e=>void saveProperty(record,f,e.target.value)}>
+            <option value="true">Yes</option><option value="false">No</option>
+          </select>
+          :<span>{formattedField(record,f)}</span>}
+      </label>)}
+      <button type="button" className="aaa-widget-add-rule" onClick={()=>p.onOpenRecord(record.record_id)}>
+        Open original database page <ChevronRight size={14}/>
+      </button>
+    </div>;
     return <>
       {(cfg.exposeFilters||cfg.exposeSorts)&&<div className="aaa-widget-runtime-tools">
         {cfg.exposeFilters&&<label><Search size={14}/><input aria-label="Search records" placeholder="Find records…" value={search[widgetId]||""} onChange={e=>setSearch(prev=>({...prev,[widgetId]:e.target.value}))}/></label>}
@@ -607,32 +638,28 @@ export default function WidgetStudio(p:Props){
       </div>}
       {records.length===0?<div className="aaa-widget-empty">No matching records in {db.name}. Adjust filters or add a record.</div>
       :cfg.renderer==="table"?<div className="aaa-widget-table-scroll"><table className="aaa-widget-table"><thead><tr><th>Record</th>{columns.map(f=><th key={f.id}>{f.name}</th>)}</tr></thead><tbody>
-        {records.map(r=><tr key={r.record_id}><td><button onClick={()=>open(r.record_id)}>{numberedName(r.record_id)}</button></td>{columns.map(f=><td key={f.id}>{formattedField(r,f)}</td>)}</tr>)}
+        {records.map(r=><Fragment key={r.record_id}>
+          <tr><td><button type="button" aria-expanded={expanded(r.record_id)} aria-controls={"aaa-record-detail-"+widgetId+"-"+r.record_id}
+            onClick={()=>open(r.record_id)}>{numberedName(r.record_id)}</button></td>{columns.map(f=><td key={f.id}>{formattedField(r,f)}</td>)}</tr>
+          {expanded(r.record_id)&&<tr className="aaa-widget-inline-table-row"><td colSpan={columns.length+1}>{inlineDetails(r)}</td></tr>}
+        </Fragment>)}
       </tbody></table></div>
-      :<div className={"aaa-widget-records aaa-widget-records-"+cfg.renderer}>{records.map(r=><button key={r.record_id} className="aaa-widget-record" onClick={()=>open(r.record_id)}>
-        {cfg.renderer==="timeline"&&<span className="aaa-widget-sequence">{db.id===eventDb?.id?address.get(r.record_id)||r.sequence_no:r.sequence_no}</span>}
-        <strong>{numberedName(r.record_id)}</strong>
-        <span>{columns.filter(f=>rawFieldValue(r,f)).slice(0,cfg.renderer==="list"?1:3).map(f=><small key={f.id}>{f.name}: {formattedField(r,f)}</small>)}</span>
-        <ChevronRight size={16}/>
-      </button>)}</div>}
+      :<div className={"aaa-widget-records aaa-widget-records-"+cfg.renderer}>{records.map(r=><div
+        key={r.record_id} className={"aaa-widget-record-shell"+(expanded(r.record_id)?" is-expanded":"")}>
+        <button type="button" className="aaa-widget-record" aria-expanded={expanded(r.record_id)}
+          aria-controls={"aaa-record-detail-"+widgetId+"-"+r.record_id} onClick={()=>open(r.record_id)}>
+          {cfg.renderer==="timeline"&&<span className="aaa-widget-sequence">{db.id===eventDb?.id?address.get(r.record_id)||r.sequence_no:r.sequence_no}</span>}
+          <strong>{numberedName(r.record_id)}</strong>
+          <span>{columns.filter(f=>rawFieldValue(r,f)).slice(0,cfg.renderer==="list"?1:3).map(f=><small key={f.id}>{f.name}: {formattedField(r,f)}</small>)}</span>
+          <ChevronRight size={16}/>
+        </button>
+        {expanded(r.record_id)&&inlineDetails(r)}
+      </div>)}</div>}
       {cfg.allowCreate&&cfg.editable&&<form className="aaa-widget-new-record" onSubmit={e=>{e.preventDefault();void createRecord(db.id,widgetId)}}>
         <input value={newRecord[widgetId]||""} placeholder={"New "+db.name.toLowerCase()+" record…"} aria-label="New record name" onChange={e=>setNewRecord(old=>({...old,[widgetId]:e.target.value}))}/>
         <button type="submit" disabled={!newRecord[widgetId]?.trim()}><Plus size={14}/> Create</button>
       </form>}
-      {detailRecord&&<div className="aaa-widget-detail">
-        <div className="aaa-widget-detail-head"><strong>{viewContext.name(detailRecord.record_id)}</strong><button onClick={()=>setDetail(null)} aria-label="Close record detail"><X size={15}/></button></div>
-        <p>Record {detailRecord.sequence_no} · {db.name}</p>
-        {fields.map(f=><label key={f.id} className="aaa-widget-field">{f.name}
-          {cfg.editable&&f.type!=="relation"&&f.type!=="select"&&f.type!=="checkbox"
-            ?<input key={detailRecord.record_id+f.id+detailRecord.version} defaultValue={rawFieldValue(detailRecord,f)} onBlur={e=>void saveProperty(detailRecord,f,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
-            :cfg.editable&&f.type==="select"
-            ?<select value={rawFieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="">None</option>{Array.isArray(f.config.options)&&f.config.options.filter((o):o is string=>typeof o==="string").map(o=><option key={o}>{o}</option>)}</select>
-            :cfg.editable&&f.type==="checkbox"
-            ?<select value={rawFieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="true">Yes</option><option value="false">No</option></select>
-            :<span>{formattedField(detailRecord,f)}</span>}
-        </label>)}
-        <button className="aaa-widget-add-rule" onClick={()=>p.onOpenRecord(detailRecord.record_id)}>Open original database page <ChevronRight size={14}/></button>
-      </div>}
+
     </>;
   };
   const widgetCard=(widget:PageWidget,index:number)=>{

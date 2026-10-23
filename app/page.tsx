@@ -351,17 +351,15 @@ function Workspace() {
   const contextualTitle = calendarSection
     ? "Calendars"
     : section === "Developing IT" ? "Developing IT"
-    : section === "Library" ? ownedPageTitle(displayName,"Library")
-    : section === "Goals" ? ownedPageTitle(displayName,"Goals")
-    : section === "Databases"
-      ? "Databases"
-    : section === "Resources" || section === "Think About It"
-      ? "Collections"
-      : section === "Settings"
-        ? ownedPageTitle(displayName,"Settings")
-        : section;
-  const navigationLabel=(name:Section)=>(["Calendar","Goals","Library","Settings"] as Section[]).includes(name)
-    ?ownedPageTitle(displayName,name):name;
+    : section === "Library" ? "Library"
+    : section === "Goals" ? "Goals"
+    : section === "Databases" ? "Databases"
+    : section === "Resources" || section === "Think About It" ? "Collections"
+    : section === "Settings" ? "Settings"
+    : section;
+  // The nav is location-based. Personalization belongs in the branded subtitle
+  // and in the always-visible mobile page header instead.
+  const navigationLabel=(name:Section)=>name;
   const contextClick = (id: string) => {
     if (calendarSection)
       setHidden((old) =>
@@ -437,24 +435,26 @@ function Workspace() {
         </div>
       )}
       <header className="aaa-mobile-header">
-        <button
+        <button className="aaa-mobile-brand-launcher"
           aria-label="Open navigation menu"
+          title="Open navigation"
           onClick={() => {
             setMobileOpen(true);
             setMobileCalendars(false);
           }}
         >
-          <Menu size={21} />
+          <BrandMark size={30} />
         </button>
-        <strong>
-          <BrandMark size={28} />
-          All About Action
+        <strong className="aaa-mobile-current-page" title={ownedPageTitle(displayName,section)}>
+          {ownedPageTitle(displayName,section)}
         </strong>
-        <button
-          aria-label="Calendar visibility"
-          onClick={() => setMobileCalendars(!mobileCalendars)}
+        <button className="aaa-mobile-companion-launcher"
+          aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"}
+          title="The Companion"
+          aria-expanded={agendaMode!=="closed"}
+          onClick={toggleAgenda}
         >
-          <CalendarDays size={20} />
+          <PanelRightOpen size={21} />
         </button>
       </header>
       <aside
