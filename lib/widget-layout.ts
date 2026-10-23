@@ -32,7 +32,7 @@ const fillBand=(band:WidgetLayoutBand)=>{
   const remaining=12-MIN_WIDTH*lanes.length;
   const quotas=weights.map(weight=>weight/total*remaining);
   const additions=quotas.map(Math.floor);
-  let left=remaining-additions.reduce((sum,value)=>sum+value,0);
+  const left=remaining-additions.reduce((sum,value)=>sum+value,0);
   const order=quotas.map((value,index)=>({index,remainder:value-additions[index]}))
     .sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
   for(let i=0;i<left;i++)additions[order[i].index]++;
