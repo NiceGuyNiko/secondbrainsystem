@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PGlite} from "@electric-sql/pglite";
 import {readFileSync,readdirSync} from "node:fs";
-import {groupPageWidgets,widgetConfig,widgetGridSize,type PageWidget} from "../lib/widget-system";
+import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,type PageWidget} from "../lib/widget-system";
 
 test("widget views normalize rendering, filters, sort priority and edit controls",()=>{
   const parsed=widgetConfig({renderer:"cards",density:"compact",editable:false,
@@ -31,6 +31,7 @@ test("page sections preserve widget identity and grid heights are bounded",()=>{
   assert.deepEqual(widgetGridSize({...widget("a"),width:12,height:4}),{width:12,height:4});
   assert.deepEqual(widgetGridSize({...widget("a"),width:100,height:50}),{width:12,height:6});
   assert.deepEqual(widgetGridSize({...widget("a"),width:1,height:0}),{width:3,height:2});
+  assert.deepEqual(placementConfigAfterPublish({...widget("a","s1"),config:{sectionId:"s1",filters:["temporary"]}}),{sectionId:"s1"},"publishing a view cannot remove its page section");
   assert.deepEqual(groupPageWidgets("empty",sections,[widget("a")]).map(group=>group.section.title),["Overview"]);
 });
 

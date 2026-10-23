@@ -3,7 +3,7 @@ import {useCallback,useEffect,useRef,useState} from "react";
 import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Database,GripVertical,LayoutGrid,Minus,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,X} from "lucide-react";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
-import {groupPageWidgets,widgetConfig,widgetGridSize,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
+import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import PlanningWorkspace from "@/components/planning-workspace";
 
 type Mode="library"|"goals"|"widgets";
@@ -336,8 +336,8 @@ export default function WidgetStudio(p:Props){
       if(!instance)return;
       const effective=effectiveConfig(def,instance);
       changeDefinition(def.id,{database_id:source.databaseId,view_id:source.viewId,config:effective});
-      // The page now inherits exactly what it just published; other instances retain local overrides.
-      changeInstance(instance.id,{config:{}});
+      // Page placement is independent of the reusable view; publishing must not move the card.
+      changeInstance(instance.id,{config:placementConfigAfterPublish(instance)});
       setNotice("Saved to the master widget: "+def.name);
     };
     p.onConfigure({id:selected.id,kind:selected.kind,title:instance?.title||def.name,

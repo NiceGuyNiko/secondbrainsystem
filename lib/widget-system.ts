@@ -54,6 +54,10 @@ export type PageWidget={id:string;page_id:string;definition_id:string|null;kind:
 export function widgetSectionId(widget:PageWidget):string{
   return typeof widget.config?.sectionId==="string"?widget.config.sectionId:"";
 }
+export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
+  const sectionId=widgetSectionId(widget);
+  return sectionId?{sectionId}:{};
+}
 export function widgetGridSize(widget:PageWidget){
   return {width:Math.max(3,Math.min(12,Number(widget.width)||6)),height:Math.max(1,Math.min(6,Number(widget.height)||2))};
 }
