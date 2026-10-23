@@ -1743,3 +1743,24 @@ input[type="range"]{
 .aaa-demo-db-blank{padding:26px 15px;color:var(--muted);font-size:12px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;gap:10px}
 .aaa-demo-db-new-property{flex-wrap:wrap}
 @media(max-width:680px){.aaa-demo-db-record-property{grid-template-columns:1fr;gap:7px}.aaa-demo-db-property-primary{grid-template-columns:1fr}}
+
+/* Fluid widget layout: compact insertion guides and the paper-sketch handles. */
+.aaa-widget-drag-handle svg{pointer-events:none}
+.aaa-widget-drag-handle{width:29px;height:27px;cursor:grab}
+.aaa-widget-resize-corner{
+  background:var(--accent-bright,var(--accent))!important;
+  clip-path:polygon(100% 0,100% 100%,0 100%);
+  width:20px;height:20px;opacity:.85;
+}
+.aaa-widget-resize-corner:hover{opacity:1}
+.aaa-widget-layout-band{position:relative}
+.aaa-widget-layout-band.aaa-widget-band-new-row::after{
+  content:"";position:absolute;pointer-events:none;
+  left:0;right:0;bottom:-8px;height:3px;border-radius:5px;
+  background:var(--accent-bright,var(--accent));
+  box-shadow:0 0 7px var(--accent-soft);
+  z-index:12;
+}
+.aaa-widget-card.aaa-widget-target-new-row::after{display:none}
+.aaa-widget-gap-setting{border-top:1px solid var(--border);padding:18px 0 10px;margin-top:18px}
+.aaa-widget-gap-setting h3{margin:0 0 8px;font-size:13px}

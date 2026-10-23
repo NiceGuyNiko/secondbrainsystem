@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,Grip,LayoutGrid,Link2,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
+import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,LayoutGrid,Link2,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
+import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
@@ -35,6 +36,7 @@ export default function WidgetStudio(p:Props){
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
   const [arrange,setArrange]=useState(true);
+  const [fillGaps]=useWidgetGapFill();
   const [selected,setSelected]=useState<Selection>(null);
   const [creatingPage,setCreatingPage]=useState(false);
   const [newPage,setNewPage]=useState("");
@@ -399,14 +401,21 @@ export default function WidgetStudio(p:Props){
   };
   const commitDrop=(fallback?:WidgetDropTarget)=>{
     const target=fallback??dropHint;
-    if(drag&&target)saveLayout(placeWidget(instanceList,pageSections,drag,target));
+    if(drag&&target&&target.targetId!==drag)saveLayout(placeWidget(instanceList,pageSections,drag,target,fillGaps));
     setDrag(null);setDropHint(null);
   };
   const hint=(value:WidgetDropTarget)=>setDropHint(old=>old?.sectionId===value.sectionId&&old.targetId===value.targetId&&old.edge===value.edge?old:value);
   const dropTargetFor=(event:React.DragEvent<HTMLElement>,widget:PageWidget):WidgetDropTarget=>{
     const bounds=event.currentTarget.getBoundingClientRect();
     const x=(event.clientX-bounds.left)/bounds.width,y=(event.clientY-bounds.top)/bounds.height;
-    const edge:WidgetDropEdge=x<.24?"left":x>.76?"right":y<.5?"above":"below";
+    // A comfortable 28–38px bottom target creates a NEW full-width row.
+    // The larger zone above it stacks within the existing column.
+    // Hysteresis keeps the indicator steady near the boundary.
+    const bottomPixels=bounds.bottom-event.clientY;
+    const wasNewRow=dropHint?.targetId===widget.id&&dropHint.edge==="new-row";
+    const newRowBoundary=wasNewRow?38:27;
+    const edge:WidgetDropEdge=bottomPixels>=0&&bottomPixels<=newRowBoundary?"new-row":
+      x<.22?"left":x>.78?"right":y<.5?"above":"below";
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
   };
   const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
@@ -428,7 +437,7 @@ export default function WidgetStudio(p:Props){
   const resizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=resizeStart.current;if(!start)return;
     const x=Math.round((e.clientX-start.x)/start.unitX);
-    let result=start.axis==="y"?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x);
+    let result=start.axis==="y"?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps);
     if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,config:{...w.config,heightPx:Math.max(160,Math.min(1200,Math.round((start.heightPx+e.clientY-start.y)/8)*8))}}:w);
     resizePreviewRef.current=result;setResizePreview(result);
   };
@@ -506,7 +515,7 @@ export default function WidgetStudio(p:Props){
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
-      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,width-widgetGridSize(instance).width)):undefined,
+      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,width-widgetGridSize(instance).width,fillGaps)):undefined,
       onHeightPx:instance?pixels=>changeInstance(instance.id,{config:{...instance.config,heightPx:Math.max(160,Math.min(1200,Math.round(pixels)))}}):undefined,
       onSaveToDefinition:instance?saveMaster:undefined,
       onCreateDatabase:createSource,onAddProperty:addSourceProperty,onUpdateProperty:updateSourceProperty
@@ -635,7 +644,9 @@ export default function WidgetStudio(p:Props){
       onDrop={e=>{e.stopPropagation();e.preventDefault();if(drag===widget.id){setDrag(null);setDropHint(null)}else commitDrop(dropTargetFor(e,widget))}}
       onDragEnd={()=>{setDrag(null);setDropHint(null)}}>
       <header className="aaa-widget-card-head">
-        <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><Grip size={17}/></span>}
+        <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
+              {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
+            </svg></span>}
           <div className="aaa-widget-title-stack">
             {cfg.showViewTag&&<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":widgetIsSynced(widget)?"WIDGET SYNC · LINKED":"CONNECTED VIEW"}</span>}
             {cfg.showTitle&&<button type="button" className="aaa-widget-title-button" title="Configure this widget" onClick={()=>def&&select("instance",widget.id)}>{title}</button>}
@@ -791,7 +802,7 @@ export default function WidgetStudio(p:Props){
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {widgetLayoutBands(widgets).map(band=>{
               const used=band.lanes.reduce((sum,lane)=>sum+lane.width,0);
-              return <div className="aaa-widget-layout-band" key={band.id}>
+              return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}>
                 {band.lanes.map((lane,laneIndex)=><div className="aaa-widget-layout-lane-shell" key={lane.id} style={{flex:`${lane.width} 1 0`}}>
                   <div className="aaa-widget-layout-lane">
                     {lane.widgets.map((widget,widgetIndex)=><div className="aaa-widget-layout-item" key={widget.id} style={{height:widgetHeightPx(widget)}}>

@@ -3,7 +3,7 @@ import {widgetSectionId,type PageWidget,type WidgetPageSection} from "@/lib/widg
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"section-end";
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"new-row"|"section-end";
 export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge};
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[]};
@@ -19,6 +19,24 @@ const rebalance=(band:WidgetLayoutBand)=>{
   if(!lanes.length)return;
   const each=Math.floor(12/lanes.length);
   lanes.forEach((lane,index)=>{lane.width=each+(index<12%lanes.length?1:0)});
+};
+
+// Preserve existing column proportions when a sibling leaves the row.
+// The 12-slot layout snaps to useful percentages without stretching heights.
+const fillBand=(band:WidgetLayoutBand)=>{
+  const lanes=band.lanes;
+  if(!lanes.length)return;
+  if(lanes.length===1){lanes[0].width=12;return}
+  const weights=lanes.map(lane=>Math.max(MIN_WIDTH,lane.width));
+  const total=weights.reduce((sum,width)=>sum+width,0);
+  const remaining=12-MIN_WIDTH*lanes.length;
+  const quotas=weights.map(weight=>weight/total*remaining);
+  const additions=quotas.map(Math.floor);
+  let left=remaining-additions.reduce((sum,value)=>sum+value,0);
+  const order=quotas.map((value,index)=>({index,remainder:value-additions[index]}))
+    .sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
+  for(let i=0;i<left;i++)additions[order[i].index]++;
+  lanes.forEach((lane,index)=>{lane.width=MIN_WIDTH+additions[index]});
 };
 
 export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[]{
@@ -59,7 +77,7 @@ function publish(sections:readonly WidgetPageSection[],all:readonly PageWidget[]
 }
 
 /** Pure preview of a drop; persistence happens only after mouse release. */
-export function placeWidget(items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,target:WidgetDropTarget):PageWidget[]{
+export function placeWidget(items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,target:WidgetDropTarget,fillGaps=true):PageWidget[]{
   const moving=items.find(w=>w.id===id);
   if(!moving)return [...items];
   const group=new Map<string,WidgetLayoutBand[]>();
@@ -76,7 +94,13 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   const destination=group.get(target.sectionId)??[];
   const destinationBand=destination.find(b=>b.lanes.some(l=>l.widgets.some(w=>w.id===target.targetId)));
   const destinationLane=destinationBand?.lanes.find(l=>l.widgets.some(w=>w.id===target.targetId));
-  if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
+  if(destinationBand&&target.edge==="new-row"){
+    // Insert a full-width band immediately after the hovered band, not at the
+    // end of the section. It is intentionally distinct from stacking below.
+    destination.splice(destination.indexOf(destinationBand)+1,0,{
+      id:"band-"+id,lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
+    });
+  }else if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
     const laneIndex=destinationBand.lanes.indexOf(destinationLane);
     if(target.edge==="left"||target.edge==="right"){
       if(destinationBand.lanes.length<4){
@@ -97,15 +121,14 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   // Don't overwrite the widths of a destination band that was only stacked.
   for(const bands of group.values())for(const band of bands){
     if(band===destinationBand&&band.lanes.reduce((sum,l)=>sum+l.width,0)===12)continue;
-    if(band.lanes.length===1)band.lanes[0].width=12;
-    else if(band.lanes.reduce((sum,l)=>sum+l.width,0)<12)rebalance(band);
+    if(fillGaps&&band.lanes.reduce((sum,l)=>sum+l.width,0)!==12)fillBand(band);
   }
   group.set(target.sectionId,destination);
   return publish(sections,items,group);
 }
 
 /** A lane divider conserves the combined width of its adjacent columns. */
-export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,delta:number):PageWidget[]{
+export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,delta:number,fillGaps=true):PageWidget[]{
   const widget=items.find(w=>w.id===id);if(!widget||!delta)return [...items];
   const group=new Map<string,WidgetLayoutBand[]>();
   for(const sectionId of new Set(["",...sections.map(s=>s.id),...items.map(widgetSectionId)]))
@@ -123,7 +146,7 @@ export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly W
     const previous=band.lanes[index-1];
     const adjusted=Math.max(MIN_WIDTH-lane.width,Math.min(previous.width-MIN_WIDTH,delta));
     lane.width+=adjusted;previous.width-=adjusted;
-  }else{
+  }else if(!fillGaps){
     const remaining=12-band.lanes.reduce((n,l)=>n+l.width,0);
     lane.width=safeWidth(Math.min(12,lane.width+Math.max(-lane.width+MIN_WIDTH,Math.min(delta,remaining))));
   }

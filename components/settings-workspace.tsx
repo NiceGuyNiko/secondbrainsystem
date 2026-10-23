@@ -7,6 +7,7 @@ import type {CompanionPreferences} from "@/lib/companion-config";
 import type {CalendarDateFormat} from "@/lib/calendar-date-format";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
+import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
 import { activeProfile } from "@/lib/settings/model";
 import { networkGuard } from "@/lib/demo/network-guard";
@@ -36,6 +37,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   displayName:string; email:string; onProfile:()=>void;
 };
 export default function SettingsWorkspace(p:Props) {
+  const [fillGaps,setFillGaps]=useWidgetGapFill();
   const info=settingsSections.find(s=>s.name===p.section)!;
   if(p.section==="Appearance")return <AppearanceSettings {...p}/>;
   return <section className="aaa-settings aaa-settings-page">
@@ -58,6 +60,12 @@ export default function SettingsWorkspace(p:Props) {
         </button>)}
       </div>
       <p className="calendar-muted">Both styles inherit your selected Appearance theme. This choice is saved to your current test profile.</p>
+      <div className="aaa-widget-gap-setting">
+        <h3>Fluid layout</h3>
+        <Switch label="Automatically fill available space" checked={fillGaps} onChange={setFillGaps}
+          description="On by default. When you add, remove or resize columns, the remaining widgets fill gaps. Turn this off to preserve unoccupied width when moving widgets."/>
+        <p className="calendar-muted">Individual widget heights remain independent. This preference applies to Library and Goals canvases in this browser.</p>
+      </div>
     </section>}
     {p.section==="Calendar & Time"&&<div className="aaa-settings-panel">
       <h2>Calendar preferences</h2>
