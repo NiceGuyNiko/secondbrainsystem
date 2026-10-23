@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {PGlite} from "@electric-sql/pglite";
 import {readFileSync,readdirSync} from "node:fs";
-import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,type PageWidget} from "../lib/widget-system";
+import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetIsSynced,widgetPlacementConfig,type PageWidget} from "../lib/widget-system";
 
 test("widget views normalize rendering, filters, sort priority and edit controls",()=>{
   const parsed=widgetConfig({renderer:"cards",density:"compact",editable:false,
@@ -29,10 +29,47 @@ test("page sections preserve widget identity and grid heights are bounded",()=>{
   assert.deepEqual(grouped.flatMap(group=>group.widgets.map(item=>item.id)),["c","a","b"]);
   assert.equal(grouped[1].widgets[0].id,"a","a section references a widget placement rather than duplicating it");
   assert.deepEqual(widgetGridSize({...widget("a"),width:12,height:4}),{width:12,height:4});
-  assert.deepEqual(widgetGridSize({...widget("a"),width:100,height:50}),{width:12,height:6});
-  assert.deepEqual(widgetGridSize({...widget("a"),width:1,height:0}),{width:3,height:2});
+  assert.deepEqual(widgetGridSize({...widget("a"),width:100,height:50}),{width:12,height:12});
+  assert.deepEqual(widgetGridSize({...widget("a"),width:1,height:0}),{width:2,height:2});
   assert.deepEqual(placementConfigAfterPublish({...widget("a","s1"),config:{sectionId:"s1",filters:["temporary"]}}),{sectionId:"s1"},"publishing a view cannot remove its page section");
   assert.deepEqual(groupPageWidgets("empty",sections,[widget("a")]).map(group=>group.section.title),["Overview"]);
+  const synced={...widget("a","s1"),config:{sectionId:"s1",syncMode:"synced",renderer:"cards",filters:["local"]}};
+  assert.equal(widgetIsSynced(synced),true);
+  assert.deepEqual(widgetPlacementConfig(synced,"s2"),{sectionId:"s2",syncMode:"synced"});
+  assert.deepEqual(placementConfigAfterPublish(synced),{sectionId:"s1",syncMode:"synced"});
+});
+
+test("beta source deletion requires exact confirmation and never affects primary datasets",async()=>{
+  const db=new PGlite();
+  const owner="00000000-0000-0000-0000-000000000001";
+  try{
+    await db.exec("create role anon;create role authenticated;create schema auth;"+
+      "create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}'::jsonb);"+
+      "create function auth.uid() returns uuid language sql as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;"+
+      "grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;");
+    await db.query("insert into auth.users(id) values($1)",[owner]);
+    for(const file of readdirSync("supabase/migrations").filter(f=>f.endsWith(".sql")).sort())
+      await db.exec(readFileSync("supabase/migrations/"+file,"utf8"));
+    await db.exec("set role authenticated");
+    await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);
+    const id=crypto.randomUUID(),another=crypto.randomUUID();
+    await db.query("select public.db_create_database($1,'Source of Truth','acceptance')",[id]);
+    await db.query("select public.db_create_database($1,'Legacy Goals','primary')",[another]);
+    const recordId=crypto.randomUUID();
+    await db.query("select public.db_create_record($1,$2,'A record')",[recordId,id]);
+    const page=await db.query<{id:string}>("insert into public.aaa_library_pages(area,title) values('library','Lab') returning id");
+    const master=await db.query<{id:string}>("insert into public.aaa_widget_definitions(name,database_id) values('Source widget',$1) returning id",[id]);
+    await db.query("insert into public.aaa_page_widgets(page_id,definition_id,width,height,config) values($1,$2,2,11,$3)",
+      [page.rows[0].id,master.rows[0].id,JSON.stringify({syncMode:"synced"})]);
+    await assert.rejects(db.query("select public.db_delete_database($1,'Wrong name')",[id]),/exact database name/i);
+    await assert.rejects(db.query("select public.db_delete_database($1,'Legacy Goals')",[another]),/beta\/acceptance/i);
+    assert.equal((await db.query("select * from public.db_records where database_id=$1",[id])).rows.length,1);
+    await db.query("select public.db_delete_database($1,'Source of Truth')",[id]);
+    assert.equal((await db.query("select * from public.db_databases where id=$1",[id])).rows.length,0);
+    assert.equal((await db.query("select * from public.db_records where record_id=$1",[recordId])).rows.length,0);
+    assert.equal((await db.query("select * from public.aaa_page_widgets where definition_id=$1",[master.rows[0].id])).rows.length,0);
+    assert.equal((await db.query("select * from public.db_databases where id=$1",[another])).rows.length,1);
+  }finally{await db.close()}
 });
 
 test("widget definitions and placements are owner isolated without cloning canonical records",async()=>{

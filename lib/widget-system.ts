@@ -51,15 +51,18 @@ export type WidgetDefinition={id:string;name:string;database_id:string|null;view
 export type LibraryPage={id:string;area:"library"|"goals";title:string;position:number};
 export type WidgetPageSection={id:string;page_id:string;title:string;position:number};
 export type PageWidget={id:string;page_id:string;definition_id:string|null;kind:"database"|"goals";title:string|null;config:Record<string,unknown>;width:number;height:number;position:number};
+export function widgetIsSynced(widget:PageWidget){return widget.config?.syncMode==="synced"}
 export function widgetSectionId(widget:PageWidget):string{
   return typeof widget.config?.sectionId==="string"?widget.config.sectionId:"";
 }
+export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionId(widget)){
+  return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{})};
+}
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
-  const sectionId=widgetSectionId(widget);
-  return sectionId?{sectionId}:{};
+  return widgetPlacementConfig(widget);
 }
 export function widgetGridSize(widget:PageWidget){
-  return {width:Math.max(3,Math.min(12,Number(widget.width)||6)),height:Math.max(1,Math.min(6,Number(widget.height)||2))};
+  return {width:Math.max(2,Math.min(12,Number(widget.width)||6)),height:Math.max(1,Math.min(12,Number(widget.height)||2))};
 }
 export function groupPageWidgets(pageId:string,sections:WidgetPageSection[],widgets:PageWidget[]){
   const ordered=sections.filter(section=>section.page_id===pageId).sort((a,b)=>a.position-b.position);
@@ -79,6 +82,7 @@ export type WidgetRelation={source_record_id:string;target_record_id:string;prop
 
 export type WidgetConfigureTarget={
   id:string;kind:"definition"|"instance";title:string;
+  synced?:boolean;
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];

@@ -266,8 +266,33 @@ function rpc(db: DemoDatabase, name: string, args: Row): Result {
     if(name==="db_create_database"){
       const title=String(args.p_name||"").trim(),id=String(args.p_id||crypto.randomUUID());
       if(!title||db.rows("db_databases").some(d=>String(d.name).toLowerCase()===title.toLowerCase()))return failure("Database name already exists or is empty.");
-      db.rows("db_databases").push(withDefaults("db_databases",{id,name:title}));
+      db.rows("db_databases").push(withDefaults("db_databases",{id,name:title,dataset:args.p_dataset??"acceptance"}));
+      db.rows("db_views").push({id:crypto.randomUUID(),user_id:DEMO_USER_ID,database_id:id,name:"All records",layout:"table",config:{},position:0});
+      db.rows("user_items").push(withDefaults("user_items",{id,item_type:"thought",title,content:{blocks:[]}}));
       db.save();return ok(id);
+    }
+    if(name==="db_delete_database"){
+      const id=String(args.p_database_id),source=db.rows("db_databases").find(row=>row.id===id);
+      if(!source)return failure("Source database unavailable.");
+      if(args.p_confirm_name!==source.name)return failure("Type the exact database name to confirm deletion.");
+      if(source.dataset&&source.dataset!=="acceptance")return failure("Permanent deletion is available only for beta/acceptance databases.");
+      const rows=db.rows("db_records").filter(row=>row.database_id===id),recordIds=new Set(rows.map(row=>row.record_id));
+      const external=db.rows("db_perspectives").some(row=>(recordIds.has(row.event_id)||recordIds.has(row.character_id))&&!recordIds.has(row.record_id));
+      if(external)return failure("Delete or detach external character perspectives referencing these records first.");
+      if(db.rows("db_properties").some(row=>row.database_id!==id&&(row.config as Row)?.target_database_id===id))
+        return failure("Remove relation properties in other databases that depend on this source first.");
+      const definitions=db.rows("aaa_widget_definitions").filter(row=>row.database_id===id),definitionIds=new Set(definitions.map(row=>row.id));
+      db.tables.aaa_page_widgets=db.rows("aaa_page_widgets").filter(row=>!definitionIds.has(row.definition_id)&&(row.config as Row)?.databaseOverride!==id);
+      db.tables.aaa_widget_definitions=db.rows("aaa_widget_definitions").filter(row=>!definitionIds.has(row.id));
+      db.tables.db_perspectives=db.rows("db_perspectives").filter(row=>!recordIds.has(row.record_id));
+      const propIds=new Set(db.rows("db_properties").filter(row=>row.database_id===id).map(row=>row.id));
+      db.tables.db_relations=db.rows("db_relations").filter(row=>!recordIds.has(row.source_record_id)&&!recordIds.has(row.target_record_id)&&!propIds.has(row.property_id));
+      for(const table of ["db_records","db_properties","db_views","db_databases","db_sequence_counters"]){
+        const key=table==="db_databases"?"id":"database_id";
+        db.tables[table]=db.rows(table).filter(row=>row[key]!==id);
+      }
+      db.tables.user_items=db.rows("user_items").filter(row=>row.id!==id&&!recordIds.has(row.id));
+      db.save();return ok(null);
     }
     if (name === "create_thought") {
       createThought(String(args.p_id), String(args.p_title ?? ""), args.p_content ?? {});
