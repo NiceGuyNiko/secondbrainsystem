@@ -7,6 +7,8 @@ import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
+import WidgetStudio from "@/components/widget-studio";
+import type {WidgetConfigureTarget} from "@/lib/widget-system";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
 import { supabase } from "@/lib/supabase";
 import { classifyDatabaseEngineProbe,type DatabaseEngineState } from "@/lib/db-engine/production-readiness";
@@ -45,6 +47,7 @@ import {
   X,
   BookOpen,
   Layers3,
+  LayoutGrid,
   Zap,
   ArrowLeft,
   ChevronDown,
@@ -55,6 +58,8 @@ import {
 type Section =
   | "Calendar"
   | "Goals"
+  | "Library"
+  | "Developing IT"
   | "Workspaces"
   | "Databases"
   | "Resources"
@@ -83,6 +88,10 @@ function Workspace() {
     [notice, setNotice] = useState("");
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
+  const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
+  const [widgetPages,setWidgetPages]=useState<{library:ContextItem[];goals:ContextItem[]}>({library:[],goals:[]});
+  const [newWidgetPageIntent,setNewWidgetPageIntent]=useState(0);
+  const updateWidgetPages=useCallback((area:"library"|"goals",items:ContextItem[])=>setWidgetPages(prev=>JSON.stringify(prev[area])===JSON.stringify(items)?prev:{...prev,[area]:items}),[]);
   const onCompanionRecord=useCallback((value:CompanionTarget|null)=>setCompanionRecord(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value),[]);
   const [databaseCategory, setDatabaseCategory] = useState<DatabaseCategory>("Characters");
   const [databaseRecordId, setDatabaseRecordId] = useState<string | null>(null);
@@ -151,9 +160,9 @@ function Workspace() {
     finally{setSettingUpDatabases(false)}
   };
   useEffect(()=>{
-    if(!engineEnabled||section!=="Databases")return;
+    if(!engineEnabled||(section!=="Databases"&&!(section==="Developing IT"&&contextId==="databases")))return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
-  },[engineEnabled,section,refreshStagingDatabases]);
+  },[engineEnabled,section,contextId,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
@@ -237,11 +246,12 @@ function Workspace() {
   const nav = (s: Section) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
     setSection(s);
-    setContextId(s==="Workspaces"&&engineEnabled?"writing":undefined);
+    setContextId(s==="Workspaces"&&engineEnabled?"writing":s==="Developing IT"?"widgets":undefined);
     if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
     setContext([]);
     setDatabaseRecordId(null);
     setCompanionRecord(null);
+    setWidgetConfiguration(null);
     setMobileOpen(false);
     setMobileCalendars(false);
     setProfileMenu(false);
@@ -256,6 +266,12 @@ function Workspace() {
     section === "Calendar" || section === "Fluid Calendar";
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
+    : section === "Developing IT"
+      ? [{id:"widgets",title:"Widgets"},{id:"databases",title:"Databases"}]
+    : section === "Library"
+      ? widgetPages.library
+    : section === "Goals"
+      ? widgetPages.goals
     : section === "Databases"
       ? engineEnabled?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
     : section==="Workspaces"&&engineEnabled
@@ -265,6 +281,9 @@ function Workspace() {
       : context;
   const contextualTitle = calendarSection
     ? "Calendars"
+    : section === "Developing IT" ? "Developing IT"
+    : section === "Library" ? "Library"
+    : section === "Goals" ? "Goals"
     : section === "Databases"
       ? "Databases"
     : section === "Resources" || section === "Think About It"
@@ -283,6 +302,7 @@ function Workspace() {
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
       setActiveThought(id);
+    else if(section==="Library"||section==="Goals"||section==="Developing IT")setContextId(id);
     else if(section==="Workspaces"&&engineEnabled&&id==="writing"){
       setWritingExpanded(open=>!open);setContextId("writing");
     } else setContextId(id);
@@ -403,6 +423,8 @@ function Workspace() {
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
               { name: "Goals", icon: Target, badge: "NA" },
+              { name: "Library", icon: LibraryBig, badge: "BETA" },
+              { name: "Developing IT", icon: Settings2, badge: "BETA" },
               { name: "Workspaces", icon: Layers3, badge: engineEnabled ? "BETA" : "NA" },
               { name: "Databases", icon: Database, badge: "BETA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
@@ -442,9 +464,10 @@ function Workspace() {
               onClick={() => {
                 if (calendarSection) manage();
                 else if(engineEnabled&&section==="Databases")setNewDatabaseOpen(open=>!open);
+                else if(section==="Library"||section==="Goals")setNewWidgetPageIntent(x=>x+1);
               }}
             >
-              {calendarSection||engineEnabled&&section==="Databases" ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection||engineEnabled&&section==="Databases"||section==="Library"||section==="Goals" ? <Plus size={19} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
@@ -472,7 +495,7 @@ function Workspace() {
                   key={c.id}
                   className={"aaa-context-row " + (
                     (section==="Databases"&&(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id))||
-                    (section==="Workspaces"&&contextId===c.id)?"active":""
+                    ((section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={c.title}
                   aria-pressed={section === "Databases"?(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
@@ -481,7 +504,7 @@ function Workspace() {
                   <span className="aaa-icon-slot">
                     {c.id==="writing"?(writingExpanded?<ChevronDown size={18}/>:<ChevronRight size={18}/>)
                      :c.id==="writing-events"?<CalendarDays size={17}/>
-                     :section==="Databases"?<Database size={17}/>:<BookOpen size={18}/>}
+                     :section==="Databases"||c.id==="databases"?<Database size={17}/>:c.id==="widgets"?<LayoutGrid size={17}/>:<BookOpen size={18}/>}
                   </span>
                   <span className="aaa-sidebar-label">{c.title}</span>
                 </button>
@@ -546,6 +569,8 @@ function Workspace() {
           onCompanion={setCompanion}
           companionTarget={companionTarget}
           companionProfileKey={userId+":"+settings.account.activeProfileId}
+          widgetConfiguration={widgetConfiguration}
+          onCloseWidgetConfiguration={()=>setWidgetConfiguration(null)}
         >
           {!calendarSection && (
             <>
@@ -554,7 +579,24 @@ function Workspace() {
                 {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
-              {section === "Settings" ? (
+              {section === "Developing IT" && contextId === "databases" && engineEnabled ? (
+                <section className="aaa-widget-database-development">
+                  <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
+                  <select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+                  <DatabaseLabErrorBoundary><StagingDatabaseLab key={"development-"+stagingDatabaseName} surface="database" databaseName={stagingDatabaseName}
+                    onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/></DatabaseLabErrorBoundary>
+                </section>
+              ) : (section==="Library"||section==="Developing IT"||section==="Goals") && (!engineEnabled || isDemo) ? (
+                <div className="aaa-settings-panel aaa-demo-notice" role="note"><h2>Widget system is waiting for the database connection</h2><p>The database engine must be enabled for this environment. Existing planning and database records remain untouched.</p></div>
+              ) : (section==="Library"||section==="Goals"||section==="Developing IT") ? (
+                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"}
+                  activePageId={contextId} newPageIntent={newWidgetPageIntent}
+                  onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
+                  onConfigure={setWidgetConfiguration}
+                  onOpenConfigure={()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode)}
+                  onOpenRecord={openThought} onPlanningContext={setPlanningContext}
+                  onSchedule={task=>setCommand({id:Date.now(),type:"new",task})}/>
+              ) : section === "Settings" ? (
                 <SettingsWorkspace
                   section={settingsSection} onSection={setSettingsSection}
                   settings={settings!}
@@ -623,14 +665,14 @@ function Workspace() {
                   }}
                   onOpenDocument={openThought}
                 />
-              ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
+              ) : section === "Workspaces" && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
                   <h2>{section} isn’t available in Demo Mode</h2>
                   <p className="calendar-muted">
-                    The existing {section === "Goals" ? "goals, projects and tasks" : "writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix)"} rely on your real account’s database. They are unchanged and keep working in the live app.
+                    The existing writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix) rely on your real account’s database. They are unchanged and keep working in the live app.
                   </p>
                 </div>
-              ) : section === "Goals" || section === "Workspaces" ? (
+              ) : section === "Workspaces" ? (
                 <PlanningWorkspace
                   key={section}
                   section={section}

@@ -1,0 +1,88 @@
+"use client";
+import {useEffect,useState} from "react";
+import {Check,Plus,Save,Settings2,Trash2} from "lucide-react";
+import type {WidgetConfigureTarget,WidgetConfig} from "@/lib/widget-system";
+
+export default function WidgetConfigurePanel({selection,onClose}:{selection:WidgetConfigureTarget;onClose:()=>void}){
+  const [name,setName]=useState(selection.title);
+  const [message,setMessage]=useState("");
+  useEffect(()=>{setName(selection.title);setMessage("")},[selection.id,selection.title]);
+  const cfg=selection.config;
+  const fields=[{id:"name",name:"Name"},{id:"creation",name:"Record ID"},
+    ...selection.properties.filter(p=>p.database_id===selection.databaseId).map(p=>({id:p.id,name:p.name}))];
+  const props=selection.properties.filter(p=>p.database_id===selection.databaseId);
+  const savedViews=selection.views.filter(v=>v.database_id===selection.databaseId);
+  const change=(patch:Partial<WidgetConfig>)=>selection.onConfig(patch);
+  return <div className="aaa-widget-config" aria-label="Configure widget">
+    <div className="aaa-widget-config-head"><span><Settings2 size={17}/> Configure</span><button onClick={onClose} aria-label="Close widget configuration">Done <Check size={15}/></button></div>
+    <p className="aaa-widget-config-sub">{selection.kind==="instance"?"Page-specific view. Changes stay on this page until you save them to the master widget.":"Master widget. Changes apply to all instances without a local override."}</p>
+    <label className="aaa-widget-field">Widget name
+      <input value={name} maxLength={100} onChange={e=>setName(e.target.value)} onBlur={()=>{if(name.trim()&&name.trim()!==selection.title)selection.onRename(name.trim())}} onKeyDown={e=>{if(e.key==="Enter"){e.currentTarget.blur()}}}/>
+    </label>
+    <div className="aaa-widget-config-group"><strong>Data source &amp; view</strong>
+      <label className="aaa-widget-field">Database
+        <select value={selection.databaseId??""} onChange={e=>selection.onSource(e.target.value||null,null)}>
+          <option value="">Choose a database</option>
+          {selection.databases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+      </label>
+      <label className="aaa-widget-field">Saved database view
+        <select value={selection.viewId??""} onChange={e=>selection.onSource(selection.databaseId,e.target.value||null)}>
+          <option value="">All records</option>
+          {savedViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+      </label>
+      <label className="aaa-widget-field">Display style
+        <select value={cfg.renderer} onChange={e=>change({renderer:e.target.value as WidgetConfig["renderer"]})}>
+          <option value="table">Table</option><option value="list">List</option>
+          <option value="cards">Cards</option><option value="timeline">Timeline</option>
+        </select>
+      </label>
+    </div>
+    <div className="aaa-widget-config-group"><strong>Filter records</strong>
+      <div className="aaa-widget-inline"><span>Match</span><select aria-label="Filter combination" value={cfg.filterMode} onChange={e=>change({filterMode:e.target.value as "all"|"any"})}><option value="all">All conditions (AND)</option><option value="any">Any condition (OR)</option></select></div>
+      {cfg.filters.map(f=><div className="aaa-widget-rule" key={f.id}>
+        <select aria-label="Filter property" value={f.field} onChange={e=>change({filters:cfg.filters.map(x=>x.id===f.id?{...x,field:e.target.value}:x)})}>{fields.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select>
+        <select aria-label="Filter operator" value={f.operator} onChange={e=>change({filters:cfg.filters.map(x=>x.id===f.id?{...x,operator:e.target.value as typeof f.operator}:x)})}>
+          <option value="is">Is</option><option value="is_not">Is not</option><option value="contains">Contains</option><option value="does_not_contain">Does not contain</option><option value="is_empty">Is empty</option><option value="is_not_empty">Is not empty</option>
+        </select>
+        {!f.operator.includes("empty")&&<input aria-label="Filter value" value={f.value} placeholder="Value" onChange={e=>change({filters:cfg.filters.map(x=>x.id===f.id?{...x,value:e.target.value}:x)})}/>}
+        <button aria-label="Remove filter" onClick={()=>change({filters:cfg.filters.filter(x=>x.id!==f.id)})}><Trash2 size={15}/></button>
+      </div>)}
+      <button className="aaa-widget-add-rule" onClick={()=>change({filters:[...cfg.filters,{id:crypto.randomUUID(),field:"name",operator:"contains",value:""}]})}><Plus size={14}/> Add filter</button>
+      <label className="aaa-widget-field">Contextual scope (optional)
+        <select value={cfg.scopeField} onChange={e=>change({scopeField:e.target.value,scopeValue:""})}>
+          <option value="">All records</option>{fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+      </label>
+      {cfg.scopeField&&<input className="aaa-widget-input" aria-label="Scope value" placeholder="Only records matching…" value={cfg.scopeValue} onChange={e=>change({scopeValue:e.target.value})}/>}
+    </div>
+    <div className="aaa-widget-config-group"><strong>Sort</strong>
+      {cfg.sorts.map(s=><div className="aaa-widget-rule" key={s.id}>
+        <select aria-label="Sort property" value={s.field} onChange={e=>change({sorts:cfg.sorts.map(x=>x.id===s.id?{...x,field:e.target.value}:x)})}>{fields.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select>
+        <select aria-label="Sort direction" value={s.direction} onChange={e=>change({sorts:cfg.sorts.map(x=>x.id===s.id?{...x,direction:e.target.value as "asc"|"desc"}:x)})}><option value="asc">Ascending</option><option value="desc">Descending</option></select>
+        <button aria-label="Remove sort" onClick={()=>change({sorts:cfg.sorts.filter(x=>x.id!==s.id)})}><Trash2 size={15}/></button>
+      </div>)}
+      <button className="aaa-widget-add-rule" onClick={()=>change({sorts:[...cfg.sorts,{id:crypto.randomUUID(),field:"name",direction:"asc"}]})}><Plus size={14}/> Add sort</button>
+    </div>
+    <div className="aaa-widget-config-group"><strong>Properties</strong>
+      <p>Choose which columns appear. None selected means the default set.</p>
+      <div className="aaa-widget-property-options">{props.map(prop=><label key={prop.id}><input type="checkbox" checked={cfg.visibleProperties.includes(prop.id)} onChange={e=>change({visibleProperties:e.target.checked?[...cfg.visibleProperties,prop.id]:cfg.visibleProperties.filter(id=>id!==prop.id)})}/>{prop.name}</label>)}</div>
+      {!!cfg.visibleProperties.length&&<button className="aaa-widget-add-rule" onClick={()=>change({visibleProperties:[]})}>Restore default columns</button>}
+    </div>
+    <div className="aaa-widget-config-group"><strong>Appearance &amp; size</strong>
+      <div className="aaa-widget-config-pair"><label className="aaa-widget-field">Density<select value={cfg.density} onChange={e=>change({density:e.target.value as WidgetConfig["density"]})}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+      <label className="aaa-widget-field">Accent<select value={cfg.color} onChange={e=>change({color:e.target.value as WidgetConfig["color"]})}><option value="theme">Theme</option><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option></select></label></div>
+      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}><option value={3}>Quarter</option><option value={4}>Third</option><option value={6}>Half</option><option value={8}>Two-thirds</option><option value={12}>Full</option></select></label>
+      <label className="aaa-widget-field">Height<select value={selection.height??2} onChange={e=>selection.onSize?.(selection.width??6,Number(e.target.value))}>{[1,2,3,4,5,6].map(x=><option key={x} value={x}>{x===1?"Short":x===2?"Medium":x===3?"Tall":x+" rows"}</option>)}</select></label></div>}
+    </div>
+    <div className="aaa-widget-config-group"><strong>Interaction</strong>
+      {([["showTitle","Show title"],["editable","Allow record editing"],["allowCreate","Allow new records"],["exposeFilters","Show filter controls in Use mode"],["exposeSorts","Show sort controls in Use mode"]] as const).map(([key,label])=><label className="aaa-widget-switch" key={key}><span>{label}</span><input type="checkbox" checked={cfg[key]} onChange={e=>change({[key]:e.target.checked})}/></label>)}
+      <label className="aaa-widget-field">Open records
+        <select value={cfg.openBehavior} onChange={e=>change({openBehavior:e.target.value as WidgetConfig["openBehavior"]})}><option value="detail">Quick detail</option><option value="source">Original database page</option></select>
+      </label>
+    </div>
+    {selection.onSaveToDefinition&&<button className="aaa-widget-save-master" onClick={()=>{selection.onSaveToDefinition?.();setMessage("Saved this view to the reusable widget.")}}><Save size={15}/> Save view to main widget</button>}
+    {message&&<p role="status" className="aaa-widget-config-sub">{message}</p>}
+  </div>;
+}

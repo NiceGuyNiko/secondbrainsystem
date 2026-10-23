@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type MouseEvent,type SyntheticEvent} from "react";
 import {createPortal} from "react-dom";
-import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft} from "lucide-react";
+import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft,Settings2} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
 import type {AgendaMode} from "@/components/agenda";
 import {type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
@@ -13,6 +13,8 @@ import {contextKey,type CompanionPreferences,type CompanionTool,type CompanionTa
 import {initialPaneState,cloneCompanionView,addRecentReference,
   type CompanionPaneState,type CompanionSlot,type ContextViewState,type ThoughtsViewState} from "@/lib/companion-pane-state";
 import {positionCompanionPopover} from "@/lib/companion-popover-position";
+import WidgetConfigurePanel from "@/components/widget-configure-panel";
+import type {WidgetConfigureTarget} from "@/lib/widget-system";
 
 const tools: {key:CompanionTool;title:string}[] = [
   {key:"agenda",title:"The Agenda"},
@@ -32,6 +34,8 @@ type Props={
   onOptions:(change:Partial<CompanionPreferences>)=>void;
   target:CompanionTarget;
   profileKey:string;
+  configuration?:WidgetConfigureTarget|null;
+  onConfigureClose?:()=>void;
 };
 export default function Companion(p:Props){
   const [top,setTop]=useState<CompanionTool>(p.options.primary);
@@ -127,6 +131,7 @@ export default function Companion(p:Props){
   };
 
   const selectTool=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(slot==="top"&&p.configuration)p.onConfigureClose?.();
     if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
     let nextBottom=slot==="bottom"?tool:bottom;
@@ -184,10 +189,13 @@ export default function Companion(p:Props){
   const tabList=(slot:CompanionSlot,value:CompanionTool)=>
     <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
       className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
-      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={value===t.key}
+      {slot==="top"&&p.configuration&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
+        <Settings2 size={20}/>{p.options.tabDisplay!=="icons"&&<span>CONFIGURE</span>}
+      </button>}
+      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration?false:value===t.key}
         aria-label={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
+        className={!p.configuration&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
         onMouseEnter={e=>showTabTooltip(e,t.title)}
         onMouseLeave={()=>setTabTooltip(null)}
         onFocus={e=>showTabTooltip(e,t.title)}
@@ -267,7 +275,7 @@ export default function Companion(p:Props){
       </header>
       <div className="aaa-hybrid-sections">
         <div className="aaa-hybrid-slot aaa-hybrid-primary">
-          <div className="aaa-hybrid-slot-body">{body("top",top)}</div>
+          <div className="aaa-hybrid-slot-body">{p.configuration?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()}/>:body("top",top)}</div>
         </div>
         <button type="button" className={"aaa-companion-pull"+(drawerHeight>0?" is-open":"")}
           role="separator" aria-label={drawerHeight>0?"Drag down to hide second tool":"Drag up to reveal second tool"}
