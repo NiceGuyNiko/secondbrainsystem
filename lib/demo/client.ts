@@ -3,6 +3,7 @@
 // query shapes those screens use. It never performs a network request.
 // The new database engine does NOT use this: it talks to its own persistence adapter interface.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {demoPageSectionIndex,demoPageSectionTitles} from "./page-sections";
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
@@ -24,6 +25,7 @@ const primaryKeys: Record<string, string[]> = {
   test_profiles: ["id"],
   aaa_widget_definitions:["id"],
   aaa_library_pages:["id"],
+  aaa_page_sections:["id"],
   aaa_page_widgets:["id"],
   db_databases:["id"],
   db_views:["id"],
@@ -59,6 +61,25 @@ export class DemoDatabase {
           tables.user_items=[...(tables.user_items??[]),...(seeded.user_items??[]).filter(row=>recordIds.has(row.id)&&!present.has(row.id))];
           this.persist(tables);
         }
+        // Migrate previously visited developer previews without changing any stored records.
+        // The section IDs must reference this browser's existing page IDs, not fresh fixture IDs.
+        if(!("aaa_page_sections" in tables)){
+          const sections:Row[]=[];
+          for(const page of tables.aaa_library_pages??[]){
+            const pageId=String(page.id),title=String(page.title??"");
+            const pageSections=demoPageSectionTitles(title).map((name,index)=>{
+              const section={id:crypto.randomUUID(),user_id:DEMO_USER_ID,page_id:pageId,title:name,position:index};
+              sections.push(section);return section;
+            });
+            (tables.aaa_page_widgets??[]).filter(widget=>widget.page_id===pageId).sort((a,b)=>Number(a.position)-Number(b.position))
+              .forEach((widget,index)=>{
+                const old=widget.config&&typeof widget.config==="object"&&!Array.isArray(widget.config)?widget.config as Row:{};
+                widget.config={...old,sectionId:pageSections[Math.min(demoPageSectionIndex(title,index),pageSections.length-1)].id};
+              });
+          }
+          tables.aaa_page_sections=sections;
+          this.persist(tables);
+        }
         return tables;
       }
     } catch {}
@@ -88,6 +109,7 @@ function withDefaults(table: string, input: Row): Row {
   const row: Row = { ...clone(input) };
   if(table==="aaa_widget_definitions")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,name:"Untitled widget",database_id:null,view_id:null,config:{},created_at:now,...row};
   if(table==="aaa_library_pages")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,area:"library",title:"Untitled page",position:0,created_at:now,...row};
+  if(table==="aaa_page_sections")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,position:0,created_at:now,...row};
   if(table==="aaa_page_widgets")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,definition_id:null,kind:"database",title:null,config:{},width:6,height:2,position:0,...row};
   if(table==="db_databases")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,icon:"database",created_at:now,archived_at:null,...row};
   if(table==="db_records")return {record_id:crypto.randomUUID(),user_id:DEMO_USER_ID,values_json:{},version:1,position:0,archived_at:null,...row};

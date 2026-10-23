@@ -1,9 +1,9 @@
 "use client";
 import {useCallback,useEffect,useRef,useState} from "react";
-import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Database,GripVertical,LayoutGrid,Plus,RefreshCw,Search,Settings2,Trash2,X} from "lucide-react";
+import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Database,GripVertical,LayoutGrid,Minus,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,X} from "lucide-react";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
-import {widgetConfig,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type LibraryPage,type PageWidget} from "@/lib/widget-system";
+import {groupPageWidgets,widgetConfig,widgetGridSize,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import PlanningWorkspace from "@/components/planning-workspace";
 
 type Mode="library"|"goals"|"widgets";
@@ -19,12 +19,12 @@ type Props={
   onSchedule?:(task:{id:string;title:string;workingId?:string})=>void;
 };
 type Snapshot={
-  pages:LibraryPage[];instances:PageWidget[];definitions:WidgetDefinition[];
+  pages:LibraryPage[];sections:WidgetPageSection[];instances:PageWidget[];definitions:WidgetDefinition[];
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   records:WidgetRecord[];relations:WidgetRelation[];titles:Record<string,string>;
 };
-const empty:Snapshot={pages:[],instances:[],definitions:[],databases:[],views:[],properties:[],records:[],relations:[],titles:{}};
-type SaveTable="aaa_widget_definitions"|"aaa_page_widgets";
+const empty:Snapshot={pages:[],sections:[],instances:[],definitions:[],databases:[],views:[],properties:[],records:[],relations:[],titles:{}};
+type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"aaa_library_pages";
 
 export default function WidgetStudio(p:Props){
   const [data,setData]=useState<Snapshot>(empty);
@@ -36,6 +36,13 @@ export default function WidgetStudio(p:Props){
   const [selected,setSelected]=useState<Selection>(null);
   const [creatingPage,setCreatingPage]=useState(false);
   const [newPage,setNewPage]=useState("");
+  const [renamingPage,setRenamingPage]=useState(false);
+  const [pageDraft,setPageDraft]=useState("");
+  const [creatingSection,setCreatingSection]=useState(false);
+  const [newSection,setNewSection]=useState("");
+  const [renamingSection,setRenamingSection]=useState<string|null>(null);
+  const [sectionDraft,setSectionDraft]=useState("");
+  const [pickerSection,setPickerSection]=useState("");
   const [addWidget,setAddWidget]=useState(false);
   const [search,setSearch]=useState<Record<string,string>>({});
   const [newRecord,setNewRecord]=useState<Record<string,string>>({});
@@ -48,7 +55,7 @@ export default function WidgetStudio(p:Props){
   const check=(result:{error:{message:string}|null})=>{if(result.error)throw new Error(result.error.message)};
 
   const load=useCallback(async()=>{
-    const [a,b,c,d,e,f,g,h,i,j]=await Promise.all([
+    const [a,b,c,d,e,f,g,h,i,j,k]=await Promise.all([
       supabase.from("aaa_library_pages").select("id,area,title,position").order("position"),
       supabase.from("aaa_page_widgets").select("id,page_id,definition_id,kind,title,config,width,height,position").order("position"),
       supabase.from("aaa_widget_definitions").select("id,name,database_id,view_id,config").order("created_at"),
@@ -58,14 +65,15 @@ export default function WidgetStudio(p:Props){
       supabase.from("db_records").select("record_id,database_id,sequence_no,version,values_json,position").is("archived_at",null).limit(2000),
       supabase.from("db_relations").select("source_record_id,target_record_id,property_id").limit(2000),
       supabase.from("user_items").select("id,title").eq("item_type","thought").limit(3000),
-      supabase.from("db_perspectives").select("record_id,character_id,event_id").limit(2000)
+      supabase.from("db_perspectives").select("record_id,character_id,event_id").limit(2000),
+      supabase.from("aaa_page_sections").select("id,page_id,title,position").order("position")
     ]);
-    [a,b,c,d,e,f,g,h,i,j].forEach(check);
+    [a,b,c,d,e,f,g,h,i,j,k].forEach(check);
     const names:Record<string,string>={};
     (i.data??[]).forEach(row=>{names[row.id]=row.title||"Untitled"});
     (j.data??[]).forEach(row=>{names[row.record_id]=(names[row.character_id]||"Unknown character")+" during "+(names[row.event_id]||"Unknown event")});
     const next:Snapshot={
-      pages:(a.data??[]) as LibraryPage[],instances:(b.data??[]) as PageWidget[],definitions:(c.data??[]) as WidgetDefinition[],
+      pages:(a.data??[]) as LibraryPage[],sections:(k.data??[]) as WidgetPageSection[],instances:(b.data??[]) as PageWidget[],definitions:(c.data??[]) as WidgetDefinition[],
       databases:(d.data??[]) as WidgetDatabase[],views:(e.data??[]) as WidgetView[],properties:(f.data??[]) as WidgetProperty[],
       records:(g.data??[]) as WidgetRecord[],relations:(h.data??[]) as WidgetRelation[],titles:names
     };
@@ -73,7 +81,10 @@ export default function WidgetStudio(p:Props){
       const {data:page,error:pageError}=await supabase.from("aaa_library_pages").insert({area:"goals",title:"Overview",position:0}).select("id,area,title,position").single();
       if(pageError)throw new Error(pageError.message);
       next.pages.push(page as LibraryPage);
-      const {data:widget,error:widgetError}=await supabase.from("aaa_page_widgets").insert({page_id:page.id,kind:"goals",width:12,height:4,position:0}).select("id,page_id,definition_id,kind,title,config,width,height,position").single();
+      const {data:section,error:sectionError}=await supabase.from("aaa_page_sections").insert({page_id:page.id,title:"Overview",position:0}).select("id,page_id,title,position").single();
+      if(sectionError)throw new Error(sectionError.message);
+      next.sections.push(section as WidgetPageSection);
+      const {data:widget,error:widgetError}=await supabase.from("aaa_page_widgets").insert({page_id:page.id,kind:"goals",width:12,height:4,position:0,config:{sectionId:section.id}}).select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(widgetError)throw new Error(widgetError.message);
       next.instances.push(widget as PageWidget);
     }
@@ -116,6 +127,9 @@ export default function WidgetStudio(p:Props){
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
   const instanceList=data.instances.filter(w=>w.page_id===page?.id).sort((a,b)=>a.position-b.position);
+  const pageSections=data.sections.filter(s=>s.page_id===page?.id).sort((a,b)=>a.position-b.position);
+  const sectionGroups=page?groupPageWidgets(page.id,pageSections,instanceList):[];
+  const activePlacementSection=pageSections.some(s=>s.id===pickerSection)?pickerSection:pageSections[0]?.id??"";
   useEffect(()=>{
     if(p.mode==="widgets")return;
     p.onPages?.(pages.map(({id,title})=>({id,title})));
@@ -134,8 +148,66 @@ export default function WidgetStudio(p:Props){
         .select("id,area,title,position").single();
       if(error)throw error;
       setData(s=>({...s,pages:[...s.pages,row as LibraryPage]}));
+      const {data:section,error:sectionError}=await supabase.from("aaa_page_sections")
+        .insert({page_id:row.id,title:"Overview",position:0}).select("id,page_id,title,position").single();
+      if(sectionError)throw sectionError;
+      setData(s=>({...s,sections:[...s.sections,section as WidgetPageSection]}));
       setCreatingPage(false);setNewPage("");p.onPage?.(row.id);
     }catch(e){report(e)}finally{setBusy(false)}
+  };
+  const renamePage=()=>{
+    if(!page)return;
+    const title=pageDraft.trim();
+    if(title&&title!==page.title){
+      setData(s=>({...s,pages:s.pages.map(row=>row.id===page.id?{...row,title}:row)}));
+      queueSave("aaa_library_pages",page.id,{title});
+    }
+    setRenamingPage(false);
+  };
+  const createSection=async()=>{
+    const title=newSection.trim();
+    if(!page||!title||busy)return;
+    setBusy(true);
+    try{
+      const {data:row,error}=await supabase.from("aaa_page_sections")
+        .insert({page_id:page.id,title,position:pageSections.length?Math.max(...pageSections.map(s=>s.position))+1:0})
+        .select("id,page_id,title,position").single();
+      if(error)throw error;
+      setData(s=>({...s,sections:[...s.sections,row as WidgetPageSection]}));
+      setNewSection("");setCreatingSection(false);
+    }catch(e){report(e)}finally{setBusy(false)}
+  };
+  const renameSection=(id:string)=>{
+    const title=sectionDraft.trim();
+    const current=data.sections.find(s=>s.id===id);
+    if(current&&title&&title!==current.title){
+      setData(s=>({...s,sections:s.sections.map(row=>row.id===id?{...row,title}:row)}));
+      queueSave("aaa_page_sections",id,{title});
+    }
+    setRenamingSection(null);
+  };
+  const shiftSection=(id:string,direction:-1|1)=>{
+    const index=pageSections.findIndex(s=>s.id===id),other=pageSections[index+direction];
+    if(index<0||!other)return;
+    const current=pageSections[index];
+    setData(s=>({...s,sections:s.sections.map(row=>row.id===id?{...row,position:other.position}:row.id===other.id?{...row,position:current.position}:row)}));
+    queueSave("aaa_page_sections",id,{position:other.position});
+    queueSave("aaa_page_sections",other.id,{position:current.position});
+  };
+  const deleteSection=async(id:string)=>{
+    if(instanceList.some(widget=>widgetSectionId(widget)===id)){
+      setError("Move this section's widgets into another section before removing it.");return;
+    }
+    if(!window.confirm("Remove this empty page section?"))return;
+    const {error}=await supabase.from("aaa_page_sections").delete().eq("id",id);
+    if(error){report(error);return}
+    setData(s=>({...s,sections:s.sections.filter(section=>section.id!==id)}));
+  };
+  const moveWidgetToSection=(widget:PageWidget,sectionId:string)=>{
+    const config={...widget.config};
+    if(sectionId)config.sectionId=sectionId;
+    else delete config.sectionId;
+    changeInstance(widget.id,{config});
   };
   const createDefinition=async()=>{
     if(busy)return;setBusy(true);
@@ -161,7 +233,8 @@ export default function WidgetStudio(p:Props){
       createdDefinition=definition as WidgetDefinition;
       const {data:instance,error:instanceError}=await supabase.from("aaa_page_widgets")
         .insert({page_id:page.id,definition_id:createdDefinition.id,kind:"database",
-          position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:6,height:2})
+          position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:6,height:2,
+          config:activePlacementSection?{sectionId:activePlacementSection}:{}})
         .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(instanceError)throw instanceError;
       setData(s=>({...s,definitions:[...s.definitions,createdDefinition!],instances:[...s.instances,instance as PageWidget]}));
@@ -186,7 +259,7 @@ export default function WidgetStudio(p:Props){
     if(!page||busy)return;setBusy(true);
     try{
       const {data:row,error}=await supabase.from("aaa_page_widgets")
-        .insert({page_id:page.id,definition_id:definition.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:6,height:2})
+        .insert({page_id:page.id,definition_id:definition.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:6,height:2,config:activePlacementSection?{sectionId:activePlacementSection}:{}})
         .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(error)throw error;
       setData(s=>({...s,instances:[...s.instances,row as PageWidget]}));setAddWidget(false);
@@ -196,7 +269,7 @@ export default function WidgetStudio(p:Props){
     if(!page||busy)return;setBusy(true);
     try{
       const {data:row,error}=await supabase.from("aaa_page_widgets")
-        .insert({page_id:page.id,kind:"goals",position:instanceList.length,width:12,height:4})
+        .insert({page_id:page.id,kind:"goals",position:instanceList.length,width:12,height:4,config:activePlacementSection?{sectionId:activePlacementSection}:{}})
         .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(error)throw error;
       setData(s=>({...s,instances:[...s.instances,row as PageWidget]}));setAddWidget(false);
@@ -362,12 +435,14 @@ export default function WidgetStudio(p:Props){
   const widgetCard=(widget:PageWidget,index:number)=>{
     const def=definitionOf(widget);
     const cfg=def?effectiveConfig(def,widget):widgetConfig({});
+    const {width,height}=widgetGridSize(widget);
+    const title=widget.title||def?.name||"Goals & projects";
     return <article key={widget.id} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${arrange?"aaa-widget-arranging":""}`}
-      style={{gridColumn:`span ${widget.width}`,minHeight:widget.kind==="goals"?"440px":(widget.height*135)+"px"}}
+      style={{gridColumn:`span ${width}`,gridRow:`span ${height}`}}
       draggable={arrange} onDragStart={e=>{setDrag(widget.id);e.dataTransfer.effectAllowed="move"}} onDragOver={e=>{if(arrange)e.preventDefault()}}
       onDrop={e=>{e.preventDefault();if(drag)reorder(drag,widget.id);setDrag(null)}} onDragEnd={()=>setDrag(null)}>
       {(cfg.showTitle||arrange)&&<header className="aaa-widget-card-head">
-        <div>{arrange&&<GripVertical size={17}/>}<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":"CONNECTED VIEW"}</span><strong>{widget.title||def?.name||"Goals & projects"}</strong>
+        <div>{arrange&&<GripVertical size={17}/>}<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":"CONNECTED VIEW"}</span><strong>{title}</strong>
           {def&&<small>{data.databases.find(x=>x.id===sourceOf(widget).databaseId)?.name||"Unconnected"}</small>}</div>
         <div className="aaa-widget-card-actions">
           {arrange&&<><button aria-label="Move widget earlier" disabled={index===0} onClick={()=>shift(widget.id,-1)}><ArrowUp size={15}/></button><button aria-label="Move widget later" disabled={index===instanceList.length-1} onClick={()=>shift(widget.id,1)}><ArrowDown size={15}/></button></>}
@@ -379,6 +454,16 @@ export default function WidgetStudio(p:Props){
         {widget.kind==="goals"?<PlanningWorkspace key={widget.id} section="Goals" onContext={p.onPlanningContext??(()=>{})} onOpenPage={p.onOpenRecord} onSchedule={p.onSchedule??(()=>{})}/>
         :def?renderRecords(widget.id,def,widget):<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
       </div>
+      {arrange&&<footer className="aaa-widget-card-resize">
+        <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
+          <option value="">Overview</option>{pageSections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
+        </select></label>
+        <div className="aaa-widget-height-stepper" aria-label={`${title} height`}>
+          <button disabled={height<=1} aria-label={`Make ${title} shorter`} onClick={()=>changeInstance(widget.id,{height:Math.max(1,height-1)})}><Minus size={14}/></button>
+          <span>{height} {height===1?"row":"rows"}</span>
+          <button disabled={height>=6} aria-label={`Make ${title} taller`} onClick={()=>changeInstance(widget.id,{height:Math.min(6,height+1)})}><Plus size={14}/></button>
+        </div>
+      </footer>}
     </article>;
   };
 
@@ -410,26 +495,65 @@ export default function WidgetStudio(p:Props){
         <div className="aaa-widget-hero-actions"><div className="aaa-widget-mode" role="group" aria-label="Page editing mode">
           <button aria-pressed={!arrange} className={!arrange?"active":""} onClick={()=>setArrange(false)}>Use mode</button>
           <button aria-pressed={arrange} className={arrange?"active":""} onClick={()=>setArrange(true)}>Arrange mode</button>
-        </div><button className="aaa-widget-secondary" onClick={()=>setCreatingPage(true)}><Plus size={16}/> Page</button>
+        </div>{arrange&&page&&<button className="aaa-widget-secondary" onClick={()=>{setPageDraft(page.title);setRenamingPage(true)}}><Pencil size={15}/> Rename page</button>}
         <button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> New widget</button>
         {arrange&&<button className="aaa-widget-primary" onClick={()=>setAddWidget(true)}><Plus size={16}/> Add widget</button>}</div>
       </div>
+      <nav className="aaa-widget-page-tabs" aria-label={p.mode==="goals"?"Goals pages":"Library pages"}>
+        {pages.map((item,index)=><button key={item.id} className={item.id===page?.id?"active":""} aria-current={item.id===page?.id?"page":undefined}
+          onClick={()=>{p.onPage?.(item.id);setRenamingPage(false);setAddWidget(false);setCreatingSection(false)}}>
+          {index===0?<LayoutGrid size={14}/>:<BookOpen size={14}/>} {item.title}
+        </button>)}
+        <button className="aaa-widget-page-add" onClick={()=>setCreatingPage(true)}><Plus size={14}/> Page</button>
+      </nav>
+      {renamingPage&&page&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();renamePage()}}>
+        <input autoFocus aria-label="Rename page" maxLength={100} value={pageDraft} onChange={e=>setPageDraft(e.target.value)}/>
+        <button type="submit" disabled={!pageDraft.trim()}><Check size={16}/> Save name</button>
+        <button type="button" aria-label="Cancel page rename" onClick={()=>setRenamingPage(false)}><X size={16}/></button>
+      </form>}
       {p.visualStyle==="studio"&&page&&<div className="aaa-widget-lab-stats" aria-label="Current page summary">
         <div><small>THIS PAGE</small><strong>{instanceList.length}</strong><span>Placed widgets</span></div>
         <div><small>CONNECTED SOURCES</small><strong>{new Set(instanceList.map(w=>sourceOf(w).databaseId).filter(Boolean)).size}</strong><span>Database views</span></div>
         <div><small>RECORDS AVAILABLE</small><strong>{data.records.length}</strong><span>Across {data.databases.length} databases</span></div>
       </div>}
       {creatingPage&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createPage()}}><input aria-label="New page title" autoFocus placeholder={p.mode==="library"?"e.g. World View, Characters…":"New Goals page…"} maxLength={100} value={newPage} onChange={e=>setNewPage(e.target.value)}/><button type="submit" disabled={!newPage.trim()||busy}><Check size={16}/> Create page</button><button type="button" onClick={()=>setCreatingPage(false)} aria-label="Cancel"><X size={16}/></button></form>}
-      {addWidget&&<div className="aaa-widget-add-picker"><div><strong>Add to {page?.title}</strong><button onClick={()=>setAddWidget(false)} aria-label="Close widget picker"><X size={16}/></button></div>
+      {addWidget&&<div className="aaa-widget-add-picker"><div><strong>Add to {page?.title}{pageSections.find(s=>s.id===activePlacementSection)?" · "+pageSections.find(s=>s.id===activePlacementSection)?.title:""}</strong><button onClick={()=>setAddWidget(false)} aria-label="Close widget picker"><X size={16}/></button></div>
         <button disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create a new reusable widget <small>Open Configure</small><ChevronRight size={16}/></button>
         {p.mode==="goals"&&<button onClick={()=>void addGoals()}><BookOpen size={16}/> Goals &amp; projects (existing planner)<Plus size={16}/></button>}
         {data.definitions.map(def=><button key={def.id} onClick={()=>void addDefinition(def)}><LayoutGrid size={16}/>{def.name}<small>{data.databases.find(db=>db.id===def.database_id)?.name||"Unconnected"}</small><Plus size={16}/></button>)}
         {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
-      {page?<div className="aaa-widget-canvas" aria-label="Page widgets">
-        {instanceList.map(widgetCard)}
-        {arrange&&<button className="aaa-widget-empty-slot" style={{gridColumn:"span 6"}} onClick={()=>setAddWidget(true)}><Plus size={24}/> Add a widget</button>}
-        {!instanceList.length&&!arrange&&<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>This page has no widgets. Create a new widget here or enter Arrange mode to add existing ones.</p><button disabled={busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create widget</button><button onClick={()=>setArrange(true)}>Arrange page</button></div>}
+      {page?<div className="aaa-widget-sections">
+        {arrange&&<div className="aaa-widget-section-toolbar"><span>Organize widgets into named sections; use the height controls to align card lengths.</span>
+          <button className="aaa-widget-secondary" onClick={()=>setCreatingSection(true)}><Plus size={15}/> Add section</button></div>}
+        {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
+          <input autoFocus aria-label="New section name" placeholder="e.g. World History, Project Progress…" maxLength={100} value={newSection} onChange={e=>setNewSection(e.target.value)}/>
+          <button type="submit" disabled={!newSection.trim()||busy}><Check size={15}/> Create section</button>
+          <button type="button" aria-label="Cancel new section" onClick={()=>setCreatingSection(false)}><X size={15}/></button>
+        </form>}
+        {sectionGroups.map(({section,widgets},sectionIndex)=><section key={section.id||"overview"} className="aaa-widget-page-section" aria-label={section.title+" section"}>
+          <header className="aaa-widget-section-header"><div><small>SECTION {sectionIndex+1}</small>
+            {renamingSection===section.id&&section.id?<form className="aaa-widget-section-rename" onSubmit={e=>{e.preventDefault();renameSection(section.id)}}>
+              <input autoFocus maxLength={100} aria-label="Rename section" value={sectionDraft} onChange={e=>setSectionDraft(e.target.value)}/>
+              <button type="submit" disabled={!sectionDraft.trim()} aria-label="Save section name"><Check size={15}/></button>
+              <button type="button" onClick={()=>setRenamingSection(null)} aria-label="Cancel section rename"><X size={15}/></button>
+            </form>:<h2>{section.title}</h2>}
+            <p>{widgets.length} {widgets.length===1?"widget":"widgets"} · reusable database views</p></div>
+            {arrange&&<div className="aaa-widget-section-actions">
+              {section.id&&<><button disabled={pageSections.findIndex(s=>s.id===section.id)===0} aria-label={`Move ${section.title} section up`} onClick={()=>shiftSection(section.id,-1)}><ArrowUp size={15}/></button>
+                <button disabled={pageSections.findIndex(s=>s.id===section.id)===pageSections.length-1} aria-label={`Move ${section.title} section down`} onClick={()=>shiftSection(section.id,1)}><ArrowDown size={15}/></button>
+                <button aria-label={`Rename ${section.title} section`} onClick={()=>{setRenamingSection(section.id);setSectionDraft(section.title)}}><Pencil size={15}/></button>
+                <button aria-label={`Remove ${section.title} section`} onClick={()=>void deleteSection(section.id)}><Trash2 size={15}/></button></>}
+              <button className="aaa-widget-secondary" onClick={()=>{setPickerSection(section.id);setAddWidget(true)}}><Plus size={14}/> Widget</button>
+            </div>}
+          </header>
+          <div className="aaa-widget-canvas" aria-label={section.title+" widgets"}>
+            {widgets.map(widget=>widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id)))}
+            {arrange&&!widgets.length&&<button className="aaa-widget-empty-slot" style={{gridColumn:"span 6",gridRow:"span 1"}} onClick={()=>{setPickerSection(section.id);setAddWidget(true)}}><Plus size={20}/> Add a widget</button>}
+            {!widgets.length&&!arrange&&<div className="aaa-widget-section-empty">No widgets in this section yet. Switch to Arrange mode to add some.</div>}
+          </div>
+        </section>)}
+        {!instanceList.length&&!arrange&&<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>Create a new widget here or enter Arrange mode to add an existing one.</p><button disabled={busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create widget</button></div>}
       </div>:<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>Create a page to start organizing your widgets.</p><button onClick={()=>setCreatingPage(true)}><Plus size={16}/> New page</button></div>}
     </>}
   </section>;

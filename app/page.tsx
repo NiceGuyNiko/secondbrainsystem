@@ -284,15 +284,17 @@ function Workspace() {
   const contextualTitle = calendarSection
     ? "Calendars"
     : section === "Developing IT" ? "Developing IT"
-    : section === "Library" ? "Library"
-    : section === "Goals" ? "Goals"
+    : section === "Library" ? ownedPageTitle(displayName,"Library")
+    : section === "Goals" ? ownedPageTitle(displayName,"Goals")
     : section === "Databases"
       ? "Databases"
     : section === "Resources" || section === "Think About It"
       ? "Collections"
       : section === "Settings"
-        ? "Settings"
+        ? ownedPageTitle(displayName,"Settings")
         : section;
+  const navigationLabel=(name:Section)=>(["Calendar","Goals","Library","Settings"] as Section[]).includes(name)
+    ?ownedPageTitle(displayName,name):name;
   const contextClick = (id: string) => {
     if (calendarSection)
       setHidden((old) =>
@@ -437,8 +439,8 @@ function Workspace() {
           ).filter(x=>x.name==="Fluid Calendar"?effective.fluidCalendar:x.name==="Think About It"?effective.thinkAboutIt:true).map(({ name, icon: Icon, badge }) => (
             <button
               key={name}
-              title={name}
-              aria-label={name}
+              title={navigationLabel(name)}
+              aria-label={navigationLabel(name)}
               aria-current={section === name ? "page" : undefined}
               className={`aaa-nav-row ${section === name ? "active" : ""}`}
               onClick={() => nav(name)}
@@ -446,7 +448,7 @@ function Workspace() {
               <span className="aaa-icon-slot">
                 <Icon size={21} />
               </span>
-              <span className="aaa-sidebar-label">{name}</span>
+              <span className="aaa-sidebar-label">{navigationLabel(name)}</span>
               <small
                 className={`aaa-badge aaa-sidebar-label aaa-badge-${badge.toLowerCase()}`}
               >

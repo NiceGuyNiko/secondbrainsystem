@@ -1,6 +1,7 @@
 // Fully isolated developer-preview data. These are illustrative records, not Nobody Special canon.
 // IDs are created once and persisted by DemoDatabase; widget views always reuse the same records.
 import {DEMO_USER_ID,type Row,type Tables} from "./client";
+import {demoPageSectionIndex,demoPageSectionTitles} from "./page-sections";
 
 type Source={name:string;icon:string;fields:[string,string][];items:{title:string;values:Record<string,string|number|boolean>}[]};
 const sourceData:Source[]=[
@@ -102,7 +103,7 @@ export function widgetDemoFixtures(now=new Date()):Tables{
     connect("Tasks",task,"Project","Projects","Nobody Special — Book One");
   connect("Tasks","Test World View widgets","Project","Projects","All About Action V5");
 
-  const definitions:Row[]=[],pages:Row[]=[],pageWidgets:Row[]=[];
+  const definitions:Row[]=[],pages:Row[]=[],pageWidgets:Row[]=[],sections:Row[]=[];
   const define=(name:string,source:string,renderer:"table"|"list"|"cards"|"timeline",extra:Row={})=>{
     const id=crypto.randomUUID();
     definitions.push({id,user_id:DEMO_USER_ID,name,database_id:dbIds.get(source),view_id:null,created_at:created,config:{renderer,density:"comfortable",color:"theme",...extra}});
@@ -115,12 +116,17 @@ export function widgetDemoFixtures(now=new Date()):Tables{
   };
   const page=(title:string,area:"library"|"goals",position:number,widgets:{id:string;width:number;height:number}[])=>{
     const pageId=crypto.randomUUID();pages.push({id:pageId,user_id:DEMO_USER_ID,area,title,position,created_at:created});
-    widgets.forEach(({id,width,height},index)=>pageWidgets.push({id:crypto.randomUUID(),user_id:DEMO_USER_ID,page_id:pageId,definition_id:id,kind:"database",title:null,config:{},width,height,position:index}));
+    const pageSections=demoPageSectionTitles(title).map((name,index)=>{
+      const section={id:crypto.randomUUID(),user_id:DEMO_USER_ID,page_id:pageId,title:name,position:index,created_at:created};
+      sections.push(section);return section;
+    });
+    widgets.forEach(({id,width,height},index)=>pageWidgets.push({id:crypto.randomUUID(),user_id:DEMO_USER_ID,page_id:pageId,definition_id:id,kind:"database",title:null,
+      config:{sectionId:pageSections[Math.min(demoPageSectionIndex(title,index),pageSections.length-1)].id},width,height,position:index}));
   };
   page("World View","library",0,[{id:w.eras,width:6,height:2},{id:w.events,width:6,height:2},{id:w.moments,width:6,height:3},{id:w.perspectives,width:6,height:3}]);
   page("Character Atlas","library",1,[{id:w.characters,width:8,height:3},{id:w.perspectives,width:4,height:3}]);
   page("Book One Studio","library",2,[{id:w.scenes,width:6,height:3},{id:w.moments,width:6,height:3},{id:w.projectGoals,width:12,height:2}]);
   page("Goals Overview","goals",0,[{id:w.vision,width:6,height:3},{id:w.projectGoals,width:6,height:3},{id:w.projects,width:6,height:3},{id:w.tasks,width:6,height:3}]);
   return {db_databases:databases,db_properties:properties,db_views:views,db_records:records,db_relations:relations,db_perspectives:perspectives,
-    aaa_widget_definitions:definitions,aaa_library_pages:pages,aaa_page_widgets:pageWidgets,user_items:items};
+    aaa_widget_definitions:definitions,aaa_library_pages:pages,aaa_page_sections:sections,aaa_page_widgets:pageWidgets,user_items:items};
 }

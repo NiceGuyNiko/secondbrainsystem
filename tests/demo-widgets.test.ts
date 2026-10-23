@@ -4,6 +4,7 @@ import {DemoDatabase,createDemoClient,DEMO_STORAGE_KEY} from "../lib/demo/client
 import {demoSeed} from "../lib/demo/seed";
 import {defaultSettings,parsePreferences,primaryOf,updateActivePreferences} from "../lib/settings/model";
 import {makeDemoWidgetPreview} from "../lib/settings/demo-preview";
+import {widgetSectionId} from "../lib/widget-system";
 
 const memory=()=>{const values=new Map<string,string>();return {values,getItem:(key:string)=>values.get(key)??null,setItem:(key:string,value:string)=>{values.set(key,value)},removeItem:(key:string)=>{values.delete(key)}}};
 test("developer fixtures provide linked world, character, book and goals pages using canonical records",()=>{
@@ -16,6 +17,12 @@ test("developer fixtures provide linked world, character, book and goals pages u
   assert.equal(new Set((seed.db_records??[]).map(r=>r.record_id)).size,seed.db_records.length);
   const ids=new Set((seed.aaa_widget_definitions??[]).map(d=>d.id));
   for(const placement of seed.aaa_page_widgets??[])assert.ok(ids.has(placement.definition_id),"every page widget references a reusable master");
+  const sections=new Map((seed.aaa_page_sections??[]).map(s=>[s.id,s]));
+  assert.equal(sections.size,8,"two sample sections per page");
+  for(const placement of seed.aaa_page_widgets??[]){
+    const section=sections.get(widgetSectionId(placement as never));
+    assert.equal(section?.page_id,placement.page_id,"every placement belongs to a section on its own page");
+  }
 });
 test("developer demo widgets and new databases save and reload without Supabase",async()=>{
   const storage=memory(),db=new DemoDatabase(storage,demoSeed),client=createDemoClient(db);
@@ -23,6 +30,8 @@ test("developer demo widgets and new databases save and reload without Supabase"
   const master=(await client.from("aaa_widget_definitions").insert({name:"Sample report",config:{renderer:"cards"}}).select("id,name").single()).data as {id:string};
   const instance=(await client.from("aaa_page_widgets").insert({page_id:page.id,definition_id:master.id,kind:"database",position:4}).select("id,definition_id").single()).data as {id:string;definition_id:string};
   assert.equal(instance.definition_id,master.id);
+  const section=(await client.from("aaa_page_sections").select("id,title").eq("page_id",page.id).order("position").limit(1).single()).data as {id:string};
+  assert.equal((await client.from("aaa_page_sections").update({title:"My World History"}).eq("id",section.id)).error,null);
   const freshDbId=crypto.randomUUID();
   assert.equal((await client.rpc("db_create_database",{p_id:freshDbId,p_name:"Writing Experiments"})).error,null);
   const recordId=crypto.randomUUID();
@@ -31,6 +40,7 @@ test("developer demo widgets and new databases save and reload without Supabase"
   assert.ok(storage.values.get(DEMO_STORAGE_KEY)?.includes("Writing Experiments"));
   const reloaded=new DemoDatabase(storage,demoSeed);
   assert.ok(reloaded.rows("aaa_page_widgets").some(w=>w.id===instance.id));
+  assert.ok(reloaded.rows("aaa_page_sections").some(s=>s.id===section.id&&s.title==="My World History"));
   assert.ok(reloaded.rows("db_records").some(r=>r.record_id===recordId));
 });
 test("older demo browsers gain widget examples without losing their original data",()=>{
@@ -44,6 +54,22 @@ test("older demo browsers gain widget examples without losing their original dat
   assert.ok(migrated.rows("aaa_library_pages").some(page=>page.title==="Goals Overview"));
   assert.ok(migrated.rows("db_records").length>10);
   assert.equal(new DemoDatabase(storage,demoSeed).rows("aaa_library_pages").length,4,"reload does not duplicate fixture pages");
+});
+test("old widget previews acquire sections without replacing their saved page/widget IDs",()=>{
+  const storage=memory(),old=demoSeed(new Date(2026,9,23));
+  delete old.aaa_page_sections;
+  const originalPageId=old.aaa_library_pages[0].id;
+  const originalWidgetId=old.aaa_page_widgets[0].id;
+  storage.setItem(DEMO_STORAGE_KEY,JSON.stringify({version:1,tables:old}));
+  const migrated=new DemoDatabase(storage,demoSeed);
+  assert.equal(migrated.rows("aaa_library_pages")[0].id,originalPageId);
+  assert.equal(migrated.rows("aaa_page_widgets")[0].id,originalWidgetId);
+  const sections=new Map(migrated.rows("aaa_page_sections").map(section=>[section.id,section]));
+  for(const widget of migrated.rows("aaa_page_widgets")){
+    const sectionId=(widget.config as {sectionId?:string}).sectionId;
+    assert.equal(sections.get(sectionId)?.page_id,widget.page_id);
+  }
+  assert.equal(new DemoDatabase(storage,demoSeed).rows("aaa_page_sections").length,8,"reload does not duplicate sections");
 });
 test("studio style is per profile and developer Darkest Night bootstraps once",()=>{
   const initial=defaultSettings();
