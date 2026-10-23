@@ -1764,3 +1764,10 @@ input[type="range"]{
 .aaa-widget-card.aaa-widget-target-new-row::after{display:none}
 .aaa-widget-gap-setting{border-top:1px solid var(--border);padding:18px 0 10px;margin-top:18px}
 .aaa-widget-gap-setting h3{margin:0 0 8px;font-size:13px}
+
+/* Full-width row drop target occupies the comfortable space between bands;
+   it is mounted only during a drag, so ordinary editing is unaffected. */
+.aaa-widget-band-row-drop{
+  position:absolute;left:0;right:0;bottom:-19px;height:34px;z-index:14;
+  background:transparent;pointer-events:auto;
+}

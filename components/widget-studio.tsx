@@ -815,6 +815,13 @@ export default function WidgetStudio(p:Props){
                     onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint({sectionId:section.id,targetId:lane.widgets[0]?.id??null,edge:"right"})}}
                     onPointerDown={e=>startResize(e,lane.widgets[0],"x")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}</div>)}
                 {used<12&&<div className="aaa-widget-layout-spacer" style={{flex:`${12-used} 1 0`}}/>}
+                {arrange&&drag&&band.lanes.length>0&&(()=>{
+                  const lastLane=band.lanes[band.lanes.length-1];
+                  const afterId=lastLane.widgets[lastLane.widgets.length-1]?.id??null;
+                  return <div className="aaa-widget-band-row-drop" role="presentation"
+                    onDragOver={e=>{e.preventDefault();e.stopPropagation();if(afterId!==drag)hint({sectionId:section.id,targetId:afterId,edge:"new-row"})}}
+                    onDrop={e=>{e.preventDefault();e.stopPropagation();if(afterId!==drag)commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"});else{setDrag(null);setDropHint(null)}}}/>;
+                })()}
               </div>;
             })}
             {arrange&&!widgets.length&&<button className="aaa-widget-empty-slot" onClick={()=>void createAndPlaceWidget(section.id)}><Plus size={20}/> Add a widget</button>}
