@@ -7,6 +7,7 @@ import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import {placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
+import DatabasePropertyValue from "@/components/database-property-value";
 import PlanningWorkspace from "@/components/planning-workspace";
 
 type Mode="library"|"goals"|"widgets";
@@ -588,9 +589,11 @@ export default function WidgetStudio(p:Props){
       }
       return title;
     };
-    const fieldValue=(record:WidgetRecord,prop:WidgetProperty)=>prop.type==="relation"
+    const rawFieldValue=(record:WidgetRecord,prop:WidgetProperty)=>prop.type==="relation"
       ?viewContext.relationTargets(record.record_id,prop.id).join(", ")
       :String(record.values_json[prop.id]??"");
+    const formattedField=(record:WidgetRecord,prop:WidgetProperty)=>prop.type==="relation"
+      ?rawFieldValue(record,prop):<DatabasePropertyValue property={prop} value={record.values_json[prop.id]}/>;
     const detailRecord=data.records.find(r=>r.record_id===detail?.record&&detail.widget===widgetId);
     const open=(id:string)=>{if(cfg.openBehavior==="source"){p.onOpenRecord(id);return}setDetail({widget:widgetId,record:id})};
     return <>
@@ -604,12 +607,12 @@ export default function WidgetStudio(p:Props){
       </div>}
       {records.length===0?<div className="aaa-widget-empty">No matching records in {db.name}. Adjust filters or add a record.</div>
       :cfg.renderer==="table"?<div className="aaa-widget-table-scroll"><table className="aaa-widget-table"><thead><tr><th>Record</th>{columns.map(f=><th key={f.id}>{f.name}</th>)}</tr></thead><tbody>
-        {records.map(r=><tr key={r.record_id}><td><button onClick={()=>open(r.record_id)}>{numberedName(r.record_id)}</button></td>{columns.map(f=><td key={f.id}>{fieldValue(r,f)||"—"}</td>)}</tr>)}
+        {records.map(r=><tr key={r.record_id}><td><button onClick={()=>open(r.record_id)}>{numberedName(r.record_id)}</button></td>{columns.map(f=><td key={f.id}>{formattedField(r,f)}</td>)}</tr>)}
       </tbody></table></div>
       :<div className={"aaa-widget-records aaa-widget-records-"+cfg.renderer}>{records.map(r=><button key={r.record_id} className="aaa-widget-record" onClick={()=>open(r.record_id)}>
         {cfg.renderer==="timeline"&&<span className="aaa-widget-sequence">{db.id===eventDb?.id?address.get(r.record_id)||r.sequence_no:r.sequence_no}</span>}
         <strong>{numberedName(r.record_id)}</strong>
-        <span>{columns.filter(f=>fieldValue(r,f)).slice(0,cfg.renderer==="list"?1:3).map(f=><small key={f.id}>{f.name}: {fieldValue(r,f)}</small>)}</span>
+        <span>{columns.filter(f=>rawFieldValue(r,f)).slice(0,cfg.renderer==="list"?1:3).map(f=><small key={f.id}>{f.name}: {formattedField(r,f)}</small>)}</span>
         <ChevronRight size={16}/>
       </button>)}</div>}
       {cfg.allowCreate&&cfg.editable&&<form className="aaa-widget-new-record" onSubmit={e=>{e.preventDefault();void createRecord(db.id,widgetId)}}>
@@ -621,12 +624,12 @@ export default function WidgetStudio(p:Props){
         <p>Record {detailRecord.sequence_no} · {db.name}</p>
         {fields.map(f=><label key={f.id} className="aaa-widget-field">{f.name}
           {cfg.editable&&f.type!=="relation"&&f.type!=="select"&&f.type!=="checkbox"
-            ?<input key={detailRecord.record_id+f.id+detailRecord.version} defaultValue={fieldValue(detailRecord,f)} onBlur={e=>void saveProperty(detailRecord,f,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
+            ?<input key={detailRecord.record_id+f.id+detailRecord.version} defaultValue={rawFieldValue(detailRecord,f)} onBlur={e=>void saveProperty(detailRecord,f,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
             :cfg.editable&&f.type==="select"
-            ?<select value={fieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="">None</option>{Array.isArray(f.config.options)&&f.config.options.filter((o):o is string=>typeof o==="string").map(o=><option key={o}>{o}</option>)}</select>
+            ?<select value={rawFieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="">None</option>{Array.isArray(f.config.options)&&f.config.options.filter((o):o is string=>typeof o==="string").map(o=><option key={o}>{o}</option>)}</select>
             :cfg.editable&&f.type==="checkbox"
-            ?<select value={fieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="true">Yes</option><option value="false">No</option></select>
-            :<span>{fieldValue(detailRecord,f)||"—"}</span>}
+            ?<select value={rawFieldValue(detailRecord,f)} onChange={e=>void saveProperty(detailRecord,f,e.target.value)}><option value="true">Yes</option><option value="false">No</option></select>
+            :<span>{formattedField(detailRecord,f)}</span>}
         </label>)}
         <button className="aaa-widget-add-rule" onClick={()=>p.onOpenRecord(detailRecord.record_id)}>Open original database page <ChevronRight size={14}/></button>
       </div>}

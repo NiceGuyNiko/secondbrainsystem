@@ -115,6 +115,33 @@ export default function DatabasePropertyManager({
               {PROPERTY_TYPES.map((type)=><option key={type.id} value={type.id}>{type.label}{type.phase!=="2"?" · configure now, enable later":""}</option>)}
             </select>
           </label>
+          {draft.type==="number"&&<div className="aaa-db-property-extra">
+            <label>Number display
+              <select value={draft.config.numberFormat??(/progress|completion/i.test(draft.label)?"percent":"number")}
+                onChange={e=>config({numberFormat:e.target.value as "number"|"percent"|"bar"|"currency"})}>
+                <option value="number">Number</option><option value="percent">Percentage (%)</option>
+                <option value="bar">Progress bar + %</option><option value="currency">Currency</option>
+              </select>
+            </label>
+            <label>Decimal places<select value={draft.config.decimalPlaces??0} onChange={e=>config({decimalPlaces:Number(e.target.value)})}>
+              {[0,1,2,3].map(n=><option key={n} value={n}>{n}</option>)}
+            </select></label>
+            {draft.config.numberFormat==="currency"&&<label>Currency<select value={draft.config.currencyCode??"CAD"}
+              onChange={e=>config({currencyCode:e.target.value})}>
+              {["CAD","USD","EUR","GBP"].map(code=><option key={code}>{code}</option>)}
+            </select></label>}
+            <p>Progress is a number between 0 and 100. A stored value of 65 displays as 65% when Percentage or Progress bar is selected.</p>
+          </div>}
+          {draft.type==="date"&&<label>Date display<select value={draft.config.dateFormat??"iso"}
+            onChange={e=>config({dateFormat:e.target.value as "iso"|"short"|"long"})}>
+            <option value="iso">ISO (2026-10-23)</option><option value="short">Short (Oct 23, 2026)</option>
+            <option value="long">Long (October 23, 2026)</option>
+          </select></label>}
+          {draft.type==="checkbox"&&<label>Checkbox display<select value={draft.config.checkboxFormat??"yes-no"}
+            onChange={e=>config({checkboxFormat:e.target.value as "yes-no"|"done"|"icon"})}>
+            <option value="yes-no">Yes / No</option><option value="done">Done / Not done</option>
+            <option value="icon">✓ / ○</option>
+          </select></label>}
           {(draft.type==="select"||draft.type==="multi_select")&&<label>Options (one per line) <HelpTip subject="Select options">Enter the choices users can select. Existing saved choices are protected when you edit the list.</HelpTip><textarea rows={5} value={optionText} onChange={(e)=>setOptionText(e.target.value)} placeholder={"High\nMedium\nLow"}/></label>}
           {draft.type==="relation"&&<div className="aaa-db-property-extra">
             <strong>Allowed destination databases <HelpTip subject="Allowed relations">Only pages from the checked databases will be eligible to connect to this relation. The actual page picker arrives in Phase 3.</HelpTip></strong>

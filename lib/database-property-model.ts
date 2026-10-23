@@ -1,5 +1,6 @@
 import type { DatabaseCategory } from "./database-categories";
 import type { PlanningRecord } from "./planning";
+import {formatDatabasePropertyValue} from "./db-property-format";
 
 export type PropertyType =
   | "text" | "long_text" | "number" | "date" | "checkbox"
@@ -14,6 +15,11 @@ export type PropertyConfig = {
   target_property_id?: string;
   calculation?: "show_original" | "count_records" | "count_nonempty" | "count_unique" | "sum" | "average" | "min" | "max" | "earliest" | "latest";
   filters?: unknown[];
+  numberFormat?:"number"|"percent"|"bar"|"currency";
+  decimalPlaces?:number;
+  currencyCode?:string;
+  dateFormat?:"iso"|"short"|"long";
+  checkboxFormat?:"yes-no"|"done"|"icon";
 };
 
 export type DatabaseProperty = {
@@ -112,10 +118,7 @@ export function withPropertyValue(record: PlanningRecord, prop: DatabaseProperty
 }
 
 export function propertyDisplay(prop: DatabaseProperty, value: unknown) {
-  if (value === undefined || value === null || value === "") return "—";
-  if (prop.type === "checkbox") return value ? "Yes" : "No";
-  if (Array.isArray(value)) return value.join(", ") || "—";
-  return String(value);
+  return formatDatabasePropertyValue(prop,value);
 }
 
 export const builtinProperties = [

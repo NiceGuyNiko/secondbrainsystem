@@ -1,4 +1,6 @@
 "use client";
+import {formatDatabasePropertyValue,numberFormatOf,NUMBER_DISPLAY_OPTIONS} from "@/lib/db-property-format";
+import DatabasePropertyValue from "@/components/database-property-value";
 import {useCallback,useEffect,useState} from "react";
 import {Check,ChevronRight,Database,LayoutGrid,Plus,RefreshCw,Settings2,Trash2,X} from "lucide-react";
 import {supabase} from "@/lib/supabase";
@@ -57,7 +59,7 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
     return databases.find(db=>db.name.toLowerCase().replace(/s$/,"")===name)?.id??"";
   };
   const linkedNames=(record:RecordRow,field:Field)=>links.filter(l=>l.source_record_id===record.record_id&&l.property_id===field.id).map(l=>titleFor(l.target_record_id)).join(", ");
-  const cellText=(record:RecordRow,field:Field)=>field.type==="relation"?linkedNames(record,field):field.type==="checkbox"?(record.values_json[field.id]===true?"Yes":"No"):valueText(record.values_json[field.id]);
+  const cellText=(record:RecordRow,field:Field)=>field.type==="relation"?linkedNames(record,field):formatDatabasePropertyValue(field,record.values_json[field.id]);
   const showError=(e:unknown)=>setError(e instanceof Error?e.message:String(e));
 
   const createDatabase=async()=>{
@@ -151,8 +153,11 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
       <option value="">None</option>{[...new Set([...optionsOf(field),...(value?[String(value)]:[])])].map(option=><option key={option} value={option}>{option}</option>)}
     </select>;
     if(field.type==="long_text")return <textarea key={record.record_id+field.id+record.version} aria-label={field.name} defaultValue={valueText(value)} rows={3} onBlur={e=>void saveValue(record,field,e.target.value)}/>;
-    return <input key={record.record_id+field.id+record.version} aria-label={field.name} type={field.type==="number"?"number":field.type==="date"?"date":"text"}
-      defaultValue={valueText(value)} placeholder="Empty" onBlur={e=>void saveValue(record,field,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>;
+    return <div className="aaa-demo-db-value-editor">
+      <input key={record.record_id+field.id+record.version} aria-label={field.name} type={field.type==="number"?"number":field.type==="date"?"date":"text"}
+        defaultValue={valueText(value)} placeholder="Empty" onBlur={e=>void saveValue(record,field,e.target.value)} onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.blur()}}/>
+      {field.type==="number"&&numberFormatOf(field)!=="number"&&<small>Displayed as {formatDatabasePropertyValue(field,value)} · stored as a number</small>}
+    </div>;
   };
 
   return <section className="aaa-demo-database-studio aaa-demo-db-workshop-v2">
@@ -193,7 +198,8 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
           <thead><tr><th>Name</th>{visibleFields.map(field=><th key={field.id}>{field.name}</th>)}<th aria-label="Open page"/></tr></thead>
           <tbody>{visibleRecords.map(record=><tr key={record.record_id} className={openRecord===record.record_id?"selected":""}>
             <td><button className="aaa-demo-db-record-name" onClick={()=>setOpenRecord(openRecord===record.record_id?null:record.record_id)}>{titleFor(record.record_id)}</button></td>
-            {visibleFields.map(field=><td key={field.id}>{cellText(record,field)||<span className="aaa-demo-db-empty-value">—</span>}</td>)}
+            {visibleFields.map(field=><td key={field.id}>{field.type==="number"&&numberFormatOf(field)==="bar"
+              ?<DatabasePropertyValue property={field} value={record.values_json[field.id]}/>:cellText(record,field)}</td>)}
             <td><button aria-label={"Open "+titleFor(record.record_id)} onClick={()=>setOpenRecord(record.record_id)}><ChevronRight size={15}/></button></td>
           </tr>)}</tbody>
         </table></div>
@@ -234,6 +240,35 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
               }else void modifyField(field.id,{type:e.target.value});
             }}>
               {types.map(t=><option key={t} value={t}>{t.replace("_"," ")}</option>)}</select></label></div>
+          {field.type==="number"&&<div className="aaa-demo-db-property-extra aaa-demo-db-display-settings">
+            <label>Display numbers as<select aria-label={"Display format for "+field.name} value={numberFormatOf(field)}
+              onChange={e=>void modifyField(field.id,{config:{...field.config,numberFormat:e.target.value}})}>
+              {NUMBER_DISPLAY_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+            </select></label>
+            <label>Decimal places<select aria-label={"Decimal places for "+field.name}
+              value={typeof field.config.decimalPlaces==="number"?field.config.decimalPlaces:0}
+              onChange={e=>void modifyField(field.id,{config:{...field.config,decimalPlaces:Number(e.target.value)}})}>
+              {[0,1,2,3].map(n=><option key={n} value={n}>{n}</option>)}
+            </select></label>
+            {numberFormatOf(field)==="currency"&&<label>Currency<select aria-label={"Currency for "+field.name}
+              value={typeof field.config.currencyCode==="string"?field.config.currencyCode:"CAD"}
+              onChange={e=>void modifyField(field.id,{config:{...field.config,currencyCode:e.target.value}})}>
+              {["CAD","USD","EUR","GBP"].map(code=><option key={code}>{code}</option>)}
+            </select></label>}
+            {(numberFormatOf(field)==="percent"||numberFormatOf(field)==="bar")&&<small>65 is shown as 65%. Enter values from 0 to 100; the stored number is unchanged.</small>}
+          </div>}
+          {field.type==="date"&&<label className="aaa-demo-db-property-extra">Date display
+            <select aria-label={"Date display for "+field.name} value={typeof field.config.dateFormat==="string"?field.config.dateFormat:"iso"}
+              onChange={e=>void modifyField(field.id,{config:{...field.config,dateFormat:e.target.value}})}>
+              <option value="iso">2026-10-23</option><option value="short">Oct 23, 2026</option><option value="long">October 23, 2026</option>
+            </select>
+          </label>}
+          {field.type==="checkbox"&&<label className="aaa-demo-db-property-extra">Checkbox display
+            <select aria-label={"Checkbox display for "+field.name} value={typeof field.config.checkboxFormat==="string"?field.config.checkboxFormat:"yes-no"}
+              onChange={e=>void modifyField(field.id,{config:{...field.config,checkboxFormat:e.target.value}})}>
+              <option value="yes-no">Yes / No</option><option value="done">Done / Not done</option><option value="icon">✓ / ○</option>
+            </select>
+          </label>}
           {field.type==="select"&&<label className="aaa-demo-db-property-extra">Options<input key={field.id+JSON.stringify(field.config)} aria-label={"Options for "+field.name}
             defaultValue={optionsOf(field).join(", ")} placeholder="e.g. Next, Doing, Done" onBlur={e=>{
               const options=[...new Set(e.target.value.split(",").map(x=>x.trim()).filter(Boolean))];

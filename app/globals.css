@@ -1771,3 +1771,53 @@ input[type="range"]{
   position:absolute;left:0;right:0;bottom:-19px;height:34px;z-index:14;
   background:transparent;pointer-events:auto;
 }
+
+/* Mobile Companion: one truly viewport-centered canvas, independent of desktop column width.
+   The later desktop rule previously reset position:relative after mobile fixed styling. */
+.aaa-companion-mobile-second{display:none!important}
+@media (max-width:767px){
+  .aaa-hybrid-companion,
+  .aaa-hybrid-companion.aaa-hybrid-overlay,
+  .aaa-hybrid-companion.aaa-hybrid-pinned{
+    position:fixed!important;
+    inset:0!important;
+    left:0!important;right:0!important;top:0!important;bottom:0!important;
+    width:100vw!important;width:100dvw!important;
+    max-width:100vw!important;max-width:100dvw!important;
+    min-width:0!important;
+    height:100vh!important;height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;transform:none!important;
+    flex:0 0 auto!important;
+    box-sizing:border-box;
+    overflow:hidden;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    border:0;
+    z-index:110;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header{box-sizing:border-box;min-width:0;width:100%;gap:6px}
+  .aaa-hybrid-companion .aaa-companion-header-tabs{min-width:0;max-width:100%;flex:1 1 auto;overflow-x:auto;overscroll-behavior-x:contain}
+  .aaa-hybrid-companion .aaa-companion-header-actions{flex:0 0 auto;margin-left:0;gap:5px}
+  .aaa-hybrid-companion .aaa-companion-pin-action{display:none!important}
+  .aaa-hybrid-companion .aaa-companion-mobile-second{display:grid!important;width:34px;height:34px;min-width:34px}
+  .aaa-hybrid-companion .aaa-companion-mobile-second[aria-expanded="true"]{color:var(--accent-text);border-color:var(--accent)}
+  .aaa-hybrid-companion .aaa-hybrid-sections{width:100%;min-width:0;max-width:100%;overflow:hidden}
+  .aaa-hybrid-companion .aaa-hybrid-slot,
+  .aaa-hybrid-companion .aaa-hybrid-slot-body{width:100%;min-width:0}
+  .aaa-hybrid-companion .aaa-widget-config{width:100%;min-width:0;max-width:100%;box-sizing:border-box;overflow-x:hidden;overflow-y:auto}
+  .aaa-hybrid-companion .aaa-widget-config-pair{grid-template-columns:minmax(0,1fr)}
+  .aaa-hybrid-companion .aaa-widget-config-pair>*,.aaa-hybrid-companion .aaa-widget-field{min-width:0;max-width:100%}
+}
+
+/* Canonical number/date/checkbox presentation options. Values are never
+   converted in storage; only their visual display changes. */
+.aaa-property-progress{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-width:108px;vertical-align:middle}
+.aaa-property-progress-track{display:block;width:72px;max-width:45%;height:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
+.aaa-property-progress-track>span{display:block;height:100%;border-radius:100px;background:var(--accent);transition:width .12s ease}
+.aaa-property-progress-label{color:var(--text);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.aaa-demo-db-value-editor{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:100%;min-width:0}
+.aaa-demo-db-value-editor>small{color:var(--muted);font-size:10px;line-height:1.4}
+.aaa-demo-db-property-row .aaa-demo-db-display-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;padding-top:10px}
+.aaa-demo-db-display-settings>small{grid-column:1/-1;color:var(--muted)}
+.aaa-widget-db-property-format{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);grid-column:1/-1}
+.aaa-widget-db-property-format select{min-width:0;width:100%;color:var(--text)}

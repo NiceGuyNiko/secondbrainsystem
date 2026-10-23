@@ -1,6 +1,7 @@
 "use client";
 import {useState} from "react";
 import {Check,Database,Plus,X} from "lucide-react";
+import {numberFormatOf,NUMBER_DISPLAY_OPTIONS} from "@/lib/db-property-format";
 import type {WidgetConfigureTarget} from "@/lib/widget-system";
 
 const types=["text","number","date","checkbox","select","relation"];
@@ -36,6 +37,25 @@ export default function WidgetDatabaseEditorPanel({target,databaseId,onClose}:{t
         onBlur={e=>{const name=e.target.value.trim();if(name&&name!==field.name&&target.onUpdateProperty)void save(()=>target.onUpdateProperty!(field.id,{name}))}}/>
       <select aria-label={`Type of property ${field.name}`} value={field.type} disabled={saving}
         onChange={e=>{if(target.onUpdateProperty)void save(()=>target.onUpdateProperty!(field.id,{type:e.target.value}))}}>{types.map(type=><option key={type}>{type}</option>)}</select>
+
+      {field.type==="number"&&<label className="aaa-widget-db-property-format">Display
+        <select aria-label={`Display format for ${field.name}`} value={numberFormatOf(field)} disabled={saving}
+          onChange={e=>{if(target.onUpdateProperty)void save(()=>target.onUpdateProperty!(field.id,{config:{...field.config,numberFormat:e.target.value}}))}}>
+          {NUMBER_DISPLAY_OPTIONS.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </label>}
+      {field.type==="date"&&<label className="aaa-widget-db-property-format">Date display
+        <select aria-label={`Date display for ${field.name}`} value={typeof field.config.dateFormat==="string"?field.config.dateFormat:"iso"} disabled={saving}
+          onChange={e=>{if(target.onUpdateProperty)void save(()=>target.onUpdateProperty!(field.id,{config:{...field.config,dateFormat:e.target.value}}))}}>
+          <option value="iso">ISO</option><option value="short">Short date</option><option value="long">Long date</option>
+        </select>
+      </label>}
+      {field.type==="checkbox"&&<label className="aaa-widget-db-property-format">Checkbox display
+        <select aria-label={`Checkbox display for ${field.name}`} value={typeof field.config.checkboxFormat==="string"?field.config.checkboxFormat:"yes-no"} disabled={saving}
+          onChange={e=>{if(target.onUpdateProperty)void save(()=>target.onUpdateProperty!(field.id,{config:{...field.config,checkboxFormat:e.target.value}}))}}>
+          <option value="yes-no">Yes / No</option><option value="done">Done / Not done</option><option value="icon">✓ / ○</option>
+        </select>
+      </label>}
     </div>)}{!props.length&&<p>No properties yet. Add one to start designing your database.</p>}</div>
   </section>;
 }

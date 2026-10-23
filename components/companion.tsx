@@ -277,7 +277,13 @@ export default function Companion(p:Props){
       <header className="aaa-hybrid-header">
         {tabList("top",top)}
         <div className="aaa-companion-header-actions">
-          {canPin(p.preference,p.mode)&&<button aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
+          <button type="button" className="aaa-companion-mobile-second" aria-label={drawerHeight>0?"Close second Companion panel":"Open second Companion panel"}
+            aria-expanded={drawerHeight>0} aria-controls="aaa-companion-second-pane"
+            title={drawerHeight>0?"Hide second panel":"Show second panel"}
+            onClick={()=>commitDrawer(drawerHeightRef.current>0?0:Math.max(35,100-p.options.splitPercent))}>
+            <PanelsTopLeft size={19}/>
+          </button>
+          {canPin(p.preference,p.mode)&&<button className="aaa-companion-pin-action" aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
             title={p.mode==="pinned"?"Unpin":"Pin"} onClick={()=>p.onMode(p.mode==="pinned"?"overlay":"pinned")}>
             {p.mode==="pinned"?<PinOff size={17}/>:<Pin size={17}/>}</button>}
           {p.preference!=="column"&&<button aria-label="Close Companion" onClick={()=>p.onMode("closed")}><X size={17}/></button>}
@@ -329,7 +335,7 @@ export default function Companion(p:Props){
             {drawerHeight>0?<ChevronDown size={14}/>:<ChevronUp size={14}/>}
           </span><span className="aaa-companion-pull-track"/>
         </button>
-        {drawerHeight>0&&<div className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
+        {drawerHeight>0&&<div id="aaa-companion-second-pane" className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
           {secondaryHeader()}
           <div className="aaa-hybrid-slot-body">{databaseEditorId&&p.configuration?<WidgetDatabaseEditorPanel target={p.configuration} databaseId={databaseEditorId} onClose={()=>{
             setDatabaseEditorId(null);if(p.options.layout==="single"){drawerHeightRef.current=0;setDrawerHeight(0)}
