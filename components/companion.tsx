@@ -80,7 +80,13 @@ export default function Companion(p:Props){
   const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
   const previewWidthRef=useRef(p.options.widthPx);
   useEffect(()=>{previewWidthRef.current=p.options.widthPx;setPreviewWidth(p.options.widthPx);},[p.options.widthPx]);
-  useEffect(()=>{setDatabaseEditorId(null)},[p.configuration?.id]);
+  useEffect(()=>{
+    const sourceId=p.configuration?.autoEditDatabase?p.configuration.databaseId:null;
+    setDatabaseEditorId(sourceId??null);
+    if(sourceId&&drawerHeightRef.current<35){
+      drawerHeightRef.current=50;setDrawerHeight(50);
+    }
+  },[p.configuration?.id,p.configuration?.databaseId,p.configuration?.autoEditDatabase]);
   const clampWidth=(w:number)=>Math.max(300,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
   const updateWidth=(w:number)=>{
     const next=clampWidth(w);previewWidthRef.current=next;setPreviewWidth(next);return next;

@@ -86,6 +86,8 @@ export type WidgetRelation={source_record_id:string;target_record_id:string;prop
 export type WidgetConfigureTarget={
   id:string;kind:"definition"|"instance";title:string;
   synced?:boolean;
+  /** When a widget is built from inside a database, expose source properties alongside Configure. */
+  autoEditDatabase?:boolean;
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];

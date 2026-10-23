@@ -226,7 +226,7 @@ function Workspace() {
         void save({database_id:databaseId,view_id:viewId,config:{...master.config,filters:[],sorts:[]}});
         setWidgetConfiguration(previous=>previous?.id===id?{...previous,databaseId,viewId,config:widgetConfig({...master.config,filters:[],sorts:[]})}:previous);
       };
-      setWidgetConfiguration({id,kind:"definition",title:master.name,databaseId:db.id,viewId:null,config:widgetConfig(master.config),
+      setWidgetConfiguration({id,kind:"definition",title:master.name,databaseId:db.id,viewId:null,autoEditDatabase:true,config:widgetConfig(master.config),
         databases:allDatabases,views:(views.data??[]) as WidgetView[],properties:(properties.data??[]) as WidgetProperty[],
         onConfig:patch=>{
           const config=widgetConfig({...master.config,...patch});void save({config});
