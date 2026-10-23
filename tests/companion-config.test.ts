@@ -13,7 +13,8 @@ test("Companion preference parsing preserves safe defaults",()=>{
  const c=parseCompanion({splitPercent:900,layout:"invalid",primary:"agenda",secondary:"agenda",visibility:"empty"});
  assert.equal(c.splitPercent,75);
  assert.equal(c.layout,"single");
- assert.equal(c.secondary,"context");
+ // Current default matching mode duplicates tools; the secondary is not swapped away.
+ assert.equal(c.secondary,"agenda");
  assert.equal(c.visibility,"empty");
 });
 
