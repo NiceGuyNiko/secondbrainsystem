@@ -15,6 +15,7 @@ type LightPalette = {
 export type Palette = DarkPalette | LightPalette;
 
 export const palettes: readonly Palette[] = [
+  { id: "darkest-night", name: "Darkest Night", description: "Near-black surfaces with cool starlight accents", scheme: "dark", surface: "#11131E", canvas: "#080A12", accent: "#735BBF", highlight: "#B5A6FF", text: "#F5F4FD" },
   { id: "midnight", name: "Midnight", description: "Deep blue and clear accents", scheme: "dark", surface: "#141D31", canvas: "#0B1021", accent: "#3556A2", highlight: "#91B4FF", text: "#F0F4FF" },
   { id: "slate", name: "Slate", description: "Quiet charcoal neutrals", scheme: "dark", surface: "#222832", canvas: "#15191E", accent: "#526574", highlight: "#B9CCD9", text: "#F1F5F8" },
   { id: "midnight-forest", name: "Forest", description: "Calm forest greens", scheme: "dark", surface: "#121916", canvas: "#0C120F", accent: "#346851", highlight: "#79C7A3", text: "#F2F6F3" },
@@ -108,6 +109,7 @@ export const schemeOf = (p: Appearance) => paletteFor(p.preset).scheme;
 // Nearest designed light theme for each dark theme, used once to move people who had chosen the
 // old automatic Light (or System while their device was light) onto a real light theme.
 export const lightCounterpart: Record<string, string> = {
+  "darkest-night": "porcelain-ink",
   midnight: "blue-hour", slate: "porcelain-ink", "midnight-forest": "sage-studio", "deep-ocean": "blue-hour",
   "warm-botanical": "warm-linen", "neon-evergreen": "sage-studio", "black-gold": "warm-linen",
 };

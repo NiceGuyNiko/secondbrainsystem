@@ -22,6 +22,15 @@ const primaryKeys: Record<string, string[]> = {
   planning_records: ["thought_id"],
   account_preferences: ["user_id"],
   test_profiles: ["id"],
+  aaa_widget_definitions:["id"],
+  aaa_library_pages:["id"],
+  aaa_page_widgets:["id"],
+  db_databases:["id"],
+  db_views:["id"],
+  db_properties:["id"],
+  db_records:["record_id"],
+  db_relations:["source_record_id","property_id","target_record_id"],
+  db_perspectives:["record_id"],
 };
 const clone = <T>(value: T): T => (value === undefined ? value : JSON.parse(JSON.stringify(value)));
 const ok = (data: unknown, status = 200): Result => ({ data, error: null, count: null, status, statusText: "OK" });
@@ -36,7 +45,22 @@ export class DemoDatabase {
   private load(): Tables {
     try {
       const saved = JSON.parse(this.storage?.getItem(DEMO_STORAGE_KEY) || "null");
-      if (saved?.version === 1 && saved.tables && typeof saved.tables === "object") return saved.tables;
+      if (saved?.version === 1 && saved.tables && typeof saved.tables === "object") {
+        const tables=saved.tables as Tables;
+        // Existing developer-demo browsers can receive the new widget fixtures without
+        // losing any prior calendars, Thoughts, profile settings or personal edits.
+        if(!("aaa_widget_definitions" in tables)){
+          const seeded=this.seed();
+          for(const [name,rows] of Object.entries(seeded)){
+            if((name.startsWith("aaa_")||name.startsWith("db_"))&&!(name in tables))tables[name]=rows;
+          }
+          const recordIds=new Set((seeded.db_records??[]).map(row=>row.record_id));
+          const present=new Set((tables.user_items??[]).map(row=>row.id));
+          tables.user_items=[...(tables.user_items??[]),...(seeded.user_items??[]).filter(row=>recordIds.has(row.id)&&!present.has(row.id))];
+          this.persist(tables);
+        }
+        return tables;
+      }
     } catch {}
     const tables = this.seed();
     this.persist(tables);
@@ -62,6 +86,11 @@ export class DemoDatabase {
 function withDefaults(table: string, input: Row): Row {
   const now = new Date().toISOString();
   const row: Row = { ...clone(input) };
+  if(table==="aaa_widget_definitions")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,name:"Untitled widget",database_id:null,view_id:null,config:{},created_at:now,...row};
+  if(table==="aaa_library_pages")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,area:"library",title:"Untitled page",position:0,created_at:now,...row};
+  if(table==="aaa_page_widgets")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,definition_id:null,kind:"database",title:null,config:{},width:6,height:2,position:0,...row};
+  if(table==="db_databases")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,icon:"database",created_at:now,archived_at:null,...row};
+  if(table==="db_records")return {record_id:crypto.randomUUID(),user_id:DEMO_USER_ID,values_json:{},version:1,position:0,archived_at:null,...row};
   if (table === "user_items")
     return { id: crypto.randomUUID(), user_id: DEMO_USER_ID, thought_id: null, content: {}, created_at: now, updated_at: now, ...row };
   if (table === "thought_details")
@@ -196,6 +225,28 @@ function rpc(db: DemoDatabase, name: string, args: Row): Result {
     details.push(withDefaults("thought_details", { thought_id: id }));
   };
   try {
+    if(name==="db_create_record"){
+      const databaseId=String(args.p_database_id),id=String(args.p_id),title=String(args.p_name||"Untitled");
+      if(!db.rows("db_databases").some(d=>d.id===databaseId))return failure("Database does not exist.");
+      const siblings=db.rows("db_records").filter(r=>r.database_id===databaseId),sequence_no=1+Math.max(0,...siblings.map(r=>Number(r.sequence_no)||0));
+      if(items.some(r=>r.id===id))return failure("Record already exists.");
+      items.push(withDefaults("user_items",{id,item_type:"thought",title,content:{blocks:[]}}));
+      db.rows("db_records").push(withDefaults("db_records",{record_id:id,database_id:databaseId,sequence_no,position:siblings.length}));
+      db.save();return ok(id);
+    }
+    if(name==="db_set_value"){
+      const record=db.rows("db_records").find(r=>r.record_id===args.p_record_id);
+      if(!record||record.version!==args.p_version)return failure("Record changed elsewhere. Reload before saving.");
+      record.values_json={...record.values_json as Row,[String(args.p_property_id)]:args.p_value};
+      record.version=Number(record.version)+1;
+      db.save();return ok(record.version);
+    }
+    if(name==="db_create_database"){
+      const title=String(args.p_name||"").trim(),id=String(args.p_id||crypto.randomUUID());
+      if(!title||db.rows("db_databases").some(d=>String(d.name).toLowerCase()===title.toLowerCase()))return failure("Database name already exists or is empty.");
+      db.rows("db_databases").push(withDefaults("db_databases",{id,name:title}));
+      db.save();return ok(id);
+    }
     if (name === "create_thought") {
       createThought(String(args.p_id), String(args.p_title ?? ""), args.p_content ?? {});
       db.save();

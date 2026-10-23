@@ -14,6 +14,7 @@ export type BetaFeatures = { fluidCalendar: boolean; thinkAboutIt: boolean };
 export type ThemeMode = "manual" | "dark" | "light" | "system";
 export type ProfilePreferences = {
   betaFeatures: BetaFeatures;
+  widgetStyle: "classic" | "studio";
   agendaPreference: AgendaPreference;
   lastPinned: boolean;
   companion: CompanionPreferences;
@@ -32,6 +33,7 @@ export type EffectiveFeatures = { developerMode: boolean; fluidCalendar: boolean
 
 export const defaultPreferences: ProfilePreferences = {
   betaFeatures: { fluidCalendar: false, thinkAboutIt: false },
+  widgetStyle: "classic",
   agendaPreference: "toggle",
   lastPinned: false,
   companion: defaultCompanion,
@@ -56,6 +58,7 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
   const p = record(raw), beta = record(p.betaFeatures);
   return {
     betaFeatures: { fluidCalendar: bool(beta.fluidCalendar, fallback.betaFeatures.fluidCalendar), thinkAboutIt: bool(beta.thinkAboutIt, fallback.betaFeatures.thinkAboutIt) },
+    widgetStyle: pick(p.widgetStyle, ["classic", "studio"] as const, fallback.widgetStyle),
     agendaPreference: pick(p.agendaPreference, ["column", "pin", "toggle"] as const, fallback.agendaPreference),
     lastPinned: bool(p.lastPinned, fallback.lastPinned),
     companion: parseCompanion(p.companion),

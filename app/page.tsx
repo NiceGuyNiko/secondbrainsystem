@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useState, useCallback } from "react";
 import BrandMark from "@/components/brand-mark";
 import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
+import DemoDatabaseWorkshop from "@/components/demo-database-workshop";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
@@ -120,6 +121,7 @@ function Workspace() {
     return()=>{live=false};
   },[production]);
   const engineEnabled=staging||(production&&productionEngineState==="ready");
+  const widgetEngineEnabled=engineEnabled||(environment.ok&&environment.data==="demo");
   const stagingDatabaseName=stagingDatabases.find(d=>d.id===stagingDatabaseId)?.name||"Characters";
   const refreshStagingDatabases=useCallback(async()=>{
     const {data,error}=await supabase.from("db_databases").select("id,name")
@@ -579,7 +581,9 @@ function Workspace() {
                 {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
-              {section === "Developing IT" && contextId === "databases" && engineEnabled ? (
+              {section === "Developing IT" && contextId === "databases" && isDemo ? (
+                <DemoDatabaseWorkshop />
+              ) : section === "Developing IT" && contextId === "databases" && engineEnabled ? (
                 <section className="aaa-widget-database-development">
                   <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
                   <div className="aaa-widget-hero-actions"><select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
@@ -592,10 +596,10 @@ function Workspace() {
                   <DatabaseLabErrorBoundary><StagingDatabaseLab key={"development-"+stagingDatabaseName} surface="database" databaseName={stagingDatabaseName}
                     onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/></DatabaseLabErrorBoundary>
                 </section>
-              ) : (section==="Library"||section==="Developing IT"||section==="Goals") && (!engineEnabled || isDemo) ? (
+              ) : (section==="Library"||section==="Developing IT"||section==="Goals") && !widgetEngineEnabled ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note"><h2>Widget system is waiting for the database connection</h2><p>The database engine must be enabled for this environment. Existing planning and database records remain untouched.</p></div>
               ) : (section==="Library"||section==="Goals"||section==="Developing IT") ? (
-                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"}
+                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
                   onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
                   onConfigure={setWidgetConfiguration}
@@ -613,6 +617,7 @@ function Workspace() {
                   demoIsolation={isDemo}
                   agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
                   companion={preferences.companion} onCompanion={setCompanion}
+                  widgetStyle={preferences.widgetStyle} onWidgetStyle={widgetStyle=>setPreferences(()=>({widgetStyle}))}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}

@@ -17,7 +17,7 @@ test("Demo user is signed in automatically and real sign-in is disabled", async 
   const { client } = setup();
   assert.equal((await client.auth.getSession()).data.session?.user.id, DEMO_USER_ID);
   const { data } = await client.from("profiles").select("username,display_name").eq("id", DEMO_USER_ID).single();
-  assert.equal((data as { display_name: string }).display_name, "Demo");
+  assert.equal((data as { display_name: string }).display_name, "Niko");
   assert.ok((await client.auth.signInWithPassword({ email: "x@y.z", password: "secret" })).error);
 });
 

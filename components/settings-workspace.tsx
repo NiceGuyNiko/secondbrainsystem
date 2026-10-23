@@ -1,6 +1,6 @@
 "use client";
 import type { ComponentProps } from "react";
-import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight, PanelRight } from "lucide-react";
+import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight, PanelRight, LayoutGrid } from "lucide-react";
 import AppearanceSettings from "./appearance-settings";
 import CompanionSettings from "./companion-settings";
 import type {CompanionPreferences} from "@/lib/companion-config";
@@ -16,6 +16,7 @@ export const settingsSections = [
   {name:"Appearance",icon:Palette,description:"Themes, colours and how your workspace feels."},
   {name:"Calendar & Time",icon:Clock3,description:"Dates and calendar time preferences."},
   {name:"The Companion",icon:PanelRight,description:"Play-test tool layouts, Context, Agenda and Thoughts."},
+  {name:"Widgets",icon:LayoutGrid,description:"Choose how Library, Goals and reusable widgets look."},
   {name:"Notifications",icon:Bell,description:"Reminder and update preferences."},
   {name:"Account",icon:UserRound,description:"Your identity and account profile."},
   {name:"Privacy & Data",icon:Shield,description:"Account data and future export controls."},
@@ -30,6 +31,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   demoIsolation:boolean;
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
+  widgetStyle:"classic"|"studio"; onWidgetStyle:(v:"classic"|"studio")=>void;
   dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
 };
@@ -45,6 +47,18 @@ export default function SettingsWorkspace(p:Props) {
       <div className="aaa-settings-cards">{settingsSections.slice(1).map(({name,icon:Icon,description})=><button key={name} onClick={()=>p.onSection(name)}><span className="aaa-card-icon"><Icon size={22}/></span><span><strong>{name}</strong><small>{description}</small></span><ChevronRight size={17}/></button>)}</div>
     </>}
     {p.section==="The Companion"&&<CompanionSettings options={p.companion} onChange={p.onCompanion} preference={p.agendaPreference} onPreference={p.onAgendaPreference}/>}
+    {p.section==="Widgets"&&<section className="aaa-settings-card aaa-widget-style-settings" aria-labelledby="widget-style-heading">
+      <header><h2 id="widget-style-heading">Widget design</h2><p>Change the presentation of widgets in Library, Goals and Developing IT. Your data, saved views, page layouts and theme stay the same.</p></header>
+      <Switch label="Use Studio design" checked={p.widgetStyle==="studio"} onChange={on=>p.onWidgetStyle(on?"studio":"classic")} description="Inspired by the Templates Lab: richer surfaces, graphic accents, dashboard summaries and workshop-style cards."/>
+      <div className="aaa-widget-style-options" role="group" aria-label="Widget design style">
+        {(["classic","studio"] as const).map(style=><button key={style} type="button" aria-pressed={p.widgetStyle===style} className={p.widgetStyle===style?"active":""} onClick={()=>p.onWidgetStyle(style)}>
+          <span className={"aaa-widget-style-thumbnail aaa-widget-style-thumbnail-"+style} aria-hidden="true"><i/><i/><i/></span>
+          <strong>{style==="classic"?"Classic":"Studio"}</strong>
+          <small>{style==="classic"?"The original clean, practical widget canvas.":"The Templates Lab-inspired layered dashboard."}</small>
+        </button>)}
+      </div>
+      <p className="calendar-muted">Both styles inherit your selected Appearance theme. This choice is saved to your current test profile.</p>
+    </section>}
     {p.section==="Calendar & Time"&&<div className="aaa-settings-panel">
       <h2>Calendar preferences</h2>
       <p className="calendar-muted">Changes apply immediately and are saved to your current profile.</p>

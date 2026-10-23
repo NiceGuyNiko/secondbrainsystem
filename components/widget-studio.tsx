@@ -9,7 +9,7 @@ import PlanningWorkspace from "@/components/planning-workspace";
 type Mode="library"|"goals"|"widgets";
 type Selection={kind:"definition"|"instance";id:string}|null;
 type Props={
-  mode:Mode;activePageId?:string;newPageIntent?:number;
+  mode:Mode;visualStyle?:"classic"|"studio";activePageId?:string;newPageIntent?:number;
   onPages?:(items:{id:string;title:string}[])=>void;
   onPage?:(id:string)=>void;
   onConfigure:(target:WidgetConfigureTarget|null)=>void;
@@ -367,7 +367,7 @@ export default function WidgetStudio(p:Props){
       draggable={arrange} onDragStart={e=>{setDrag(widget.id);e.dataTransfer.effectAllowed="move"}} onDragOver={e=>{if(arrange)e.preventDefault()}}
       onDrop={e=>{e.preventDefault();if(drag)reorder(drag,widget.id);setDrag(null)}} onDragEnd={()=>setDrag(null)}>
       {(cfg.showTitle||arrange)&&<header className="aaa-widget-card-head">
-        <div>{arrange&&<GripVertical size={17}/>}<strong>{widget.title||def?.name||"Goals & projects"}</strong>
+        <div>{arrange&&<GripVertical size={17}/>}<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":"CONNECTED VIEW"}</span><strong>{widget.title||def?.name||"Goals & projects"}</strong>
           {def&&<small>{data.databases.find(x=>x.id===sourceOf(widget).databaseId)?.name||"Unconnected"}</small>}</div>
         <div className="aaa-widget-card-actions">
           {arrange&&<><button aria-label="Move widget earlier" disabled={index===0} onClick={()=>shift(widget.id,-1)}><ArrowUp size={15}/></button><button aria-label="Move widget later" disabled={index===instanceList.length-1} onClick={()=>shift(widget.id,1)}><ArrowDown size={15}/></button></>}
@@ -385,12 +385,17 @@ export default function WidgetStudio(p:Props){
   if(loading)return <section className="aaa-widget-studio"><div className="aaa-widget-empty">Loading your widget system…</div></section>;
   if(error&&data.pages.length===0&&data.definitions.length===0)return <section className="aaa-widget-studio aaa-widget-error"><h2>Widget system unavailable</h2><p>{error}</p><p>The separate widget tables may need to be installed in this Supabase environment. Existing data is untouched.</p><button onClick={()=>{setLoading(true);void load().catch(report).finally(()=>setLoading(false))}}><RefreshCw size={15}/> Retry</button></section>;
 
-  return <section className="aaa-widget-studio">
+  return <section className={"aaa-widget-studio "+(p.visualStyle==="studio"?"aaa-widget-studio-lab":"")}>
     {error&&<div className="aaa-widget-alert" role="alert">{error}<button onClick={()=>setError("")} aria-label="Dismiss error"><X size={14}/></button></div>}
     {notice&&<div className="aaa-widget-alert" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss notice"><X size={14}/></button></div>}
     {p.mode==="widgets"?<>
       <div className="aaa-widget-hero"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / WIDGETS</span><h1>Widget workshop</h1><p>Design reusable ways to read your database records. Configure a master here, then add instances to Library or Goals pages.</p></div>
         <button className="aaa-widget-primary" onClick={()=>void createDefinition()} disabled={busy}><Plus size={17}/> New widget</button></div>
+      {p.visualStyle==="studio"&&<div className="aaa-widget-lab-stats" aria-label="Widget workshop summary">
+        <div><small>MASTER WIDGETS</small><strong>{data.definitions.length}</strong><span>Reusable designs</span></div>
+        <div><small>DATABASE SOURCES</small><strong>{data.databases.length}</strong><span>Canonical record sets</span></div>
+        <div><small>LIBRARY LAYOUTS</small><strong>{data.pages.length}</strong><span>Pages and dashboards</span></div>
+      </div>}
       {data.definitions.length===0?<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={30}/><strong>No widgets yet</strong><p>Create your first widget and connect it to a database.</p></div>:
       <div className="aaa-widget-definitions">{data.definitions.map(def=><article key={def.id} className="aaa-widget-definition">
         <header><div><span className="aaa-widget-definition-icon"><LayoutGrid size={18}/></span><div><strong>{def.name}</strong><small>{data.databases.find(d=>d.id===def.database_id)?.name||"Choose database"} · {widgetConfig(def.config).renderer}</small></div></div>
@@ -409,6 +414,11 @@ export default function WidgetStudio(p:Props){
         <button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> New widget</button>
         {arrange&&<button className="aaa-widget-primary" onClick={()=>setAddWidget(true)}><Plus size={16}/> Add widget</button>}</div>
       </div>
+      {p.visualStyle==="studio"&&page&&<div className="aaa-widget-lab-stats" aria-label="Current page summary">
+        <div><small>THIS PAGE</small><strong>{instanceList.length}</strong><span>Placed widgets</span></div>
+        <div><small>CONNECTED SOURCES</small><strong>{new Set(instanceList.map(w=>sourceOf(w).databaseId).filter(Boolean)).size}</strong><span>Database views</span></div>
+        <div><small>RECORDS AVAILABLE</small><strong>{data.records.length}</strong><span>Across {data.databases.length} databases</span></div>
+      </div>}
       {creatingPage&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createPage()}}><input aria-label="New page title" autoFocus placeholder={p.mode==="library"?"e.g. World View, Characters…":"New Goals page…"} maxLength={100} value={newPage} onChange={e=>setNewPage(e.target.value)}/><button type="submit" disabled={!newPage.trim()||busy}><Check size={16}/> Create page</button><button type="button" onClick={()=>setCreatingPage(false)} aria-label="Cancel"><X size={16}/></button></form>}
       {addWidget&&<div className="aaa-widget-add-picker"><div><strong>Add to {page?.title}</strong><button onClick={()=>setAddWidget(false)} aria-label="Close widget picker"><X size={16}/></button></div>
         <button disabled={!page||busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create a new reusable widget <small>Open Configure</small><ChevronRight size={16}/></button>
