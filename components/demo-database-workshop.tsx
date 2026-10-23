@@ -77,7 +77,9 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
       <div className="aaa-demo-db-fields">{visibleFields.map(field=><div key={field.id}>
         <input aria-label={"Rename "+field.name} defaultValue={field.name} key={field.id+field.name} onBlur={e=>{const name=e.target.value.trim();if(name&&name!==field.name)void modifyField(field.id,{name})}}/>
         <select aria-label={"Type of "+field.name} value={field.type} onChange={e=>void modifyField(field.id,{type:e.target.value})}>{types.map(t=><option key={t}>{t}</option>)}</select>
-      </div>)}{!visibleFields.length&&<p>No properties yet. Add one to start designing this source.</p>}</div>
+      </div>)}{current.name.toLowerCase()==="events"&&<div className="aaa-demo-db-computed"><strong>Hierarchy position</strong><span>Computed · Read only</span>
+        <small>Automatically recalculated from Era → Event → Moment order. Perspectives display the event path followed by the character’s name. Stable record IDs never change.</small></div>}
+      {!visibleFields.length&&<p>No properties yet. Add one to start designing this source.</p>}</div>
       <p className="aaa-demo-db-note">Sample records can be viewed and edited through Library and Goals widgets. This isolated preview remembers changes in this browser.</p>
       </>:<p>Select or create a database to begin.</p>}
     </div></div>

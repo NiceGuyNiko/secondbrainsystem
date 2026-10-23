@@ -14,7 +14,8 @@ import SyncedScrollTable from "@/components/synced-scroll-table";
 import InlineSelectPicker from "@/components/db-inline-select";
 import InlineRelationPicker from "@/components/db-inline-relation";
 import ViewRulesMenu from "@/components/db-view-rules";
-import EventChronologyTree from "@/components/db-chronology-tree";
+import EventChronologyTree,{toChronologyNodes} from "@/components/db-chronology-tree";
+import {chronologyAddresses} from "@/lib/db-engine/hierarchy-numbering";
 import {applyViewRules,readViewConfig,activeViewConfig,type ViewFilter,type ViewSort,type QueryMode} from "@/lib/db-engine/view-operators";
 type DB={id:string;name:string;icon:string};
 type Prop={id:string;database_id:string;name:string;type:string;version:number;archived_at:string|null;
@@ -176,6 +177,18 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
    if(typeof two==="number")return 1;
    return a.sequence_no-b.sequence_no;
  });
+ const hierarchyNumbers=chronologyAddresses(toChronologyNodes(chronology,links,
+   scaleProperty?.id,parentProperty?.id,orderProperty?.id));
+ const compareAddress=(left:string,right:string)=>{
+   const a=(hierarchyNumbers.get(left)||"").split(".").map(Number);
+   const b=(hierarchyNumbers.get(right)||"").split(".").map(Number);
+   for(let i=0;i<Math.max(a.length,b.length);i++){
+     if(i>=a.length)return -1;if(i>=b.length)return 1;
+     if(a[i]!==b[i])return a[i]-b[i];
+   }
+   return 0;
+ };
+ if(isEvents&&!savedRules.sorts.length)list.sort((a,b)=>compareAddress(a.record_id,b.record_id));
  const createStandaloneMoment=()=>void(async()=>{
   const title=momentName.trim();
   if(!eventsDatabase||!title||creatingMoment)return;
@@ -585,9 +598,9 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
       onOpenEvent={id=>openRelatedRecord(eventsDatabase!.id,id)}
       onOpenPerspective={id=>perspectivesDatabase&&openRelatedRecord(perspectivesDatabase.id,id)}/></details>}
      {!eventOutline&&<>{view?.layout==="gallery"?<div className="db-lab-gallery">{list.map(r=><button key={r.record_id} onClick={()=>setSelected(r.record_id)}>
-       <small>{database.name} #{r.sequence_no}</small><strong>{label(r.record_id)}</strong>
+       <small>{isEvents?"Hierarchy "+(hierarchyNumbers.get(r.record_id)||"—"):database.name+" #"+r.sequence_no}</small><strong>{label(r.record_id)}</strong>
        {cols.slice(0,3).map(p=><span key={p.id}>{p.name}: {String(r.values_json[p.id]??"—")}</span>)}</button>)}</div>:
-     <SyncedScrollTable><table className={"db-lab-table "+(verticalLines?"db-lab-table-dividers":"")}><thead><tr><th>Name</th><th>ID</th>{cols.map(p=><th key={p.id} onDragOver={e=>e.preventDefault()}
+     <SyncedScrollTable><table className={"db-lab-table "+(verticalLines?"db-lab-table-dividers":"")}><thead><tr><th>Name</th><th>ID</th>{isEvents&&<th title="Read-only property calculated from the Events parent hierarchy and position">Hierarchy position · Auto</th>}{cols.map(p=><th key={p.id} onDragOver={e=>e.preventDefault()}
  onDrop={e=>{e.preventDefault();if(dragProperty)movePropertyTo(dragProperty,p.id);setDragProperty(null)}}>
        <DatabasePropertyHeading property={p} onRefresh={refresh} onError={setError} onSaved={setInfo}/>
       </th>)}</tr></thead>
@@ -599,7 +612,7 @@ export default function StagingDatabaseLab({surface="lab",databaseName,onDatabas
         <button type="button" title="Move record up" onClick={()=>moveRecord(r.record_id,-1)}>↑</button>
         <button type="button" title="Move record down" onClick={()=>moveRecord(r.record_id,1)}>↓</button>
         <button type="button" title="Archive record" onClick={()=>archiveRecord(r.record_id)}>×</button>
-       </div></td>{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
+       </div></td>{isEvents&&<td className="db-chrono-address" title="Auto-calculated; this is not a permanent record ID">{hierarchyNumbers.get(r.record_id)||"—"}</td>}{cols.map(p=><td key={p.id}>{renderCell(r,p)}</td>)}</tr>)}</tbody></table></SyncedScrollTable>}
      {!list.length&&<div className="db-lab-empty">No records yet. Create one above to get started.</div>}
      {archivedRecords.some(r=>r.database_id===dbId)&&<details className="db-lab-archive-panel">
        <summary>Archived records ({archivedRecords.filter(r=>r.database_id===dbId).length})</summary>
