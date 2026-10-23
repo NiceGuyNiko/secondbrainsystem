@@ -1,11 +1,14 @@
 "use client";
 import {useEffect,useState} from "react";
-import {Check,Plus,Save,Settings2,Trash2} from "lucide-react";
+import {Check,Database,Plus,Save,Settings2,Trash2,X} from "lucide-react";
 import type {WidgetConfigureTarget,WidgetConfig} from "@/lib/widget-system";
 
-export default function WidgetConfigurePanel({selection,onClose}:{selection:WidgetConfigureTarget;onClose:()=>void}){
+export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:{selection:WidgetConfigureTarget;onClose:()=>void;onEditDatabase?:(id:string)=>void}){
   const [name,setName]=useState(selection.title);
   const [message,setMessage]=useState("");
+  const [creatingSource,setCreatingSource]=useState(false);
+  const [sourceName,setSourceName]=useState("");
+  const [savingSource,setSavingSource]=useState(false);
   useEffect(()=>{setName(selection.title);setMessage("")},[selection.id,selection.title]);
   const cfg=selection.config;
   const fields=[{id:"name",name:"Name"},{id:"creation",name:"Record ID"},
@@ -32,6 +35,20 @@ export default function WidgetConfigurePanel({selection,onClose}:{selection:Widg
           {savedViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
         </select>
       </label>
+      <div className="aaa-widget-config-source-actions">
+        {selection.databaseId&&<button type="button" onClick={()=>onEditDatabase?.(selection.databaseId!)}><Database size={14}/> Edit database properties</button>}
+        {selection.onCreateDatabase&&<button type="button" onClick={()=>setCreatingSource(true)}><Plus size={14}/> Create new database</button>}
+      </div>
+      {creatingSource&&<form className="aaa-widget-create-row aaa-widget-config-new-source" onSubmit={async e=>{
+        e.preventDefault();const trimmed=sourceName.trim();if(!trimmed||!selection.onCreateDatabase||savingSource)return;
+        setSavingSource(true);setMessage("");
+        try{const id=await selection.onCreateDatabase(trimmed);setCreatingSource(false);setSourceName("");onEditDatabase?.(id);setMessage(`Created ${trimmed}. Edit its properties in the second Context panel.`)}
+        catch(error){setMessage(error instanceof Error?error.message:String(error))}finally{setSavingSource(false)}
+      }}>
+        <input autoFocus aria-label="New database name for widget" value={sourceName} placeholder="New database name…" onChange={e=>setSourceName(e.target.value)}/>
+        <button type="submit" disabled={!sourceName.trim()||savingSource}><Check size={14}/> Create and connect</button>
+        <button type="button" onClick={()=>setCreatingSource(false)} aria-label="Cancel database creation"><X size={14}/></button>
+      </form>}
       <label className="aaa-widget-field">Display style
         <select value={cfg.renderer} onChange={e=>change({renderer:e.target.value as WidgetConfig["renderer"]})}>
           <option value="table">Table</option><option value="list">List</option>

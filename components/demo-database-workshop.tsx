@@ -1,12 +1,12 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
-import {Check,Database,Plus,RefreshCw,Trash2,X} from "lucide-react";
+import {Check,Database,LayoutGrid,Plus,RefreshCw,Trash2,X} from "lucide-react";
 import {supabase} from "@/lib/supabase";
 type Db={id:string;name:string;icon:string};
 type Field={id:string;database_id:string;name:string;type:string;position:number;config:Record<string,unknown>};
 type RecordRow={record_id:string;database_id:string;values_json:Record<string,unknown>};
 const types=["text","number","date","checkbox","select","relation"];
-export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabase,onDatabasesChange}:{selectedDatabaseId?:string;onSelectDatabase?:(id:string)=>void;onDatabasesChange?:()=>void}={}){
+export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabase,onDatabasesChange,onBuildWidget}:{selectedDatabaseId?:string;onSelectDatabase?:(id:string)=>void;onDatabasesChange?:()=>void;onBuildWidget?:(id:string)=>void}={}){
   const [databases,setDatabases]=useState<Db[]>([]),[fields,setFields]=useState<Field[]>([]),[records,setRecords]=useState<RecordRow[]>([]);
   const [selected,setSelected]=useState(""),[databaseName,setDatabaseName]=useState(""),[propertyName,setPropertyName]=useState(""),[propertyType,setPropertyType]=useState("text");
   const [creatingDatabase,setCreatingDatabase]=useState(false),[creatingProperty,setCreatingProperty]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -65,7 +65,8 @@ export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabas
       {databases.map(db=><button key={db.id} className={selected===db.id?"selected":""} onClick={()=>{setSelected(db.id);onSelectDatabase?.(db.id)}}><Database size={17}/><span>{db.name}<small>{records.filter(r=>r.database_id===db.id).length} records</small></span></button>)}
     </nav><div className="aaa-demo-db-detail">
       {current?<><header><div><small>DATA SOURCE / {current.name.toUpperCase()}</small><h2>{current.name}</h2><p>This database is available to the widget Configure panel. All demo widgets refer to its records by ID.</p></div>
-        <button className="aaa-widget-secondary" title="Delete central database and records" onClick={()=>{setConfirmDelete(true);setTypedName("")}}><Trash2 size={15}/> Delete database</button></header>
+        <div className="aaa-widget-db-build-actions"><button className="aaa-widget-primary" title="Build and configure a widget while staying on this database" onClick={()=>onBuildWidget?.(current.id)}><LayoutGrid size={15}/> Build widget</button>
+        <button className="aaa-widget-secondary" title="Delete central database and records" onClick={()=>{setConfirmDelete(true);setTypedName("")}}><Trash2 size={15}/> Delete database</button></div></header>
       {confirmDelete&&<div className="aaa-widget-dialog-backdrop"><section className="aaa-widget-dialog" role="alertdialog" aria-modal="true" aria-labelledby="database-delete-label">
         <div className="aaa-widget-dialog-icon"><Trash2/></div><h2 id="database-delete-label">Delete “{current.name}” and its records?</h2>
         <p><strong>This deletes the core database, its properties, records and linked views from every workspace.</strong> It is not the same as removing a widget. This cannot be undone.</p>

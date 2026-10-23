@@ -3,6 +3,28 @@ import assert from "node:assert/strict";
 import {PGlite} from "@electric-sql/pglite";
 import {readFileSync,readdirSync} from "node:fs";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetIsSynced,widgetPlacementConfig,type PageWidget} from "../lib/widget-system";
+import {placeWidget,resizeWidgetLane,widgetLayoutBands} from "../lib/widget-layout";
+
+test("live layout previews split columns, stack widgets and conserve neighboring widths",()=>{
+  const widget=(id:string,width:number,position:number,sectionId="history"):PageWidget=>({id,page_id:"world",definition_id:id,
+    kind:"database",title:id,config:{sectionId},width,height:2,position});
+  const sections=[{id:"history",page_id:"world",title:"History",position:0},{id:"characters",page_id:"world",title:"Characters",position:1}];
+  const original=[widget("era",6,0),widget("event",6,1),widget("moment",12,2)];
+  const stacked=placeWidget(original,sections,"moment",{sectionId:"history",targetId:"event",edge:"below"});
+  const bands=widgetLayoutBands(stacked);
+  assert.equal(bands.length,1);
+  assert.deepEqual(bands[0].lanes.map(l=>l.widgets.map(w=>w.id)),[["era"],["event","moment"]]);
+  assert.deepEqual(bands[0].lanes.map(l=>l.width),[6,6]);
+  const middle=placeWidget(original,sections,"moment",{sectionId:"history",targetId:"event",edge:"left"});
+  assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.widgets[0].id),["era","moment","event"]);
+  assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.width),[6,3,3]);
+  const stretched=resizeWidgetLane(middle,sections,"era",2);
+  assert.deepEqual(widgetLayoutBands(stretched)[0].lanes.map(l=>l.width),[7,2,3],"a divider expands the left lane as it contracts the neighbor");
+  const moved=placeWidget(stacked,sections,"moment",{sectionId:"characters",targetId:null,edge:"section-end"});
+  assert.equal(moved.find(w=>w.id==="moment")?.config.sectionId,"characters");
+  assert.equal(moved.find(w=>w.id==="event")?.config.sectionId,"history");
+  assert.deepEqual(original.map(w=>w.config),[{sectionId:"history"},{sectionId:"history"},{sectionId:"history"}],"preview never mutates source placements");
+});
 
 test("widget views normalize rendering, filters, sort priority and edit controls",()=>{
   const parsed=widgetConfig({renderer:"cards",density:"compact",editable:false,
@@ -37,6 +59,8 @@ test("page sections preserve widget identity and grid heights are bounded",()=>{
   assert.equal(widgetIsSynced(synced),true);
   assert.deepEqual(widgetPlacementConfig(synced,"s2"),{sectionId:"s2",syncMode:"synced"});
   assert.deepEqual(placementConfigAfterPublish(synced),{sectionId:"s1",syncMode:"synced"});
+  assert.deepEqual(placementConfigAfterPublish({...synced,config:{...synced.config,layoutBand:"b3",layoutLane:"l1"}}),
+    {sectionId:"s1",syncMode:"synced",layoutBand:"b3",layoutLane:"l1"},"publishing the view keeps its exact visual placement");
 });
 
 test("beta source deletion requires exact confirmation and never affects primary datasets",async()=>{

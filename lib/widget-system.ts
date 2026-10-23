@@ -56,7 +56,10 @@ export function widgetSectionId(widget:PageWidget):string{
   return typeof widget.config?.sectionId==="string"?widget.config.sectionId:"";
 }
 export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionId(widget)){
-  return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{})};
+  const band=typeof widget.config.layoutBand==="string"?widget.config.layoutBand:null;
+  const lane=typeof widget.config.layoutLane==="string"?widget.config.layoutLane:null;
+  return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{}),
+    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
   return widgetPlacementConfig(widget);
@@ -91,4 +94,7 @@ export type WidgetConfigureTarget={
   onRename:(name:string)=>void;
   onSize?:(width:number,height:number)=>void;
   onSaveToDefinition?:()=>void;
+  onCreateDatabase?:(name:string)=>Promise<string>;
+  onAddProperty?:(databaseId:string,name:string,type:string)=>Promise<void>;
+  onUpdateProperty?:(id:string,patch:Partial<WidgetProperty>)=>Promise<void>;
 };

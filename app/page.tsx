@@ -9,7 +9,7 @@ import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
 import WidgetStudio from "@/components/widget-studio";
-import type {WidgetConfigureTarget} from "@/lib/widget-system";
+import {widgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetProperty,type WidgetView,type WidgetDefinition} from "@/lib/widget-system";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
 import { supabase } from "@/lib/supabase";
 import { classifyDatabaseEngineProbe,type DatabaseEngineState } from "@/lib/db-engine/production-readiness";
@@ -191,6 +191,73 @@ function Workspace() {
     if(next!=="closed"&&agendaPreference==="toggle")setLastPinned(next==="pinned");
   },[agendaPreference,setLastPinned]);
   const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):"closed");
+  const buildWidgetFromDatabase=async(databaseId:string)=>{
+    if(!databaseId)return;
+    try{
+      const [source,views,properties]=await Promise.all([
+        supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
+        supabase.from("db_views").select("id,database_id,name,layout,config"),
+        supabase.from("db_properties").select("id,database_id,name,type,config,position").is("archived_at",null)
+      ]);
+      const initialError=source.error||views.error||properties.error;if(initialError)throw new Error(initialError.message);
+      const allDatabases=(source.data??[]) as WidgetDatabase[];
+      const db=allDatabases.find(d=>d.id===databaseId);if(!db)throw new Error("Select a database to build a widget from.");
+      const {data:created,error}=await supabase.from("aaa_widget_definitions")
+        .insert({name:db.name+" widget",database_id:db.id,config:{renderer:"table",editable:true}})
+        .select("id,name,database_id,view_id,config").single();
+      if(error)throw new Error(error.message);
+      let master=created as WidgetDefinition;
+      const id=master.id;
+      const save=async(patch:Partial<WidgetDefinition>)=>{
+        master={...master,...patch};
+        const {error:saveError}=await supabase.from("aaa_widget_definitions").update(patch).eq("id",id);
+        if(saveError)setNotice(saveError.message);
+      };
+      const refresh=async()=>{
+        const [dbs,props,vws]=await Promise.all([
+          supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
+          supabase.from("db_properties").select("id,database_id,name,type,config,position").is("archived_at",null),
+          supabase.from("db_views").select("id,database_id,name,layout,config")
+        ]);
+        const fault=dbs.error||props.error||vws.error;if(fault)throw new Error(fault.message);
+        setWidgetConfiguration(previous=>previous?.id===id?{...previous,databases:(dbs.data??[]) as WidgetDatabase[],properties:(props.data??[]) as WidgetProperty[],views:(vws.data??[]) as WidgetView[]}:previous);
+      };
+      const changeSource=(databaseId:string|null,viewId:string|null)=>{
+        void save({database_id:databaseId,view_id:viewId,config:{...master.config,filters:[],sorts:[]}});
+        setWidgetConfiguration(previous=>previous?.id===id?{...previous,databaseId,viewId,config:widgetConfig({...master.config,filters:[],sorts:[]})}:previous);
+      };
+      setWidgetConfiguration({id,kind:"definition",title:master.name,databaseId:db.id,viewId:null,config:widgetConfig(master.config),
+        databases:allDatabases,views:(views.data??[]) as WidgetView[],properties:(properties.data??[]) as WidgetProperty[],
+        onConfig:patch=>{
+          const config=widgetConfig({...master.config,...patch});void save({config});
+          setWidgetConfiguration(previous=>previous?.id===id?{...previous,config}:previous);
+        },onSource:changeSource,
+        onRename:name=>{void save({name});setWidgetConfiguration(previous=>previous?.id===id?{...previous,title:name}:previous)},
+        onCreateDatabase:async name=>{
+          const newId=crypto.randomUUID();
+          const {error:newError}=await supabase.rpc("db_create_database",{p_id:newId,p_name:name,p_dataset:"acceptance"});
+          if(newError)throw new Error(newError.message);
+          await save({database_id:newId,view_id:null});
+          setWidgetConfiguration(previous=>previous?.id===id?{...previous,databaseId:newId,viewId:null}:previous);
+          await refresh();void refreshStagingDatabases();return newId;
+        },
+        onAddProperty:async(dbId,name,type)=>{
+          const {data:existing,error:readError}=await supabase.from("db_properties").select("id").eq("database_id",dbId);
+          if(readError)throw new Error(readError.message);
+          const {error:insertError}=await supabase.from("db_properties").insert({id:crypto.randomUUID(),database_id:dbId,name,type,position:existing?.length??0,config:{},archived_at:null});
+          if(insertError)throw new Error(insertError.message);
+          await refresh();
+        },
+        onUpdateProperty:async(propId,patch)=>{
+          const {error:updateError}=await supabase.from("db_properties").update(patch).eq("id",propId);
+          if(updateError)throw new Error(updateError.message);
+          await refresh();
+        }
+      });
+      changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode);
+      setNotice(`${db.name} widget created in Developing IT → Widgets. Configure it here while keeping the database open.`);
+    }catch(e){setNotice(e instanceof Error?e.message:String(e))}
+  };
   useEffect(()=>{setAgendaMode(m=>m==="closed"?m:openAgenda(agendaPreference,lastPinned));},[agendaPreference,lastPinned]);
   // Leaving a beta destination when its switch (or Developer Mode) is turned off. Nothing is deleted.
   useEffect(()=>{
@@ -584,11 +651,12 @@ function Workspace() {
 
               </div>
               {section === "Developing IT" && contextId === "databases" && isDemo ? (
-                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()}/>
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()} onBuildWidget={id=>void buildWidgetFromDatabase(id)}/>
               ) : section === "Developing IT" && contextId === "databases" && engineEnabled ? (
                 <section className="aaa-widget-database-development">
                   <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
                   <div className="aaa-widget-hero-actions"><select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                    <button className="aaa-widget-secondary" disabled={!stagingDatabaseId} onClick={()=>void buildWidgetFromDatabase(stagingDatabaseId)}><LayoutGrid size={16}/> Build widget</button>
                     <button className="aaa-widget-secondary" onClick={()=>setNewDatabaseOpen(open=>!open)}><Plus size={16}/> New database</button></div></div>
                   {newDatabaseOpen&&<form className="aaa-widget-create-row aaa-widget-database-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
                     <input autoFocus aria-label="New database name" placeholder="Database name…" maxLength={80} value={newDatabaseName} onChange={e=>setNewDatabaseName(e.target.value)}/>
@@ -632,9 +700,10 @@ function Workspace() {
                   onBack={() => nav("Calendar")}
                 />
               ) : section === "Databases" && isDemo ? (
-                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()}/>
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()} onBuildWidget={id=>void buildWidgetFromDatabase(id)}/>
               ) : section === "Databases" && engineEnabled ? (
                 <DatabaseLabErrorBoundary>
+                  <div className="aaa-widget-db-build-toolbar"><span>Build a reusable view from this database without leaving its source.</span><button className="aaa-widget-secondary" disabled={!stagingDatabaseId} onClick={()=>void buildWidgetFromDatabase(stagingDatabaseId)}><LayoutGrid size={16}/> Build widget</button></div>
                   <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
                     databaseName={stagingDatabaseName}
                     onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/>
