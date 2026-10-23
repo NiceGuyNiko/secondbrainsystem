@@ -6,7 +6,7 @@ type Db={id:string;name:string;icon:string};
 type Field={id:string;database_id:string;name:string;type:string;position:number;config:Record<string,unknown>};
 type RecordRow={record_id:string;database_id:string;values_json:Record<string,unknown>};
 const types=["text","number","date","checkbox","select","relation"];
-export default function DemoDatabaseWorkshop(){
+export default function DemoDatabaseWorkshop({selectedDatabaseId,onSelectDatabase,onDatabasesChange}:{selectedDatabaseId?:string;onSelectDatabase?:(id:string)=>void;onDatabasesChange?:()=>void}={}){
   const [databases,setDatabases]=useState<Db[]>([]),[fields,setFields]=useState<Field[]>([]),[records,setRecords]=useState<RecordRow[]>([]);
   const [selected,setSelected]=useState(""),[databaseName,setDatabaseName]=useState(""),[propertyName,setPropertyName]=useState(""),[propertyType,setPropertyType]=useState("text");
   const [creatingDatabase,setCreatingDatabase]=useState(false),[creatingProperty,setCreatingProperty]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -19,16 +19,17 @@ export default function DemoDatabaseWorkshop(){
     ]);
     const firstError=d.error||f.error||r.error;if(firstError)throw new Error(firstError.message);
     const list=(d.data??[]) as Db[];setDatabases(list);setFields((f.data??[]) as Field[]);setRecords((r.data??[]) as RecordRow[]);
-    setSelected(current=>list.some(x=>x.id===current)?current:list[0]?.id??"");
-  },[]);
+    setSelected(current=>list.some(x=>x.id===selectedDatabaseId)?selectedDatabaseId!:list.some(x=>x.id===current)?current:list[0]?.id??"");
+  },[selectedDatabaseId]);
   useEffect(()=>{void refresh().catch(e=>setError(String(e)))},[refresh]);
+  useEffect(()=>{if(selectedDatabaseId&&databases.some(db=>db.id===selectedDatabaseId))setSelected(selectedDatabaseId)},[selectedDatabaseId,databases]);
   const createDatabase=async()=>{
     const name=databaseName.trim();if(!name||busy)return;
     setBusy(true);setError("");
     try{
       const id=crypto.randomUUID();const {error}=await supabase.rpc("db_create_database",{p_id:id,p_name:name,p_dataset:"acceptance"});
       if(error)throw new Error(error.message);
-      await refresh();setSelected(id);setCreatingDatabase(false);setDatabaseName("");
+      await refresh();setSelected(id);onSelectDatabase?.(id);onDatabasesChange?.();setCreatingDatabase(false);setDatabaseName("");
     }catch(e){setError(String(e))}finally{setBusy(false)}
   };
   const createProperty=async()=>{
@@ -51,7 +52,7 @@ export default function DemoDatabaseWorkshop(){
     setBusy(true);setError("");
     const {error}=await supabase.rpc("db_delete_database",{p_database_id:current.id,p_confirm_name:typedName});
     if(error)setError(error.message);
-    else {await refresh();setConfirmDelete(false);setTypedName("")}
+    else {await refresh();onDatabasesChange?.();setConfirmDelete(false);setTypedName("")}
     setBusy(false);
   };
   return <section className="aaa-demo-database-studio">
@@ -61,7 +62,7 @@ export default function DemoDatabaseWorkshop(){
     {creatingDatabase&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createDatabase()}}><input autoFocus placeholder="Database name…" aria-label="New database name" value={databaseName} onChange={e=>setDatabaseName(e.target.value)}/><button disabled={busy||!databaseName.trim()}><Check size={15}/> Create</button><button type="button" onClick={()=>setCreatingDatabase(false)}><X size={15}/></button></form>}
     <div className="aaa-demo-db-stats"><span>{databases.length} <small>Databases</small></span><span>{fields.length} <small>Properties</small></span><span>{records.length} <small>Records</small></span><button onClick={()=>void refresh()}><RefreshCw size={15}/> Refresh</button></div>
     <div className="aaa-demo-db-layout"><nav aria-label="Demo databases" className="aaa-demo-db-list">
-      {databases.map(db=><button key={db.id} className={selected===db.id?"selected":""} onClick={()=>setSelected(db.id)}><Database size={17}/><span>{db.name}<small>{records.filter(r=>r.database_id===db.id).length} records</small></span></button>)}
+      {databases.map(db=><button key={db.id} className={selected===db.id?"selected":""} onClick={()=>{setSelected(db.id);onSelectDatabase?.(db.id)}}><Database size={17}/><span>{db.name}<small>{records.filter(r=>r.database_id===db.id).length} records</small></span></button>)}
     </nav><div className="aaa-demo-db-detail">
       {current?<><header><div><small>DATA SOURCE / {current.name.toUpperCase()}</small><h2>{current.name}</h2><p>This database is available to the widget Configure panel. All demo widgets refer to its records by ID.</p></div>
         <button className="aaa-widget-secondary" title="Delete central database and records" onClick={()=>{setConfirmDelete(true);setTypedName("")}}><Trash2 size={15}/> Delete database</button></header>

@@ -127,7 +127,7 @@ function Workspace() {
     const {data,error}=await supabase.from("db_databases").select("id,name")
       .is("archived_at",null).order("name").limit(150);
     if(error)throw new Error(error.message);
-    const rows=(data??[]).filter(d=>d.name.toLowerCase()!=="perspectives");
+    const rows=isDemo?(data??[]):(data??[]).filter(d=>d.name.toLowerCase()!=="perspectives");
     setStagingDatabases(rows);
     setStagingDatabaseId(id=>rows.some(x=>x.id===id)?id:(rows.find(x=>x.name.toLowerCase()==="characters")??rows[0])?.id??"");
   },[]);
@@ -162,7 +162,7 @@ function Workspace() {
     finally{setSettingUpDatabases(false)}
   };
   useEffect(()=>{
-    if(!engineEnabled||(section!=="Databases"&&!(section==="Developing IT"&&contextId==="databases")))return;
+    if(!(engineEnabled||isDemo)||(section!=="Databases"&&!(section==="Developing IT"&&contextId==="databases")))return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
   },[engineEnabled,section,contextId,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
@@ -275,7 +275,7 @@ function Workspace() {
     : section === "Goals"
       ? widgetPages.goals
     : section === "Databases"
-      ? engineEnabled?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
+      ? engineEnabled||isDemo?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
     : section==="Workspaces"&&engineEnabled
       ? [{id:"writing",title:"Writing"},...(writingExpanded?[{id:"writing-events",title:"Events"}]:[]),...context.filter(c=>c.id!=="writing"&&c.id!=="writing-events")]
     : section === "Resources" || section === "Think About It"
@@ -301,7 +301,7 @@ function Workspace() {
         old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
       );
     else if (section === "Databases") {
-      if(engineEnabled)setStagingDatabaseId(id);
+      if(engineEnabled||isDemo)setStagingDatabaseId(id);
       else setDatabaseCategory(id as DatabaseCategory);
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
@@ -347,17 +347,17 @@ function Workspace() {
     </>
   );
   const companionTarget: CompanionTarget = companionRecord && ((section==="Databases"&&engineEnabled)||(section==="Workspaces"&&contextId==="writing-events")) ? companionRecord : {
-    id: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):(contextId||section),
-    title: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section==="Workspaces"&&contextId==="writing-events"?"Events":section==="Workspaces"&&contextId==="writing"?"Writing":section==="Settings"?settingsSection:section,
-    databaseId: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):section,
-    databaseName: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section,
+    id: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseId:databaseCategory):(contextId||section),
+    title: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseName:databaseCategory):section==="Workspaces"&&contextId==="writing-events"?"Events":section==="Workspaces"&&contextId==="writing"?"Writing":section==="Settings"?settingsSection:section,
+    databaseId: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseId:databaseCategory):section,
+    databaseName: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseName:databaseCategory):section,
     workspaceId: section==="Workspaces"||section==="Databases"?"nobody-special":"general",
     workspaceName: section==="Workspaces"||section==="Databases"?"Nobody Special":"All About Action",
     kind:"page",
     fields:[
       {id:"location",label:"Current location",value:section},
       ...(contextId?[{id:"selection",label:"Selected area",value:contextId}]:[]),
-      ...(section==="Databases"?[{id:"database",label:"Database",value:engineEnabled?stagingDatabaseName:databaseCategory}]:[])
+      ...(section==="Databases"?[{id:"database",label:"Database",value:engineEnabled||isDemo?stagingDatabaseName:databaseCategory}]:[])
     ]
   };
   if (!settings) return <main className="grid min-h-screen place-items-center">Loading your workspace…</main>;
@@ -467,15 +467,15 @@ function Workspace() {
               }
               onClick={() => {
                 if (calendarSection) manage();
-                else if(engineEnabled&&section==="Databases")setNewDatabaseOpen(open=>!open);
+                else if((engineEnabled||isDemo)&&section==="Databases")setNewDatabaseOpen(open=>!open);
                 else if(section==="Library"||section==="Goals")setNewWidgetPageIntent(x=>x+1);
               }}
             >
-              {calendarSection||engineEnabled&&section==="Databases"||section==="Library"||section==="Goals" ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection||(engineEnabled||isDemo)&&section==="Databases"||section==="Library"||section==="Goals" ? <Plus size={19} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
-          {engineEnabled&&section==="Databases"&&newDatabaseOpen&&
+          {(engineEnabled||isDemo)&&section==="Databases"&&newDatabaseOpen&&
            <form className="aaa-context-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
             <input value={newDatabaseName} autoFocus maxLength={80}
               placeholder="New database name…" aria-label="New database name"
@@ -498,11 +498,11 @@ function Workspace() {
                 <button
                   key={c.id}
                   className={"aaa-context-row " + (
-                    (section==="Databases"&&(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id))||
+                    (section==="Databases"&&(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id))||
                     ((section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={c.title}
-                  aria-pressed={section === "Databases"?(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
+                  aria-pressed={section === "Databases"?(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
                   onClick={() => contextClick(c.id)}
                 >
                   <span className="aaa-icon-slot">
@@ -584,7 +584,7 @@ function Workspace() {
 
               </div>
               {section === "Developing IT" && contextId === "databases" && isDemo ? (
-                <DemoDatabaseWorkshop />
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()}/>
               ) : section === "Developing IT" && contextId === "databases" && engineEnabled ? (
                 <section className="aaa-widget-database-development">
                   <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
@@ -631,6 +631,8 @@ function Workspace() {
                   onDateFormat={setEventDateFormat}
                   onBack={() => nav("Calendar")}
                 />
+              ) : section === "Databases" && isDemo ? (
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()}/>
               ) : section === "Databases" && engineEnabled ? (
                 <DatabaseLabErrorBoundary>
                   <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
