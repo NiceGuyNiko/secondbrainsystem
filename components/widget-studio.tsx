@@ -1103,8 +1103,12 @@ export default function WidgetStudio(p:Props){
                   const totalGaps=(band.lanes.length-1)*gap;
                   // Length arithmetic expressed as % +/- px, supported by
                   // Safari and Chromium without newer CSS calc multiplication.
-                  const left=`calc(${leftUnits/12*100}% + ${pair.startLane*gap-totalGaps*leftUnits/12}px)`;
-                  const width=`calc(${pair.width/12*100}% + ${gap-totalGaps*pair.width/12}px)`;
+                  const leftOffset=pair.startLane*gap-totalGaps*leftUnits/12;
+                  const widthOffset=gap-totalGaps*pair.width/12;
+                  const calcWidth=(percentage:number,offset:number)=>
+                    `calc(${percentage}% ${offset<0?"-":"+"} ${Math.abs(offset)}px)`;
+                  const left=calcWidth(leftUnits/12*100,leftOffset);
+                  const width=calcWidth(pair.width/12*100,widthOffset);
                   return <button type="button" key={"aligned-"+pair.startLane}
                     className={"aaa-widget-aligned-span-drop"+(dropHint?.edge==="span-below"&&
                       dropHint.spanStartLane===pair.startLane?" is-target":"")}
