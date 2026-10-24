@@ -3,98 +3,240 @@
 import {useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {positionCompanionPopover} from "@/lib/companion-popover-position";
+import {mobileGestureShowsTooltip,type MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
 
 type TooltipPosition={label:string;left:number;top:number;width:number};
 type TooltipTarget={element:HTMLElement;nativeTitle:string|null};
+type TouchPress={element:HTMLElement;pointerId:number;x:number;y:number;activated:boolean};
 
 /**
- * One themed tooltip surface for existing titles and a handful of explicit
- * icon-only actions. Reuses the Companion's exact popup skin and positioning.
- * We remove the native title while hovered/focused to avoid browser tooltips
- * appearing over our themed version, then restore it on exit.
+ * The shared tooltip skin is the Companion's icon-tab tooltip.
+ *
+ * Desktop: hover or keyboard focus; blur and pointer exit dismiss.
+ * Mobile: never synthesize a tooltip from focus, hover or a normal tap unless
+ * the profile explicitly opts into "tap". "Hold" (the default) needs a deliberate
+ * long press on an eligible icon-only control. A subsequent tap anywhere closes
+ * the tooltip and continues to perform that tap's usual action.
  */
-export default function ThemedTooltips(){
+export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTooltipMode}){
   const [tooltip,setTooltip]=useState<TooltipPosition|null>(null);
   const active=useRef<TooltipTarget|null>(null);
 
   useEffect(()=>{
     let lastTouch=0;
-    const restore=()=>{
+    let pending:TouchPress|null=null;
+    let pressTimer:ReturnType<typeof setTimeout>|null=null;
+    let suppressOriginClick:HTMLElement|null=null;
+    // Removing titles for icon buttons on touch prevents Safari's own tooltip
+    // from lingering even after our React tooltip closes. The originals are
+    // restored only when switching back to desktop or on component cleanup.
+    const mobileTitles=new Map<HTMLElement,string>();
+    const mobileViewport=()=>window.matchMedia("(max-width:767px), (hover:none) and (pointer:coarse)").matches;
+    const stopTimer=()=>{if(pressTimer!==null){clearTimeout(pressTimer);pressTimer=null;}};
+    const hide=()=>{
       const previous=active.current;
-      if(previous&&previous.nativeTitle!==null&&!previous.element.hasAttribute("title"))
+      if(previous?.nativeTitle!==null&&previous?.nativeTitle!==undefined
+         &&!previous.element.hasAttribute("title")
+         &&!mobileTitles.has(previous.element)){
         previous.element.setAttribute("title",previous.nativeTitle);
+      }
       active.current=null;
       setTooltip(null);
     };
-    const find=(target:EventTarget|null):HTMLElement|null=>{
+    const reinstateMobileTitles=()=>{
+      for(const [element,title] of mobileTitles){
+        if(element.isConnected&&!element.hasAttribute("title"))element.setAttribute("title",title);
+      }
+      mobileTitles.clear();
+    };
+    const titleOrLabel=(element:HTMLElement)=>{
+      return element.getAttribute("data-aaa-tooltip")
+        ||element.getAttribute("title")
+        ||mobileTitles.get(element)
+        ||element.getAttribute("aria-label")
+        ||"";
+    };
+    const findDesktop=(target:EventTarget|null)=>{
       if(!(target instanceof Element))return null;
       return target.closest<HTMLElement>("[data-aaa-tooltip], [title]");
     };
-    const show=(element:HTMLElement|null)=>{
-      if(!element||active.current?.element===element)return;
-      const nativeTitle=element.getAttribute("title");
-      const label=element.getAttribute("data-aaa-tooltip")||nativeTitle;
+    const findMobile=(target:EventTarget|null):HTMLElement|null=>{
+      if(!(target instanceof Element))return null;
+      const button=target.closest<HTMLElement>("button");
+      if(!button||button.matches(":disabled, [aria-disabled='true'], [role='separator']"))return null;
+      // Only genuine icon controls receive help on touch. Text buttons,
+      // drag grips, form fields and general navigation rows keep their normal
+      // press/scroll interactions.
+      if(!button.querySelector("svg, .aaa-brand-mark"))return null;
+      if(button.textContent?.trim())return null;
+      return titleOrLabel(button)?button:null;
+    };
+    const suppressNativeTitle=(button:HTMLElement)=>{
+      const title=button.getAttribute("title");
+      if(title!==null&&!mobileTitles.has(button)){
+        mobileTitles.set(button,title);
+        button.removeAttribute("title");
+      }
+    };
+    const show=(element:HTMLElement,onMobile:boolean)=>{
+      if(!element.isConnected)return;
+      if(active.current?.element===element)return;
+      hide();
+      const label=titleOrLabel(element);
       if(!label)return;
-      restore();
-      if(nativeTitle!==null)element.removeAttribute("title");
+      const nativeTitle=onMobile?null:element.getAttribute("title");
+      if(nativeTitle!==null&&!onMobile)element.removeAttribute("title");
       active.current={element,nativeTitle};
-      const anchor=element.querySelector("svg, .aaa-brand-mark")??element;
-      const rect=anchor.getBoundingClientRect();
+      const glyph=element.querySelector("svg, .aaa-brand-mark")??element;
+      const rect=glyph.getBoundingClientRect();
       const width=Math.min(220,Math.max(58,Math.ceil(label.length*6.3+22)));
       const lines=Math.max(1,Math.ceil((label.length*6.3)/Math.max(38,width-20)));
-      const estimatedHeight=Math.max(34,16+lines*14);
+      const height=Math.max(34,16+lines*14);
       const position=positionCompanionPopover(rect,
         {width:window.innerWidth,height:window.innerHeight},
-        {width,height:estimatedHeight},"center");
+        {width,height},"center");
       setTooltip({label,width,...position});
+      // In tap mode the triggering action can navigate away. Never leave a
+      // tooltip attached to an icon that React removed from the page.
+      if(onMobile)window.requestAnimationFrame(()=>{
+        if(active.current?.element===element&&!element.isConnected)hide();
+      });
     };
-    const enter=(event:PointerEvent)=>{
-      if(event.pointerType==="touch")return;
-      const target=find(event.target);
-      if(target)show(target);
+    const onPointerOver=(event:PointerEvent)=>{
+      if(mobileViewport()||Date.now()-lastTouch<1500||event.pointerType==="touch")return;
+      const target=findDesktop(event.target);
+      if(target)show(target,false);
     };
-    const leave=(event:PointerEvent)=>{
+    const onPointerOut=(event:PointerEvent)=>{
+      if(mobileViewport()||Date.now()-lastTouch<1500)return;
       const current=active.current?.element;
       if(!current)return;
       if(event.relatedTarget instanceof Node&&current.contains(event.relatedTarget))return;
-      if(event.target instanceof Node&&current.contains(event.target))restore();
+      if(event.target instanceof Node&&current.contains(event.target))hide();
     };
-    const pointerDown=(event:PointerEvent)=>{
-      if(event.pointerType==="touch"){lastTouch=Date.now();restore();}
+    const onFocusIn=(event:FocusEvent)=>{
+      // Touch focusing a button is not an intent to see a tooltip.
+      if(mobileViewport()||Date.now()-lastTouch<1500)return;
+      const target=findDesktop(event.target);
+      if(target)show(target,false);
     };
-    const focusIn=(event:FocusEvent)=>{
-      if(Date.now()-lastTouch<800)return;
-      show(find(event.target));
-    };
-    const focusOut=(event:FocusEvent)=>{
+    const onFocusOut=(event:FocusEvent)=>{
+      if(mobileViewport())return;
       const current=active.current?.element;
       if(!current)return;
       if(event.relatedTarget instanceof Node&&current.contains(event.relatedTarget))return;
-      if(event.target instanceof Node&&current.contains(event.target))restore();
+      if(event.target instanceof Node&&current.contains(event.target))hide();
     };
-    const keyDown=(event:KeyboardEvent)=>{
-      if(event.key==="Escape")restore();
+    const onPointerDown=(event:PointerEvent)=>{
+      if(event.pointerType!=="touch")return;
+      // A fresh touch must not inherit the previous long-press click guard.
+      suppressOriginClick=null;
+      lastTouch=Date.now();
+      stopTimer();pending=null;
+      // Dismissal must not absorb or cancel this pointer event: outside buttons,
+      // links, inputs and navigation still react to the same touch.
+      hide();
+      const button=findMobile(event.target);
+      if(!button)return;
+      suppressNativeTitle(button);
+      if(mobileMode==="off")return;
+      pending={element:button,pointerId:event.pointerId,
+        x:event.clientX,y:event.clientY,activated:false};
+      if(mobileGestureShowsTooltip(mobileMode,"hold")){
+        pressTimer=setTimeout(()=>{
+          const press=pending;
+          if(!press||press.element!==button||press.pointerId!==event.pointerId)return;
+          press.activated=true;
+          suppressOriginClick=button;
+          show(button,true);
+        },520);
+      }
     };
-    document.addEventListener("pointerover",enter,true);
-    document.addEventListener("pointerout",leave,true);
-    document.addEventListener("pointerdown",pointerDown,true);
-    document.addEventListener("focusin",focusIn,true);
-    document.addEventListener("focusout",focusOut,true);
-    document.addEventListener("keydown",keyDown,true);
-    document.addEventListener("scroll",restore,true);
-    window.addEventListener("resize",restore);
+    const onPointerMove=(event:PointerEvent)=>{
+      if(!pending||pending.pointerId!==event.pointerId)return;
+      const distance=Math.hypot(event.clientX-pending.x,event.clientY-pending.y);
+      if(distance>11){
+        stopTimer();
+        // A scroll or drag is not a tooltip request.
+        if(!pending.activated)pending=null;
+      }
+    };
+    const onPointerUp=(event:PointerEvent)=>{
+      if(!pending||pending.pointerId!==event.pointerId)return;
+      const press=pending;
+      stopTimer();pending=null;
+      if(!press.activated&&mobileGestureShowsTooltip(mobileMode,"tap")
+         &&Math.hypot(event.clientX-press.x,event.clientY-press.y)<=11
+         &&press.element.isConnected){
+        show(press.element,true);
+      }
+      // A completed hold leaves its tooltip visible until the next press.
+    };
+    const onPointerCancel=(event:PointerEvent)=>{
+      if(!pending||pending.pointerId!==event.pointerId)return;
+      stopTimer();pending=null;
+      hide();
+    };
+    const onClick=(event:MouseEvent)=>{
+      if(!suppressOriginClick)return;
+      const origin=suppressOriginClick;
+      suppressOriginClick=null;
+      if(event.target instanceof Node&&origin.contains(event.target)){
+        // A long press is for help, not an accidental action on release.
+        // This does NOT intercept a later/outside tap used to dismiss help.
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+    };
+    const onContextMenu=(event:MouseEvent)=>{
+      if(!mobileViewport()||mobileMode==="off")return;
+      const eligible=findMobile(event.target);
+      if(eligible)event.preventDefault();
+    };
+    const onKeyDown=(event:KeyboardEvent)=>{
+      if(event.key==="Escape"){stopTimer();pending=null;hide();}
+    };
+    const onScroll=()=>{
+      stopTimer();
+      if(!pending?.activated)pending=null;
+      // The tooltip is fixed relative to its icon, so scrolling dismisses it.
+      hide();
+    };
+    const onResize=()=>{
+      stopTimer();pending=null;hide();
+      if(!mobileViewport())reinstateMobileTitles();
+    };
+    document.addEventListener("pointerover",onPointerOver,true);
+    document.addEventListener("pointerout",onPointerOut,true);
+    document.addEventListener("pointerdown",onPointerDown,true);
+    document.addEventListener("pointermove",onPointerMove,true);
+    document.addEventListener("pointerup",onPointerUp,true);
+    document.addEventListener("pointercancel",onPointerCancel,true);
+    document.addEventListener("click",onClick,true);
+    document.addEventListener("contextmenu",onContextMenu,true);
+    document.addEventListener("focusin",onFocusIn,true);
+    document.addEventListener("focusout",onFocusOut,true);
+    document.addEventListener("keydown",onKeyDown,true);
+    document.addEventListener("scroll",onScroll,true);
+    window.addEventListener("resize",onResize);
     return()=>{
-      restore();
-      document.removeEventListener("pointerover",enter,true);
-      document.removeEventListener("pointerout",leave,true);
-      document.removeEventListener("pointerdown",pointerDown,true);
-      document.removeEventListener("focusin",focusIn,true);
-      document.removeEventListener("focusout",focusOut,true);
-      document.removeEventListener("keydown",keyDown,true);
-      document.removeEventListener("scroll",restore,true);
-      window.removeEventListener("resize",restore);
+      stopTimer();pending=null;hide();reinstateMobileTitles();
+      document.removeEventListener("pointerover",onPointerOver,true);
+      document.removeEventListener("pointerout",onPointerOut,true);
+      document.removeEventListener("pointerdown",onPointerDown,true);
+      document.removeEventListener("pointermove",onPointerMove,true);
+      document.removeEventListener("pointerup",onPointerUp,true);
+      document.removeEventListener("pointercancel",onPointerCancel,true);
+      document.removeEventListener("click",onClick,true);
+      document.removeEventListener("contextmenu",onContextMenu,true);
+      document.removeEventListener("focusin",onFocusIn,true);
+      document.removeEventListener("focusout",onFocusOut,true);
+      document.removeEventListener("keydown",onKeyDown,true);
+      document.removeEventListener("scroll",onScroll,true);
+      window.removeEventListener("resize",onResize);
     };
-  },[]);
+  },[mobileMode]);
 
   return tooltip&&typeof document!=="undefined"
     ?createPortal(<div role="tooltip" className="aaa-companion-tab-tooltip aaa-app-theme-tooltip"

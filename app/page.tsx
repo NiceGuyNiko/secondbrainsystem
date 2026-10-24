@@ -182,6 +182,8 @@ function Workspace() {
   const setStartDay = (startDay: string) => setPreferences(() => ({ startDay: startDay as ProfilePreferences["startDay"] }));
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
   const setEventDateFormat = (eventDateFormat: ProfilePreferences["eventDateFormat"]) => setPreferences(() => ({ eventDateFormat }));
+  const setMobileTooltipMode = (mobileTooltipMode: ProfilePreferences["mobileTooltipMode"]) =>
+    setPreferences(() => ({ mobileTooltipMode }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
@@ -702,7 +704,7 @@ function Workspace() {
           onSignOut={() => void signOut()}
         />
       </aside>
-      <ThemedTooltips/>
+      <ThemedTooltips mobileMode={preferences.mobileTooltipMode}/>
       {mobileCalendars && (
         <div className="aaa-mobile-calendars">
           <div className="aaa-options">
@@ -784,6 +786,7 @@ function Workspace() {
                   agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
                   companion={preferences.companion} onCompanion={setCompanion}
                   widgetStyle={preferences.widgetStyle} onWidgetStyle={widgetStyle=>setPreferences(()=>({widgetStyle}))}
+                  mobileTooltipMode={preferences.mobileTooltipMode} onMobileTooltipMode={setMobileTooltipMode}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}

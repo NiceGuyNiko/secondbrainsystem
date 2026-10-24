@@ -8,6 +8,7 @@ import type {CalendarDateFormat} from "@/lib/calendar-date-format";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
 import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
+import type {MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
 import { activeProfile } from "@/lib/settings/model";
 import { networkGuard } from "@/lib/demo/network-guard";
@@ -33,6 +34,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
   widgetStyle:"classic"|"studio"; onWidgetStyle:(v:"classic"|"studio")=>void;
+  mobileTooltipMode:MobileTooltipMode; onMobileTooltipMode:(v:MobileTooltipMode)=>void;
   dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
 };
@@ -46,6 +48,24 @@ export default function SettingsWorkspace(p:Props) {
     <p className="calendar-muted">{info.description}</p>
     {p.section==="General"&&<>
       <p className="aaa-preference-summary">{p.startDay} start · {p.clock} · Agenda: {p.agendaPreference} · Developer Mode {p.effective.developerMode?"on":"off"}</p>
+      <section className="aaa-settings-panel aaa-mobile-tooltip-settings" aria-labelledby="mobile-tooltip-heading">
+        <h2 id="mobile-tooltip-heading">Tooltips & help</h2>
+        <p className="calendar-muted">Choose how help labels appear on eligible icon-only controls when using a phone. Ordinary taps and page navigation continue to work normally.</p>
+        <label htmlFor="aaa-mobile-tooltip-mode">Mobile tooltips
+          <select id="aaa-mobile-tooltip-mode" value={p.mobileTooltipMode}
+            onChange={e=>p.onMobileTooltipMode(e.target.value as MobileTooltipMode)}>
+            <option value="hold">Press and hold (default)</option>
+            <option value="tap">Single tap</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+        <p className="calendar-muted">{p.mobileTooltipMode==="hold"
+          ?"Hold an eligible icon briefly for its tooltip. A normal tap performs the button's usual action without showing help."
+          :p.mobileTooltipMode==="tap"
+          ?"Tapping an eligible icon can show its tooltip while the button still works. Tap anywhere else to dismiss it and perform that action."
+          :"Mobile help tooltips are hidden; accessible labels remain available to screen readers."}</p>
+        <p className="calendar-muted">A tooltip closes on the next tap elsewhere without blocking that tap. On a PC, tooltips always appear on hover, regardless of this preference. Your choice is saved to your current profile.</p>
+      </section>
       <div className="aaa-settings-cards">{settingsSections.slice(1).map(({name,icon:Icon,description})=><button key={name} onClick={()=>p.onSection(name)}><span className="aaa-card-icon"><Icon size={22}/></span><span><strong>{name}</strong><small>{description}</small></span><ChevronRight size={17}/></button>)}</div>
     </>}
     {p.section==="The Companion"&&<CompanionSettings options={p.companion} onChange={p.onCompanion} preference={p.agendaPreference} onPreference={p.onAgendaPreference}/>}

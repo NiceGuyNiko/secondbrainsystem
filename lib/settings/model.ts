@@ -4,6 +4,7 @@
 // Fluid Calendar and Think About It beta choices, theme and sidebar. Profiles hold configuration
 // only: every profile of an account sees the same calendar events, thoughts, goals and tasks.
 import type { AgendaPreference } from "@/lib/agenda-state";
+import {parseMobileTooltipMode,DEFAULT_MOBILE_TOOLTIP_MODE,type MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
 import {defaultCompanion,parseCompanion,type CompanionPreferences} from "@/lib/companion-config";
 import {parseCalendarDateFormat,type CalendarDateFormat} from "@/lib/calendar-date-format";
 import { appearanceDefaults, lightCounterpart, paletteFor, parseAppearance, type Appearance } from "@/lib/appearance";
@@ -25,6 +26,7 @@ export type ProfilePreferences = {
   appearance: Appearance;
   themeMode: ThemeMode;
   sidebarCollapsed: boolean;
+  mobileTooltipMode: MobileTooltipMode;
 };
 export type Profile = { id: string; name: string; isPrimary: boolean; preferences: ProfilePreferences; createdAt: string; updatedAt: string };
 export type AccountSettings = { developerMode: boolean; testProfilesEnabled: boolean; activeProfileId: string };
@@ -44,6 +46,7 @@ export const defaultPreferences: ProfilePreferences = {
   appearance: appearanceDefaults,
   themeMode: "manual",
   sidebarCollapsed: false,
+  mobileTooltipMode: DEFAULT_MOBILE_TOOLTIP_MODE,
 };
 export const MAX_PROFILES = 12;
 export const MAX_PROFILE_NAME = 40;
@@ -69,6 +72,7 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
     appearance: p.appearance && typeof p.appearance === "object" ? parseAppearance(p.appearance) : fallback.appearance,
     themeMode: pick(p.themeMode, ["manual", "dark", "light", "system"] as const, fallback.themeMode),
     sidebarCollapsed: bool(p.sidebarCollapsed, fallback.sidebarCollapsed),
+    mobileTooltipMode: parseMobileTooltipMode(p.mobileTooltipMode, fallback.mobileTooltipMode),
   };
 }
 
