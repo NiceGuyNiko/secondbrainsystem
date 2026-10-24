@@ -323,13 +323,17 @@ function Workspace() {
   );
   const nav = (s: Section, keepMobileDrawer=false) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
-    setSection(s);
-    setContextId(s==="Workspaces"&&engineEnabled?"writing":s==="Developing IT"?"widgets":undefined);
-    if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
-    setContext([]);
-    setDatabaseRecordId(null);
-    setCompanionRecord(null);
-    setWidgetConfiguration(null);
+    // Selecting the same page from the mobile page picker should reveal its
+    // subpages, not reset whichever record or subpage was already open.
+    if(!(keepMobileDrawer&&s===section)){
+      setSection(s);
+      setContextId(s==="Workspaces"&&engineEnabled?"writing":s==="Developing IT"?"widgets":undefined);
+      if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
+      setContext([]);
+      setDatabaseRecordId(null);
+      setCompanionRecord(null);
+      setWidgetConfiguration(null);
+    }
     setMobileOpen(keepMobileDrawer&&typeof window!=="undefined"&&window.matchMedia("(max-width:767px)").matches);
     setMobileSidebarMode(modeAfterSidebarPageSelection());
     setMobileCalendars(false);
