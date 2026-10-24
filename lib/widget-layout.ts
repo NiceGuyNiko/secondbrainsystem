@@ -76,6 +76,16 @@ const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b
   spans:b.spans?.map(s=>({...s,widgets:[...s.widgets]}))
 }));
 
+/** Every band needs its own durable ID even when the dragged widget was
+ * originally the ID source for a row that still contains sibling widgets. */
+const uniqueBandId=(bands:readonly WidgetLayoutBand[],widgetId:string)=>{
+  const base="band-"+widgetId;
+  if(!bands.some(b=>b.id===base))return base;
+  let suffix=2;
+  while(bands.some(b=>b.id===base+"-"+suffix))suffix++;
+  return base+"-"+suffix;
+};
+
 function publish(sections:readonly WidgetPageSection[],all:readonly PageWidget[],bySection:Map<string,WidgetLayoutBand[]>):PageWidget[]{
   const sectionIds=["",...sections.map(section=>section.id)];
   const inOrder=[...new Set([...sectionIds,...all.map(widgetSectionId)])];
@@ -144,7 +154,7 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     // Insert a full-width band immediately after the hovered band, not at the
     // end of the section. It is intentionally distinct from stacking below.
     destination.splice(destination.indexOf(destinationBand)+1,0,{
-      id:"band-"+id,lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
+      id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
     });
   }else if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
     const laneIndex=destinationBand.lanes.indexOf(destinationLane);
@@ -161,7 +171,7 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
       destinationLane.widgets.splice(targetIndex+(target.edge==="below"?1:0),0,moving);
     }
   }else{
-    destination.push({id:"band-"+id,lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]});
+    destination.push({id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]});
   }
   // A spanning group references its pair of adjacent columns. If a later
   // rearrangement removes or inserts columns, preserve every spanning widget
