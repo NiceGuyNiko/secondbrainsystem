@@ -4,7 +4,7 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
 export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"section-end";
-export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge};
+export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge;spanStartLane?:number};
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
@@ -78,6 +78,36 @@ export function canInsertWidgetColumn(band:WidgetLayoutBand):boolean{
   return band.lanes.length>0&&band.lanes.length<MAX_WIDGET_COLUMNS;
 }
 
+/** Two adjacent lanes can receive a shared spanning widget when their visible
+ * bottom edges line up. A single-column stack is still a separate drop zone.
+ * Conflicting/overlapping existing spans cannot be nested in a flex row, so
+ * these candidates are omitted until the conflicting group is moved.
+ */
+export type WidgetAlignedPair={startLane:number;targetId:string;endPx:number;width:number};
+export function alignedWidgetColumnPairs(
+  band:WidgetLayoutBand,
+  heightOf:(widget:PageWidget)=>number=widgetHeightPx,
+  gap=14,tolerancePx=12
+):WidgetAlignedPair[]{
+  const total=(lane:WidgetLayoutLane)=>lane.widgets.reduce((sum,w)=>sum+heightOf(w),0)+
+    Math.max(0,lane.widgets.length-1)*gap;
+  const result:WidgetAlignedPair[]=[];
+  for(let start=0;start<band.lanes.length-1;start++){
+    const left=band.lanes[start],right=band.lanes[start+1];
+    if(!left.widgets.length||!right.widgets.length)continue;
+    const endLeft=total(left),endRight=total(right);
+    if(Math.abs(endLeft-endRight)>tolerancePx)continue;
+    if(band.spans?.some(s=>start<s.startLane+s.laneCount&&s.startLane<start+2))continue;
+    result.push({
+      startLane:start,
+      targetId:left.widgets[0].id,
+      endPx:Math.max(endLeft,endRight),
+      width:left.width+right.width
+    });
+  }
+  return result;
+}
+
 const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b=>({
   ...b,
   lanes:b.lanes.map(l=>({...l,widgets:[...l.widgets]})),
@@ -128,6 +158,13 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   for(const sectionId of new Set(["",...sections.map(s=>s.id),...items.map(widgetSectionId),target.sectionId])){
     group.set(sectionId,mutableBands(items.filter(w=>widgetSectionId(w)===sectionId)));
   }
+  // Track lane identities through column insertion and removal. Index-only
+  // span references otherwise jump to the wrong pair whenever an earlier
+  // column is inserted or moved out of the row.
+  const spanAnchors=new Map<WidgetLayoutSpan,string[]>();
+  for(const bands of group.values())for(const band of bands)
+    for(const span of band.spans??[])
+      spanAnchors.set(span,band.lanes.slice(span.startLane,span.startLane+span.laneCount).map(l=>l.id));
   for(const bands of group.values())for(let bi=bands.length-1;bi>=0;bi--){
     const spans=bands[bi].spans??[];
     for(let si=spans.length-1;si>=0;si--){
@@ -145,16 +182,28 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     b.spans?.some(s=>s.widgets.some(w=>w.id===target.targetId)));
   const destinationLane=destinationBand?.lanes.find(l=>l.widgets.some(w=>w.id===target.targetId));
   const destinationSpan=destinationBand?.spans?.find(s=>s.widgets.some(w=>w.id===target.targetId));
-  if(destinationBand&&destinationLane&&target.edge==="span-below"&&destinationBand.lanes.length>=3){
-    // The persistent 67%-width divider below columns 2+3 is an explicit
-    // nested target. Its widgets stay attached to this SAME row and grow
-    // under both columns, not merely under the second column.
-    const startLane=destinationBand.lanes.length-2;
+  if(destinationBand&&destinationLane&&target.edge==="span-below"&&destinationBand.lanes.length>=2){
+    // A shared Stack target is tied to the specific neighboring pair:
+    // 1+2, 2+3 or 3+4. Legacy targets without an index still select
+    // the last two columns, preserving existing 67% arrangements.
+    const startLane=Number.isInteger(target.spanStartLane)
+      ?target.spanStartLane!:destinationBand.lanes.length-2;
     const laneCount=2;
-    if(!destinationBand.spans)destinationBand.spans=[];
-    let span=destinationBand.spans.find(s=>s.startLane===startLane&&s.laneCount===laneCount);
-    if(!span){span={startLane,laneCount,widgets:[]};destinationBand.spans.push(span)}
-    span.widgets.push(moving);
+    const hasRoom=startLane>=0&&startLane+laneCount<=destinationBand.lanes.length;
+    const overlaps=destinationBand.spans?.some(s=>
+      s.startLane!==startLane&&startLane<s.startLane+s.laneCount&&s.startLane<startLane+laneCount);
+    if(hasRoom&&!overlaps){
+      if(!destinationBand.spans)destinationBand.spans=[];
+      let span=destinationBand.spans.find(s=>s.startLane===startLane&&s.laneCount===laneCount);
+      if(!span){span={startLane,laneCount,widgets:[]};destinationBand.spans.push(span)}
+      span.widgets.push(moving);
+    }else{
+      // A conflicting span cannot be rendered as another adjacent flex
+      // cluster. Preserve the widget as a new full-width band instead.
+      destination.splice(destination.indexOf(destinationBand)+1,0,{
+        id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
+      });
+    }
   }else if(destinationSpan&&(target.edge==="above"||target.edge==="below")){
     const idx=destinationSpan.widgets.findIndex(w=>w.id===target.targetId);
     destinationSpan.widgets.splice(idx+(target.edge==="below"?1:0),0,moving);
@@ -181,21 +230,36 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   }else{
     destination.push({id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]});
   }
-  // A spanning group references its pair of adjacent columns. If a later
-  // rearrangement removes or inserts columns, preserve every spanning widget
-  // as a visible full-width row rather than leaving an orphaned invisible
-  // layout item with an out-of-range column reference.
+  // Rebase every span onto the SAME TWO lane identities after a reorder.
+  // Only if the source pair no longer exists side by side do we extract
+  // its contents into full-width rows rather than lose data or overlap.
   for(const bands of group.values()){
     for(let bi=0;bi<bands.length;bi++){
       const band=bands[bi];
-      const invalid=(band.spans??[]).filter(span=>
-        band.lanes.length<3||span.startLane!==band.lanes.length-2||span.laneCount!==2);
+      const invalid:WidgetLayoutSpan[]=[];
+      const occupied=new Set<number>();
+      for(const span of band.spans??[]){
+        const anchor=spanAnchors.get(span);
+        if(anchor){
+          const locations=anchor.map(id=>band.lanes.findIndex(l=>l.id===id));
+          if(locations.every((index,i)=>index>=0&&(i===0||index===locations[i-1]+1)))
+            span.startLane=locations[0];
+          else{invalid.push(span);continue}
+        }
+        if(span.laneCount!==2||span.startLane<0||
+          span.startLane+span.laneCount>band.lanes.length||
+          [span.startLane,span.startLane+1].some(i=>occupied.has(i))){
+          invalid.push(span);continue;
+        }
+        occupied.add(span.startLane);occupied.add(span.startLane+1);
+      }
       if(!invalid.length)continue;
       band.spans=(band.spans??[]).filter(span=>!invalid.includes(span));
       let inserted=0;
       for(const span of invalid)for(const widget of span.widgets){
         bands.splice(bi+1+inserted,0,{
-          id:"band-"+widget.id,lanes:[{id:"lane-"+widget.id,width:12,widgets:[widget]}]
+          id:uniqueBandId(bands,widget.id),
+          lanes:[{id:"lane-"+widget.id,width:12,widgets:[widget]}]
         });
         inserted++;
       }

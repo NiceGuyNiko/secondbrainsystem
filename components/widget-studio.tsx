@@ -6,7 +6,7 @@ import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {applyWidgetDoubleClickAction,canInsertWidgetColumn,placeWidget,resizeWidgetLane,widgetDoubleClickDescription,widgetLayoutBands,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane} from "@/lib/widget-layout";
+import {alignedWidgetColumnPairs,applyWidgetDoubleClickAction,canInsertWidgetColumn,placeWidget,resizeWidgetLane,widgetDoubleClickDescription,widgetLayoutBands,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -66,6 +66,7 @@ export default function WidgetStudio(p:Props){
   const [expandedWidgetActions,setExpandedWidgetActions]=useState<string|null>(null);
   const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
   const [resizePreview,setResizePreview]=useState<PageWidget[]|null>(null);
+  const [measuredWidgetHeights,setMeasuredWidgetHeights]=useState<Record<string,number>>({});
   const resizePreviewRef=useRef<PageWidget[]|null>(null);
   const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;heightPx:number;axis:"x"|"y"|"both";initial:PageWidget[]}|null>(null);
   const [duplicate,setDuplicate]=useState<PageWidget|null>(null);
@@ -172,6 +173,33 @@ export default function WidgetStudio(p:Props){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[p.mode,p.activePageId,data.pages]);
   useEffect(()=>{if(p.newPageIntent)setCreatingPage(true)},[p.newPageIntent]);
+  // A content-fitted widget has intrinsic rather than configured height.
+  // Measure rendered cards so shared Stack guides appear when neighboring
+  // columns genuinely finish at the same position, not merely when their
+  // saved numeric heights happen to match.
+  useEffect(()=>{
+    if(!arrange||typeof ResizeObserver==="undefined")return;
+    const host=document.querySelector(".aaa-widget-studio .aaa-widget-sections");
+    if(!host)return;
+    const elements=Array.from(host.querySelectorAll<HTMLElement>("[data-aaa-layout-widget-id]"));
+    if(!elements.length)return;
+    const refresh=()=>{
+      const next:Record<string,number>={};
+      for(const el of elements){
+        const id=el.getAttribute("data-aaa-layout-widget-id");
+        if(id)next[id]=Math.round(el.getBoundingClientRect().height);
+      }
+      setMeasuredWidgetHeights(current=>{
+        const ids=Object.keys(next);
+        return ids.length===Object.keys(current).length&&ids.every(id=>Math.abs((current[id]??-999)-next[id])<=2)
+          ?current:next;
+      });
+    };
+    const observer=new ResizeObserver(refresh);
+    for(const element of elements)observer.observe(element);
+    refresh();
+    return ()=>observer.disconnect();
+  },[arrange,page?.id,data.instances,collapsedWidgets,resizePreview,loading]);
 
   const createPage=async()=>{
     const title=newPage.trim();if(!title||busy)return;
@@ -413,7 +441,9 @@ export default function WidgetStudio(p:Props){
     if(drag&&target&&target.targetId!==drag)saveLayout(placeWidget(instanceList,pageSections,drag,target,fillGaps));
     setDrag(null);setDropHint(null);
   };
-  const hint=(value:WidgetDropTarget)=>setDropHint(old=>old?.sectionId===value.sectionId&&old.targetId===value.targetId&&old.edge===value.edge?old:value);
+  const hint=(value:WidgetDropTarget)=>setDropHint(old=>
+    old?.sectionId===value.sectionId&&old.targetId===value.targetId&&
+    old.edge===value.edge&&old.spanStartLane===value.spanStartLane?old:value);
   const dropTargetFor=(event:React.DragEvent<HTMLElement>,widget:PageWidget):WidgetDropTarget=>{
     const bounds=event.currentTarget.getBoundingClientRect();
     const x=(event.clientX-bounds.left)/bounds.width,y=(event.clientY-bounds.top)/bounds.height;
@@ -435,7 +465,10 @@ export default function WidgetStudio(p:Props){
       const edge=surface.getAttribute("data-aaa-insert-edge") as WidgetDropEdge;
       const targetId=surface.getAttribute("data-aaa-target-id");
       const sectionId=surface.getAttribute("data-aaa-section-id")??"";
-      if(targetId&&targetId!==movingId)return {sectionId,targetId,edge};
+      const rawStart=surface.getAttribute("data-aaa-span-start");
+      const spanStartLane=rawStart===null?undefined:Number(rawStart);
+      if(targetId&&targetId!==movingId)
+        return {sectionId,targetId,edge,spanStartLane};
     }
     const article=element?.closest<HTMLElement>("[data-aaa-widget-id]");
     const targetId=article?.getAttribute("data-aaa-widget-id");
@@ -937,13 +970,16 @@ export default function WidgetStudio(p:Props){
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {widgetLayoutBands(widgets).map(band=>{
               const used=band.lanes.reduce((sum,lane)=>sum+lane.width,0);
-              // The last two of 3+ columns form a right-side cluster. Its
-              // lower insertion line spans BOTH columns (67% for thirds).
-              // A tall left column stays independent of the cluster rows.
-              const startLane=band.lanes.length>=3?band.lanes.length-2:-1;
-              const cluster=band.spans?.find(s=>s.startLane===startLane&&s.laneCount===2);
-              const spanTarget=startLane>=0?band.lanes.slice(startLane).flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id:null;
+              const gap=14;
+              const heights=(w:PageWidget)=>measuredWidgetHeights[w.id]??
+                (arrange&&collapsedWidgets.includes(w.id)?58:widgetHeightPx(w)+(arrange?34:0));
+              const alignedPairs=arrange?alignedWidgetColumnPairs(band,heights,gap,12):[];
+              const largestEnd=band.lanes.reduce((max,lane)=>Math.max(max,
+                lane.widgets.reduce((sum,w)=>sum+heights(w),0)+Math.max(0,lane.widgets.length-1)*gap),0);
+              const overlayBottom=Math.max(0,...alignedPairs.map((pair,i)=>pair.endPx+30+i*22));
+              const bandPadding=arrange?Math.max(40,overlayBottom-largestEnd+32):undefined;
               const renderItem=(widget:PageWidget)=><div className={"aaa-widget-layout-item"+(widget.config.fitContent===true?" aaa-widget-layout-fit":"")} key={widget.id}
+                data-aaa-layout-widget-id={widget.id}
                 style={{height:arrange&&collapsedWidgets.includes(widget.id)?58:widget.config.fitContent===true?"auto":widgetHeightPx(widget)+(arrange?34:0)}}>
                 {widgetCard(widget)}
                 {arrange&&<button className="aaa-widget-height-divider" type="button"
@@ -1010,12 +1046,43 @@ export default function WidgetStudio(p:Props){
                     onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>;
                 })()}
               </div>;
+              // Existing spans become real nested two-column clusters.
+              // Start may be 0, 1 or 2, so any aligned neighboring pair can
+              // own a widget beneath it while unrelated lanes stay tall.
+              const segments=band.lanes.flatMap((lane,i)=>{
+                if(band.spans?.some(s=>s.startLane===i-1&&s.laneCount===2))return [];
+                const span=band.spans?.find(s=>s.startLane===i&&s.laneCount===2);
+                if(!span)return [renderLane(lane,i)];
+                const pair=band.lanes.slice(i,i+2);
+                const spanTarget=pair.flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id??
+                  span.widgets.find(w=>w.id!==drag)?.id??null;
+                const target={sectionId:section.id,targetId:spanTarget,edge:"span-below" as const,spanStartLane:i};
+                return [<div key={"span-"+i} className="aaa-widget-span-cluster"
+                  style={{flex:`${pair.reduce((sum,l)=>sum+l.width,0)} 1 0`}}>
+                  <div className="aaa-widget-span-cluster-columns">
+                    {pair.map((part,offset)=>renderLane(part,i+offset))}
+                  </div>
+                  {span.widgets.map(renderItem)}
+                  {arrange&&spanTarget&&<button type="button" data-aaa-insert-edge="span-below"
+                    data-aaa-target-id={spanTarget} data-aaa-section-id={section.id}
+                    data-aaa-span-start={i}
+                    className={"aaa-widget-span-insertion"+(dropHint?.edge==="span-below"&&
+                      dropHint.targetId===spanTarget&&dropHint.spanStartLane===i?" is-target":"")}
+                    title="Stack another widget across these two columns"
+                    aria-label={`Stack another widget across columns ${i+1} and ${i+2}`}
+                    onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint(target)}}
+                    onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(target)}}>
+                    <span className="aaa-widget-guide-label" aria-hidden="true">Stack {i+1}+{i+2}</span>
+                  </button>}
+                </div>];
+              });
               const firstOuter=band.lanes.flatMap(l=>l.widgets).find(w=>w.id!==drag);
               const lastOuter=[...band.lanes].reverse().flatMap(l=>l.widgets).find(w=>w.id!==drag);
               const showOuter=arrange&&canInsertWidgetColumn(band);
               const afterId=band.lanes.flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id??
                 band.spans?.flatMap(s=>s.widgets).find(w=>w.id!==drag)?.id??null;
-              return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}>
+              return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}
+                style={{paddingBottom:bandPadding}}> 
                 {showOuter&&firstOuter&&<button type="button"
                   className={"aaa-widget-outer-column-drop aaa-widget-outer-left"+(dropHint?.edge==="left"&&dropHint.targetId===firstOuter.id?" is-target":"")}
                   title="Drop a widget here to add a column on the left"
@@ -1025,25 +1092,35 @@ export default function WidgetStudio(p:Props){
                     hint({sectionId:section.id,targetId:firstOuter.id,edge:"left"})}}
                   onDrop={e=>{if(!drag||drag===firstOuter.id)return;e.preventDefault();e.stopPropagation();
                     commitDrop({sectionId:section.id,targetId:firstOuter.id,edge:"left"})}}/>}
-                {startLane>=1?<>
-                  {band.lanes.slice(0,startLane).map((lane,i)=>renderLane(lane,i))}
-                  <div className="aaa-widget-span-cluster" style={{flex:`${band.lanes.slice(startLane).reduce((sum,l)=>sum+l.width,0)} 1 0`}}>
-                    <div className="aaa-widget-span-cluster-columns">
-                      {band.lanes.slice(startLane).map((lane,i)=>renderLane(lane,startLane+i))}
-                    </div>
-                    {(cluster?.widgets??[]).map(renderItem)}
-                    {arrange&&<button data-aaa-insert-edge="span-below"
-                      data-aaa-target-id={spanTarget??undefined} data-aaa-section-id={section.id}
-                      className={"aaa-widget-span-insertion"+(dropHint?.edge==="span-below"&&dropHint.targetId===spanTarget?" is-target":"")}
-                      title="Drag a widget here to span the two columns above"
-                      aria-label="Insert a widget below both neighboring columns"
-                      type="button"
-                      onDragOver={e=>{if(!drag||!spanTarget)return;e.preventDefault();e.stopPropagation();
-                        hint({sectionId:section.id,targetId:spanTarget,edge:"span-below"})}}
-                      onDrop={e=>{if(!drag||!spanTarget)return;e.preventDefault();e.stopPropagation();
-                        commitDrop({sectionId:section.id,targetId:spanTarget,edge:"span-below"})}}/>}
-                  </div>
-                </>:band.lanes.map(renderLane)}
+                {segments}
+                {alignedPairs.map((pair,i)=>{
+                  const candidates=band.lanes.slice(pair.startLane,pair.startLane+2)
+                    .flatMap(l=>l.widgets).filter(w=>w.id!==drag);
+                  const targetId=candidates[0]?.id;
+                  if(!targetId)return null;
+                  const target:WidgetDropTarget={sectionId:section.id,targetId,edge:"span-below",spanStartLane:pair.startLane};
+                  const leftUnits=band.lanes.slice(0,pair.startLane).reduce((sum,l)=>sum+l.width,0);
+                  const totalGaps=(band.lanes.length-1)*gap;
+                  const left=`calc((100% - ${totalGaps}px) * ${leftUnits/12} + ${pair.startLane*gap}px)`;
+                  const width=`calc((100% - ${totalGaps}px) * ${pair.width/12} + ${gap}px)`;
+                  return <button type="button" key={"aligned-"+pair.startLane}
+                    className={"aaa-widget-aligned-span-drop"+(dropHint?.edge==="span-below"&&
+                      dropHint.spanStartLane===pair.startLane?" is-target":"")}
+                    style={{left,width,top:pair.endPx+19+i*22}}
+                    data-aaa-insert-edge="span-below"
+                    data-aaa-target-id={targetId}
+                    data-aaa-section-id={section.id}
+                    data-aaa-span-start={pair.startLane}
+                    title={`Stack a widget across columns ${pair.startLane+1} and ${pair.startLane+2}`}
+                    aria-label={`Insert a widget spanning aligned columns ${pair.startLane+1} and ${pair.startLane+2}`}
+                    onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint(target)}}
+                    onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(target)}}>
+                    <span className="aaa-widget-divider-stroke" aria-hidden="true"/>
+                    <span className="aaa-widget-guide-label" aria-hidden="true">
+                      Stack {pair.startLane+1}+{pair.startLane+2}
+                    </span>
+                  </button>;
+                })}
                 {used<12&&<div className="aaa-widget-layout-spacer" style={{flex:`${12-used} 1 0`}}/>}
                 {showOuter&&lastOuter&&<button type="button"
                   className={"aaa-widget-outer-column-drop aaa-widget-outer-right"+(dropHint?.edge==="right"&&dropHint.targetId===lastOuter.id?" is-target":"")}
