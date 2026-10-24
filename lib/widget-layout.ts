@@ -9,6 +9,7 @@ export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
 
+export const MAX_WIDGET_COLUMNS=4;
 const MIN_WIDTH=2;
 const safeWidth=(value:number)=>Math.max(MIN_WIDTH,Math.min(12,Math.round(value)));
 const bandId=(item:PageWidget)=>typeof item.config.layoutBand==="string"?item.config.layoutBand:"band-"+item.id;
@@ -68,6 +69,13 @@ export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[
     lane.widgets.push(item);
   }
   return bands;
+}
+
+/** Insertion targets exist at both outer edges and between columns only until
+ * the band reaches its four-column maximum. Widths are redistributed WITHIN
+ * the existing full-width band; the canvas itself never widens. */
+export function canInsertWidgetColumn(band:WidgetLayoutBand):boolean{
+  return band.lanes.length>0&&band.lanes.length<MAX_WIDGET_COLUMNS;
 }
 
 const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b=>({
@@ -159,7 +167,7 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   }else if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
     const laneIndex=destinationBand.lanes.indexOf(destinationLane);
     if(target.edge==="left"||target.edge==="right"){
-      if(destinationBand.lanes.length<4){
+      if(canInsertWidgetColumn(destinationBand)){
         destinationBand.lanes.splice(laneIndex+(target.edge==="right"?1:0),0,{id:"lane-"+id,width:3,widgets:[moving]});
         rebalance(destinationBand);
       }else{

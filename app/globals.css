@@ -3211,3 +3211,277 @@ input[type="range"]{
   flex-basis:14px;
   margin:-7px 0 -7px;
 }
+
+
+/* Arrange layout V5: actual left, right and internal column insertion guides.
+   These are ABSOLUTELY positioned on the full-width band: dropping a fourth
+   column redistributes its children, not the canvas or band footprint. */
+.aaa-widget-sections-arranging .aaa-widget-layout-band{
+  position:relative;
+  isolation:isolate;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop{
+  position:absolute!important;
+  top:3px;
+  bottom:32px;
+  width:17px;
+  min-height:35px;
+  padding:0;
+  z-index:28;
+  cursor:copy;
+  touch-action:none;
+  background:transparent!important;
+  border:0;
+  border-radius:8px;
+  appearance:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.aaa-widget-outer-left{left:-13px}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.aaa-widget-outer-right{right:-13px}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:3px;
+  left:7px;
+  border-radius:20px;
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 28%,transparent);
+  opacity:.72;
+  transition:opacity .13s ease,width .13s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.is-target::before,
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:focus-visible::before{
+  width:6px;
+  left:5px;
+  opacity:1;
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::after{
+  content:"+";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  padding:1px 3px;
+  line-height:14px;
+  font-size:13px;
+  border-radius:4px;
+  color:var(--accent-text);
+  background:var(--bg);
+  pointer-events:none;
+  font-weight:750;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider::before{
+  background:var(--accent)!important;
+  border-color:var(--accent)!important;
+  opacity:.72!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider:hover::before{
+  opacity:1!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-insert-edge]{
+  cursor:ew-resize;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-insert-edge]::after{
+  content:"+";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:12px;
+  font-weight:750;
+  padding:1px 3px;
+  line-height:14px;
+  color:var(--accent-text);
+  background:var(--bg);
+  border-radius:4px;
+  pointer-events:none;
+}
+/* The old solid purple underline belonged to an ambiguous height control.
+   The widget's dotted lower border now acts as the drag-to-resize edge.
+   Separate purple Stack and New row insertion guides remain visible. */
+.aaa-widget-sections-arranging .aaa-widget-height-divider{
+  background:transparent!important;
+  border:0;
+  box-shadow:none!important;
+  left:4px;
+  right:23px;
+  bottom:-8px;
+  height:16px;
+  z-index:22;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:focus-visible::before{
+  content:"";
+  top:6px!important;
+  left:0!important;
+  right:0!important;
+  width:auto!important;
+  height:0!important;
+  border-top:1px dotted color-mix(in srgb,var(--accent) 55%,var(--border));
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:focus-visible::before{
+  border-top-width:2px;
+  border-top-color:var(--accent);
+}
+/* Triangle fits completely inside the rounded card border; it no longer
+   protrudes from or gets cropped at the bottom-right boundary. */
+.aaa-widget-card.aaa-widget-arranging>.aaa-widget-resize-corner{
+  position:absolute;
+  right:3px!important;
+  bottom:3px!important;
+  width:15px!important;
+  height:15px!important;
+  border-radius:0 0 5px 0!important;
+  clip-path:polygon(100% 0,100% 100%,0 100%)!important;
+  background:var(--accent)!important;
+  cursor:ns-resize;
+  z-index:31;
+}
+.aaa-widget-card.aaa-widget-arranging{
+  border-radius:13px;
+}
+/* Per-widget container queries react to ACTUAL widget width (25%, 33%, etc)
+   rather than the user's total browser width. */
+.aaa-widget-card{
+  container-type:inline-size;
+  width:100%;
+}
+.aaa-widget-card-head{
+  position:relative;
+  min-width:0;
+}
+.aaa-widget-title-group,
+.aaa-widget-title-stack{
+  min-width:0;
+  overflow:hidden;
+}
+.aaa-widget-title-button{
+  display:block;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.aaa-widget-more-toggle{
+  display:none!important;
+}
+@container (max-width:390px){
+  .aaa-widget-card-head{
+    padding:9px 10px!important;
+    min-height:48px;
+    gap:4px;
+  }
+  .aaa-widget-card-head>.aaa-widget-title-group{
+    flex:0 1 45%;
+    max-width:calc(50% - 12px);
+    min-width:0;
+    overflow:hidden;
+    margin-right:auto;
+  }
+  .aaa-widget-card-head .aaa-widget-title-stack{
+    width:100%;
+  }
+  .aaa-widget-card-head .aaa-widget-title-button{
+    font-size:12px;
+    max-width:100%;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    overflow:hidden;
+  }
+  .aaa-widget-card-actions{
+    min-width:34px;
+    flex:0 0 34px;
+    justify-content:flex-end;
+  }
+  .aaa-widget-card-actions>button:not(.aaa-widget-more-toggle){
+    display:none!important;
+  }
+  .aaa-widget-card-actions>.aaa-widget-drag-handle{
+    position:absolute!important;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    z-index:3;
+    display:grid!important;
+    place-items:center;
+    background:transparent;
+    margin:0!important;
+    width:27px!important;
+    height:27px!important;
+    min-width:27px!important;
+  }
+  .aaa-widget-card-actions>.aaa-widget-more-toggle{
+    display:grid!important;
+    place-items:center;
+    width:27px!important;
+    min-width:27px;
+    height:27px;
+    flex:0 0 27px;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open{
+    position:absolute;
+    top:calc(100% - 2px);
+    right:7px;
+    z-index:45;
+    display:flex!important;
+    justify-content:flex-end;
+    align-items:center;
+    gap:3px;
+    flex:0 1 auto;
+    flex-wrap:wrap;
+    width:max-content;
+    max-width:min(310px,90vw);
+    min-width:150px;
+    padding:7px;
+    border:1px solid var(--accent);
+    border-radius:9px;
+    background:var(--surface);
+    box-shadow:0 10px 30px #0005;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>button:not(.aaa-widget-more-toggle){
+    display:grid!important;
+    place-items:center;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
+    display:none!important;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-more-toggle{
+    display:grid!important;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open .aaa-widget-more-toggle{
+    color:var(--accent-text);
+  }
+  .aaa-widget-height-caption{
+    overflow:hidden;
+    max-width:100%;
+    text-overflow:ellipsis;
+  }
+}
+@media(hover:none), (pointer:coarse){
+  .aaa-widget-card-actions>.aaa-widget-drag-handle{
+    touch-action:none!important;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+}
+
+/* Compact overflow menu is a transient overlay, not cropped by its widget.
+   The title and drag grip stay in their normal positions until expanded. */
+.aaa-widget-card.aaa-widget-actions-expanded,
+.aaa-widget-card.aaa-widget-arranging:has(.aaa-widget-actions-open){
+  overflow:visible!important;
+  z-index:43;
+}
+@container (max-width:390px){
+  .aaa-widget-card.aaa-widget-arranging:has(.aaa-widget-actions-open) .aaa-widget-card-head{
+    z-index:43;
+  }
+}
