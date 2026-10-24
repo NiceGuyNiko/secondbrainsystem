@@ -3,8 +3,8 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"section-end";
-export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge;spanStartLane?:number};
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end";
+export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge;spanStartLane?:number;spanLaneCount?:number};
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
@@ -83,27 +83,80 @@ export function canInsertWidgetColumn(band:WidgetLayoutBand):boolean{
  * Conflicting/overlapping existing spans cannot be nested in a flex row, so
  * these candidates are omitted until the conflicting group is moved.
  */
-export type WidgetAlignedPair={startLane:number;targetId:string;endPx:number;width:number};
+/** Nested groups are supported: a 2+3 span can later combine with column 1
+ * (physical lanes 1+2+3) or with column 4 (physical 2+3+4).
+ * A group owns the combined width and displays its span beneath its children.
+ */
+export type WidgetVisualNode=
+  |{kind:"lane";startLane:number;laneCount:1;width:number;lane:WidgetLayoutLane}
+  |{kind:"group";startLane:number;laneCount:number;width:number;span:WidgetLayoutSpan;children:WidgetVisualNode[]};
+export type WidgetVisualTrack={startLane:number;laneCount:number;width:number;endPx:number;targetId:string};
+export type WidgetAlignedPair={startLane:number;laneCount:number;targetId:string;endPx:number;width:number;visualIndex:number};
+
+const intervalEnd=(span:WidgetLayoutSpan)=>span.startLane+span.laneCount;
+const containsSpan=(outer:WidgetLayoutSpan,inner:WidgetLayoutSpan)=>
+  outer!==inner&&outer.startLane<=inner.startLane&&intervalEnd(outer)>=intervalEnd(inner);
+const conflictingSpans=(a:WidgetLayoutSpan,b:WidgetLayoutSpan)=>{
+  if(intervalEnd(a)<=b.startLane||intervalEnd(b)<=a.startLane)return false;
+  return !containsSpan(a,b)&&!containsSpan(b,a)&&!(a.startLane===b.startLane&&a.laneCount===b.laneCount);
+};
+export function widgetVisualHierarchy(band:WidgetLayoutBand):WidgetVisualNode[]{
+  const spans=band.spans??[];
+  const build=(start:number,end:number,excluded?:WidgetLayoutSpan):WidgetVisualNode[]=>{
+    const candidates=spans.filter(s=>s!==excluded&&s.startLane>=start&&
+      intervalEnd(s)<=end&&s.laneCount>=2);
+    const parents=candidates.filter(s=>!candidates.some(other=>containsSpan(other,s)))
+      .sort((a,b)=>a.startLane-b.startLane||b.laneCount-a.laneCount);
+    const nodes:WidgetVisualNode[]=[];
+    for(let i=start;i<end;){
+      const group=parents.find(s=>s.startLane===i);
+      if(group){
+        nodes.push({kind:"group",startLane:i,laneCount:group.laneCount,
+          width:band.lanes.slice(i,intervalEnd(group)).reduce((sum,l)=>sum+l.width,0),
+          span:group,children:build(i,intervalEnd(group),group)});
+        i=intervalEnd(group);
+      }else{
+        const lane=band.lanes[i];
+        if(lane)nodes.push({kind:"lane",startLane:i,laneCount:1,width:lane.width,lane});
+        i++;
+      }
+    }
+    return nodes;
+  };
+  return build(0,band.lanes.length);
+}
+export function widgetVisualTracks(
+  band:WidgetLayoutBand,heightOf:(widget:PageWidget)=>number=widgetHeightPx,gap=14
+):WidgetVisualTrack[]{
+  const height=(widgets:readonly PageWidget[])=>
+    widgets.reduce((sum,w)=>sum+heightOf(w),0)+Math.max(0,widgets.length-1)*gap;
+  const heightOfNode=(node:WidgetVisualNode):number=>node.kind==="lane"
+    ?height(node.lane.widgets)
+    :Math.max(0,...node.children.map(heightOfNode))+gap+height(node.span.widgets);
+  const firstId=(node:WidgetVisualNode):string=>node.kind==="lane"
+    ?node.lane.widgets[0]?.id??""
+    :node.children.map(firstId).find(Boolean)??node.span.widgets[0]?.id??"";
+  return widgetVisualHierarchy(band).map(node=>({
+    startLane:node.startLane,laneCount:node.laneCount,
+    width:node.width,endPx:heightOfNode(node),targetId:firstId(node)
+  }));
+}
+/** Compare the current *visual* columns, including previously merged groups.
+ * Equal bottom edges produce a shared Combine bar, but each candidate retains
+ * the underlying physical lane interval for durable storage.
+ */
 export function alignedWidgetColumnPairs(
   band:WidgetLayoutBand,
   heightOf:(widget:PageWidget)=>number=widgetHeightPx,
   gap=14,tolerancePx=12
 ):WidgetAlignedPair[]{
-  const total=(lane:WidgetLayoutLane)=>lane.widgets.reduce((sum,w)=>sum+heightOf(w),0)+
-    Math.max(0,lane.widgets.length-1)*gap;
-  const result:WidgetAlignedPair[]=[];
-  for(let start=0;start<band.lanes.length-1;start++){
-    const left=band.lanes[start],right=band.lanes[start+1];
-    if(!left.widgets.length||!right.widgets.length)continue;
-    const endLeft=total(left),endRight=total(right);
-    if(Math.abs(endLeft-endRight)>tolerancePx)continue;
-    if(band.spans?.some(s=>start<s.startLane+s.laneCount&&s.startLane<start+2))continue;
-    result.push({
-      startLane:start,
-      targetId:left.widgets[0].id,
-      endPx:Math.max(endLeft,endRight),
-      width:left.width+right.width
-    });
+  const tracks=widgetVisualTracks(band,heightOf,gap),result:WidgetAlignedPair[]=[];
+  for(let i=0;i<tracks.length-1;i++){
+    const a=tracks[i],b=tracks[i+1];
+    if(!a.targetId||!b.targetId||Math.abs(a.endPx-b.endPx)>tolerancePx)continue;
+    result.push({startLane:a.startLane,laneCount:a.laneCount+b.laneCount,
+      targetId:a.targetId,endPx:Math.max(a.endPx,b.endPx),
+      width:a.width+b.width,visualIndex:i});
   }
   return result;
 }
@@ -188,10 +241,11 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     // the last two columns, preserving existing 67% arrangements.
     const startLane=Number.isInteger(target.spanStartLane)
       ?target.spanStartLane!:destinationBand.lanes.length-2;
-    const laneCount=2;
-    const hasRoom=startLane>=0&&startLane+laneCount<=destinationBand.lanes.length;
-    const overlaps=destinationBand.spans?.some(s=>
-      s.startLane!==startLane&&startLane<s.startLane+s.laneCount&&s.startLane<startLane+laneCount);
+    const laneCount=Number.isInteger(target.spanLaneCount)?target.spanLaneCount!:2;
+    const hasRoom=startLane>=0&&laneCount>=2&&laneCount<=MAX_WIDGET_COLUMNS&&
+      startLane+laneCount<=destinationBand.lanes.length;
+    const proposal:WidgetLayoutSpan={startLane,laneCount,widgets:[moving]};
+    const overlaps=destinationBand.spans?.some(s=>conflictingSpans(s,proposal));
     if(hasRoom&&!overlaps){
       if(!destinationBand.spans)destinationBand.spans=[];
       let span=destinationBand.spans.find(s=>s.startLane===startLane&&s.laneCount===laneCount);
@@ -207,10 +261,10 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   }else if(destinationSpan&&(target.edge==="above"||target.edge==="below")){
     const idx=destinationSpan.widgets.findIndex(w=>w.id===target.targetId);
     destinationSpan.widgets.splice(idx+(target.edge==="below"?1:0),0,moving);
-  }else if(destinationBand&&target.edge==="new-row"){
-    // Insert a full-width band immediately after the hovered band, not at the
-    // end of the section. It is intentionally distinct from stacking below.
-    destination.splice(destination.indexOf(destinationBand)+1,0,{
+  }else if(destinationBand&&(target.edge==="new-row"||target.edge==="new-row-before")){
+    // Separate full-width bands are distinct from in-column stacking.
+    // The first section's top guide inserts BEFORE its first band.
+    destination.splice(destination.indexOf(destinationBand)+(target.edge==="new-row"?1:0),0,{
       id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
     });
   }else if(destinationBand&&destinationLane&&target.targetId&&target.targetId!==id&&target.edge!=="section-end"){
@@ -237,8 +291,8 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     for(let bi=0;bi<bands.length;bi++){
       const band=bands[bi];
       const invalid:WidgetLayoutSpan[]=[];
-      const occupied=new Set<number>();
-      for(const span of band.spans??[]){
+      const validated:WidgetLayoutSpan[]=[];
+      for(const span of [...(band.spans??[])].sort((a,b)=>b.laneCount-a.laneCount)){
         const anchor=spanAnchors.get(span);
         if(anchor){
           const locations=anchor.map(id=>band.lanes.findIndex(l=>l.id===id));
@@ -246,12 +300,12 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
             span.startLane=locations[0];
           else{invalid.push(span);continue}
         }
-        if(span.laneCount!==2||span.startLane<0||
+        if(span.laneCount<2||span.laneCount>MAX_WIDGET_COLUMNS||span.startLane<0||
           span.startLane+span.laneCount>band.lanes.length||
-          [span.startLane,span.startLane+1].some(i=>occupied.has(i))){
+          validated.some(other=>conflictingSpans(other,span))){
           invalid.push(span);continue;
         }
-        occupied.add(span.startLane);occupied.add(span.startLane+1);
+        validated.push(span);
       }
       if(!invalid.length)continue;
       band.spans=(band.spans??[]).filter(span=>!invalid.includes(span));
