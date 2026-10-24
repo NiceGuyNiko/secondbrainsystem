@@ -1976,3 +1976,92 @@ input[type="range"]{
   border-radius:9px;
   margin-top:5px;
 }
+
+/* Mobile chrome alignment: both states share the same 56px header and
+   the same right-side 40px control target. */
+@media (max-width:767px){
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header){
+    position:relative!important;
+    top:0!important;
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    padding:0 12px!important;
+    display:flex!important;
+    align-items:center!important;
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-tabs{
+    height:100%;
+    align-self:stretch;
+    align-items:stretch;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-actions{
+    height:40px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-actions>button:last-child{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    flex:0 0 40px;
+    display:grid!important;
+    place-items:center;
+    border-radius:9px;
+    margin:0!important;
+    padding:0!important;
+  }
+  /* The old 58px top padding was reserved for a different mobile header.
+     It displaced the Companion tabs below the app header. */
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header){
+    padding-top:0!important;
+  }
+  /* Brand icon is a compact glyph, not a framed/oversized clickable tile. */
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-sidebar-open .aaa-brand>.aaa-icon-slot{
+    appearance:none;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    outline-offset:2px;
+    padding:0!important;
+    overflow:visible;
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher>*{
+    display:block;
+    width:30px!important;
+    height:30px!important;
+    max-width:30px;
+    max-height:30px;
+    margin:auto;
+  }
+  .aaa-sidebar-open .aaa-brand>.aaa-icon-slot{
+    width:52px!important;
+    min-width:52px;
+    max-width:52px;
+    height:48px!important;
+    min-height:48px;
+    flex:0 0 52px;
+    display:grid;
+    place-items:center;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-logo{
+    width:34px!important;
+    height:34px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-brand-mark{
+    width:30px!important;
+    height:30px!important;
+    max-width:30px;
+    max-height:30px;
+  }
+}
