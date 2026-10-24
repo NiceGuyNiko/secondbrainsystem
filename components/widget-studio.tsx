@@ -458,7 +458,8 @@ export default function WidgetStudio(p:Props){
   const hint=(value:WidgetDropTarget)=>setDropHint(old=>
     old?.sectionId===value.sectionId&&old.targetId===value.targetId&&
     old.edge===value.edge&&old.spanStartLane===value.spanStartLane&&
-    old.spanLaneCount===value.spanLaneCount?old:value);
+    old.spanLaneCount===value.spanLaneCount&&
+    old.extendSpanWidgetId===value.extendSpanWidgetId?old:value);
   const dropTargetFor=(event:React.DragEvent<HTMLElement>,widget:PageWidget):WidgetDropTarget=>{
     const bounds=event.currentTarget.getBoundingClientRect();
     const x=(event.clientX-bounds.left)/bounds.width,y=(event.clientY-bounds.top)/bounds.height;
@@ -484,8 +485,9 @@ export default function WidgetStudio(p:Props){
       const spanStartLane=rawStart===null?undefined:Number(rawStart);
       const rawCount=surface.getAttribute("data-aaa-span-count");
       const spanLaneCount=rawCount===null?undefined:Number(rawCount);
+      const extendSpanWidgetId=surface.getAttribute("data-aaa-extend-span")??undefined;
       if(targetId&&targetId!==movingId)
-        return {sectionId,targetId,edge,spanStartLane,spanLaneCount};
+        return {sectionId,targetId,edge,spanStartLane,spanLaneCount,extendSpanWidgetId};
     }
     const article=element?.closest<HTMLElement>("[data-aaa-widget-id]");
     const targetId=article?.getAttribute("data-aaa-widget-id");
@@ -1043,10 +1045,57 @@ export default function WidgetStudio(p:Props){
               const largestEnd=Math.max(0,...visualTracks.map(track=>track.endPx));
               const overlayBottom=Math.max(0,...combineRows.map(row=>row.endPx+45));
               const bandPadding=arrange?Math.max(40,overlayBottom-largestEnd+28):undefined;
+              // Local insertion guides follow each widget edge separately.
+              // A second-row merged widget can therefore have its own left
+              // and right insertion zones without drawing a thick full-height
+              // bar through the entire parent column.
+              const edgePlacement=(widget:PageWidget,edge:"left"|"right"):WidgetDropTarget|null=>{
+                if(!canInsertWidgetColumn(band))return null;
+                const start=widget.config.layoutSpanStart;
+                const count=widget.config.layoutSpanCount;
+                const isSpan=typeof start==="number"&&typeof count==="number"&&
+                  Number.isInteger(start)&&Number.isInteger(count)&&count>=2;
+                const widgetLane=band.lanes.findIndex(lane=>lane.widgets.some(w=>w.id===widget.id));
+                const laneIndex=isSpan
+                  ?edge==="left"?start:start+count-1
+                  :widgetLane;
+                const lane=band.lanes[laneIndex];
+                if(!lane?.widgets.length)return null;
+                const targetId=lane.widgets[0].id;
+                // If inserted beside a combined widget (or immediately next
+                // to one), preserve the combined widget across the new lane.
+                const boundary=laneIndex+(edge==="right"?1:0);
+                const adjacentSpan=isSpan
+                  ?band.spans?.find(span=>span.widgets.some(w=>w.id===widget.id))
+                  :band.spans?.find(span=>edge==="left"
+                    ?span.startLane+span.laneCount===boundary
+                    :span.startLane===boundary);
+                const extendSpanWidgetId=adjacentSpan?.widgets[0]?.id;
+                return {sectionId:section.id,targetId,edge,extendSpanWidgetId};
+              };
               const renderItem=(widget:PageWidget)=><div className={"aaa-widget-layout-item"+(widget.config.fitContent===true?" aaa-widget-layout-fit":"")} key={widget.id}
                 data-aaa-layout-widget-id={widget.id}
                 style={{height:arrange&&collapsedWidgets.includes(widget.id)?58:widget.config.fitContent===true?"auto":widgetHeightPx(widget)+(arrange?34:0)}}>
                 {widgetCard(widget)}
+                {arrange&&(["left","right"] as const).map(side=>{
+                  const target=edgePlacement(widget,side);
+                  if(!target?.targetId)return null;
+                  return <button key={"local-"+side} type="button"
+                    className={"aaa-widget-local-column-drop aaa-widget-local-"+side+
+                      (dropHint?.edge===side&&dropHint.targetId===target.targetId&&
+                        dropHint.extendSpanWidgetId===target.extendSpanWidgetId?" is-target":"")}
+                    title={`Insert a widget ${side} of ${widget.title||"this widget"}`}
+                    aria-label={`Add a column ${side} of ${widget.title||"this widget"}`}
+                    data-aaa-insert-edge={side} data-aaa-target-id={target.targetId}
+                    data-aaa-section-id={section.id}
+                    data-aaa-extend-span={target.extendSpanWidgetId}
+                    onDragOver={e=>{if(!drag||drag===target.targetId)return;
+                      e.preventDefault();e.stopPropagation();hint(target)}}
+                    onDrop={e=>{if(!drag||drag===target.targetId)return;
+                      e.preventDefault();e.stopPropagation();commitDrop(target)}}
+                    onClick={e=>{e.stopPropagation();
+                      if(!drag&&!busy)void createAndPlaceWidget(section.id,target)}}/>;
+                })}
                 {arrange&&<button className="aaa-widget-height-divider" type="button"
                   data-aaa-insert-edge="below" data-aaa-target-id={widget.id} data-aaa-section-id={section.id}
                   title={"Drag to resize "+(widget.title||"widget")+" height; double-click to "+widgetDoubleClickDescription(p.bottomDoubleClick??"match-height")}

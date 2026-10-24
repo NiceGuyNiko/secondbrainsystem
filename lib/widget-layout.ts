@@ -4,7 +4,13 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
 export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end";
-export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge;spanStartLane?:number;spanLaneCount?:number};
+export type WidgetDropTarget={
+  sectionId:string;targetId:string|null;edge:WidgetDropEdge;
+  spanStartLane?:number;spanLaneCount?:number;
+  /** Add the inserted physical lane to an existing merged area. Used when
+   * clicking an edge beside a merged widget instead of creating a gap. */
+  extendSpanWidgetId?:string;
+};
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
@@ -271,7 +277,27 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     const laneIndex=destinationBand.lanes.indexOf(destinationLane);
     if(target.edge==="left"||target.edge==="right"){
       if(canInsertWidgetColumn(destinationBand)){
-        destinationBand.lanes.splice(laneIndex+(target.edge==="right"?1:0),0,{id:"lane-"+id,width:3,widgets:[moving]});
+        const insertionIndex=laneIndex+(target.edge==="right"?1:0);
+        const newLane:WidgetLayoutLane={id:"lane-"+id,width:3,widgets:[moving]};
+        // If insertion comes from the edge of a combined lower widget, keep
+        // that lower widget attached to its expanded physical columns.
+        // Without this, the top gains a fourth column while the bottom
+        // unexpectedly stays attached only to the original two.
+        const affectedSpan=target.extendSpanWidgetId
+          ?destinationBand.spans?.find(span=>
+            span.widgets.some(w=>w.id===target.extendSpanWidgetId))
+          :undefined;
+        if(affectedSpan){
+          const identities=spanAnchors.get(affectedSpan);
+          if(identities?.length&&insertionIndex===affectedSpan.startLane){
+            spanAnchors.set(affectedSpan,[newLane.id,...identities]);
+            affectedSpan.laneCount+=1;
+          }else if(identities?.length&&insertionIndex===affectedSpan.startLane+affectedSpan.laneCount){
+            spanAnchors.set(affectedSpan,[...identities,newLane.id]);
+            affectedSpan.laneCount+=1;
+          }
+        }
+        destinationBand.lanes.splice(insertionIndex,0,newLane);
         rebalance(destinationBand);
       }else{
         // Four columns are the smallest usable snap. Stack rather than overflow.
