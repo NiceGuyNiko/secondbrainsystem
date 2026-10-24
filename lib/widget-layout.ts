@@ -232,7 +232,9 @@ export function expandWidgetToSectionWidth(
   const widget=items.find(item=>item.id===id);
   if(!widget)return [...items];
   const sameSection=items.filter(item=>widgetSectionId(item)===widgetSectionId(widget));
-  const band=widgetLayoutBands(sameSection).find(row=>row.lanes.some(lane=>lane.widgets.some(w=>w.id===id)));
+  const band=widgetLayoutBands(sameSection).find(row=>
+    row.lanes.some(lane=>lane.widgets.some(w=>w.id===id))||
+    row.spans?.some(span=>span.widgets.some(w=>w.id===id)));
   if(!band)return [...items];
   const other=[...band.lanes.flatMap(lane=>lane.widgets),
     ...(band.spans??[]).flatMap(span=>span.widgets)].find(item=>item.id!==id);
