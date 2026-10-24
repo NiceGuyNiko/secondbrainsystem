@@ -449,13 +449,25 @@ export default function WidgetStudio(p:Props){
   };
   const resizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=resizeStart.current;if(!start)return;
-    const x=Math.round((e.clientX-start.x)/start.unitX);
-    let result=start.axis==="y"?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps);
-    if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,config:{...w.config,fitContent:false,heightPx:Math.max(160,Math.min(1200,Math.round((start.heightPx+e.clientY-start.y)/8)*8))}}:w);
+    const dx=e.clientX-start.x,dy=e.clientY-start.y;
+    // A click (including the two clicks of a double-click) is not a resize.
+    // Previously every pointer-up saved the unchanged layout and re-rendered
+    // the handle, making the browser lose the second click target.
+    if(start.axis==="x"&&Math.abs(dx)<5)return;
+    if(start.axis==="y"&&Math.abs(dy)<5)return;
+    if(start.axis==="both"&&Math.max(Math.abs(dx),Math.abs(dy))<5)return;
+    const x=Math.round(dx/start.unitX);
+    let result=start.axis==="y"||x===0?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps);
+    if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,config:{...w.config,fitContent:false,heightPx:Math.max(160,Math.min(1200,Math.round((start.heightPx+dy)/8)*8))}}:w);
+    if(result===start.initial)return;
     resizePreviewRef.current=result;setResizePreview(result);
   };
   const resizeEnd=()=>{
-    if(resizeStart.current&&resizePreviewRef.current)saveLayout(resizePreviewRef.current);
+    const initial=resizeStart.current?.initial;
+    // Don't persist an unchanged layout: it can remount the resize button
+    // between clicks and prevent onDoubleClick from firing at all.
+    if(initial&&resizePreviewRef.current&&resizePreviewRef.current!==initial)
+      saveLayout(resizePreviewRef.current);
     resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
   };
   const definitionOf=(widget:PageWidget)=>data.definitions.find(d=>d.id===widget.definition_id);

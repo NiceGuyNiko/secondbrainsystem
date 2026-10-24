@@ -3171,3 +3171,43 @@ input[type="range"]{
 @media(max-width:760px){
   .aaa-widget-double-click-grid{grid-template-columns:1fr;}
 }
+
+
+/* Compound-column height matching: stacking guides are placement overlays.
+   They must not add 18px + a flex gap to the measured widget height, or the
+   bottom of a right-side 67% span drifts away from the left column. */
+.aaa-widget-sections-arranging .aaa-widget-layout-lane{
+  position:relative;
+  flex:0 0 auto!important;
+  min-height:0;
+  padding:0;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane>.aaa-widget-lane-stack-drop{
+  position:absolute!important;
+  display:block!important;
+  flex:none!important;
+  left:10px!important;
+  right:10px!important;
+  width:auto!important;
+  height:18px!important;
+  min-height:18px!important;
+  bottom:-22px!important;
+  margin:0!important;
+  transform:none!important;
+  z-index:29;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane>.aaa-widget-lane-stack-drop .aaa-widget-divider-stroke{
+  top:7px;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster-columns{
+  position:relative;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster{
+  gap:14px;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-insertion{
+  min-height:14px;
+  height:14px;
+  flex-basis:14px;
+  margin:-7px 0 -7px;
+}

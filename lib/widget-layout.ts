@@ -310,31 +310,119 @@ export function matchWidgetAdjacentHeight(
     .find(row=>row.lanes.some(l=>l.widgets.some(w=>w.id===id))||
       row.spans?.some(s=>s.widgets.some(w=>w.id===id)));
   if(!band)return [...items];
-  const laneIndex=band.lanes.findIndex(l=>l.widgets.some(w=>w.id===id));
-  const stack=laneIndex>=0?band.lanes[laneIndex].widgets:
-    band.spans?.find(s=>s.widgets.some(w=>w.id===id))?.widgets??[];
-  if(!stack.length)return [...items];
+
+  // Heights compare the actual blocks: each displayed widget includes the
+  // Arrange chrome (if any), and stacked widgets have a single gap between
+  // them. Insertion/drag guides are overlays, never part of the measured row.
+  const displayedHeight=(w:PageWidget)=>widgetHeightPx(w)+chromeHeight;
   const laneTotal=(widgets:readonly PageWidget[])=>
-    widgets.reduce((sum,w)=>sum+widgetHeightPx(w)+chromeHeight,0)+Math.max(0,widgets.length-1)*gap;
+    widgets.reduce((sum,w)=>sum+displayedHeight(w),0)+Math.max(0,widgets.length-1)*gap;
+  const limit=(height:number)=>Math.max(160,Math.min(1200,Math.round(height)));
+  const setHeight=(source:readonly PageWidget[],widgetId:string,desired:number):PageWidget[]=>
+    source.map(w=>w.id===widgetId?{...w,config:{...w.config,
+      fitContent:false,heightPx:limit(desired)}}:w);
+
+  const laneIndex=band.lanes.findIndex(l=>l.widgets.some(w=>w.id===id));
+  const span=band.spans?.find(s=>s.widgets.some(w=>w.id===id));
+
+  // A band can have a tall independent left column, two shorter columns
+  // above, and one 67% span below the right pair. Their visual bottom edges
+  // are related:
+  //
+  //  left total = max(middle total, right total) + gap + lower span total
+  //
+  // Double-clicking any participant preserves this relationship, rather
+  // than comparing the lower span only to the upper lanes independently.
+  const grouped=band.spans?.find(s=>
+    s.startLane>=1&&s.laneCount>=2&&
+    s.startLane+s.laneCount<=band.lanes.length&&s.widgets.length>0);
+  if(grouped){
+    const inside=band.lanes.slice(grouped.startLane,grouped.startLane+grouped.laneCount);
+    const outside=band.lanes[grouped.startLane-1];
+    const upperIndex=band.lanes.findIndex((lane,index)=>
+      index>=grouped.startLane&&index<grouped.startLane+grouped.laneCount&&
+      lane.widgets.some(w=>w.id===id));
+    const inSpan=grouped.widgets.some(w=>w.id===id);
+    const inOutside=!!outside?.widgets.some(w=>w.id===id);
+    if(outside&&(inSpan||inOutside||upperIndex>=0)){
+      const upperHeight=(widgets:readonly PageWidget[])=>
+        Math.max(...inside.map(l=>laneTotal(l.widgets.map(w=>widgets.find(candidate=>candidate.id===w.id)??w))));
+      const spanHeight=(widgets:readonly PageWidget[])=>
+        laneTotal(grouped.widgets.map(w=>widgets.find(candidate=>candidate.id===w.id)??w));
+      const outsideHeight=(widgets:readonly PageWidget[])=>
+        laneTotal(outside.widgets.map(w=>widgets.find(candidate=>candidate.id===w.id)??w));
+      const fullRightHeight=(widgets:readonly PageWidget[])=>
+        upperHeight(widgets)+gap+spanHeight(widgets);
+      // Prefer resizing the clicked lower span. If it hits the minimum or
+      // maximum height, resize the last widget in the independent left lane
+      // by the remainder so the pair of columns still finish together.
+      const synchronizeBottom=(widgets:readonly PageWidget[],anchorId:string):PageWidget[]=>{
+        const delta=outsideHeight(widgets)-fullRightHeight(widgets);
+        if(!delta)return [...widgets];
+        const anchor=widgets.find(w=>w.id===anchorId);
+        if(!anchor)return [...widgets];
+        const desired=widgetHeightPx(anchor)+delta;
+        const next=setHeight(widgets,anchorId,desired);
+        const applied=widgetHeightPx(next.find(w=>w.id===anchorId)!)-widgetHeightPx(anchor);
+        const remainder=delta-applied;
+        if(!remainder)return next;
+        const leftAnchor=outside.widgets[outside.widgets.length-1];
+        const leftCurrent=next.find(w=>w.id===leftAnchor.id);
+        // A shorter right group cannot force a span below the minimum.
+        // Instead grow the neighboring left column to the minimum-aligned
+        // height. This is intentionally the only secondary adjustment.
+        return leftCurrent?setHeight(next,leftAnchor.id,widgetHeightPx(leftCurrent)-remainder):next;
+      };
+
+      if(inSpan){
+        // A fourth widget below middle+right compares against the complete
+        // left column, not either short upper widget.
+        return synchronizeBottom(items,id);
+      }
+      if(inOutside){
+        // The left column compares against the whole compound right group.
+        const current=laneTotal(outside.widgets);
+        const desired=widgetHeightPx(item)+fullRightHeight(items)-current;
+        const matched=setHeight(items,id,desired);
+        return synchronizeBottom(matched,grouped.widgets[grouped.widgets.length-1].id);
+      }
+      if(upperIndex>=0){
+        // First equalize the two upper columns, then re-align the entire
+        // compound group (upper pair + lower span) with World Eras on the left.
+        const currentLane=band.lanes[upperIndex];
+        const siblings=inside.filter(lane=>lane.id!==currentLane.id);
+        const neighbor=siblings.sort((a,b)=>
+          Math.abs(laneTotal(a.widgets)-laneTotal(currentLane.widgets))-
+          Math.abs(laneTotal(b.widgets)-laneTotal(currentLane.widgets)))[0];
+        const target=neighbor
+          ?widgetHeightPx(item)+laneTotal(neighbor.widgets)-laneTotal(currentLane.widgets)
+          :widgetHeightPx(item);
+        const matched=setHeight(items,id,target);
+        return synchronizeBottom(matched,grouped.widgets[grouped.widgets.length-1].id);
+      }
+    }
+  }
+
+  // Non-spanning rows keep the previous intuitive nearest-neighbor behavior.
+  const stack=laneIndex>=0?band.lanes[laneIndex].widgets:span?.widgets??[];
+  if(!stack.length)return [...items];
   const peers=laneIndex>=0
-    ?[band.lanes[laneIndex-1],band.lanes[laneIndex+1]].filter((lane):lane is WidgetLayoutLane=>!!lane)
+    ?[band.lanes[laneIndex-1],band.lanes[laneIndex+1]]
+      .filter((lane):lane is WidgetLayoutLane=>!!lane)
     :band.lanes;
   const adjacent=peers
     .sort((a,b)=>Math.abs(laneTotal(a.widgets)-laneTotal(stack))-
       Math.abs(laneTotal(b.widgets)-laneTotal(stack)))[0];
   const directlyStacked=stack.length===2?stack.find(w=>w.id!==id):undefined;
-  // On a single-column stack, keep the established pair-matching behavior.
   const targetHeight=!adjacent&&directlyStacked
     ?widgetHeightPx(directlyStacked)
     :adjacent
-      ?laneTotal(adjacent.widgets)-
-        (laneTotal(stack)-widgetHeightPx(item))
+      ?laneTotal(adjacent.widgets)-(laneTotal(stack)-displayedHeight(item))-chromeHeight
       :null;
   if(targetHeight===null||!Number.isFinite(targetHeight))return [...items];
-  return items.map(w=>w.id===id
-    ?{...w,config:{...w.config,fitContent:false,
-      heightPx:Math.max(160,Math.min(1200,Math.round(targetHeight/8)*8))}}
-    :w);
+  // Keep the historic 8px snap on ordinary lanes; spanning groups use exact
+  // pixels so their two bottom edges do not drift 4px apart.
+  return setHeight(items,id,Math.round(targetHeight/8)*8);
 }
 
 /**
