@@ -1101,8 +1101,10 @@ export default function WidgetStudio(p:Props){
                   const target:WidgetDropTarget={sectionId:section.id,targetId,edge:"span-below",spanStartLane:pair.startLane};
                   const leftUnits=band.lanes.slice(0,pair.startLane).reduce((sum,l)=>sum+l.width,0);
                   const totalGaps=(band.lanes.length-1)*gap;
-                  const left=`calc((100% - ${totalGaps}px) * ${leftUnits/12} + ${pair.startLane*gap}px)`;
-                  const width=`calc((100% - ${totalGaps}px) * ${pair.width/12} + ${gap}px)`;
+                  // Length arithmetic expressed as % +/- px, supported by
+                  // Safari and Chromium without newer CSS calc multiplication.
+                  const left=`calc(${leftUnits/12*100}% + ${pair.startLane*gap-totalGaps*leftUnits/12}px)`;
+                  const width=`calc(${pair.width/12*100}% + ${gap-totalGaps*pair.width/12}px)`;
                   return <button type="button" key={"aligned-"+pair.startLane}
                     className={"aaa-widget-aligned-span-drop"+(dropHint?.edge==="span-below"&&
                       dropHint.spanStartLane===pair.startLane?" is-target":"")}
