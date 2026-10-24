@@ -2156,3 +2156,237 @@ input[type="range"]{
     flex:0 0 auto;
   }
 }
+
+
+/* Sidebar V-next: logo clarity, desktop expand/collapse affordance, and
+   a two-level iPhone navigation surface with an optional draggable split. */
+.aaa-mobile-close-control,
+.aaa-mobile-current-section-control,
+.aaa-sidebar-nav-divider,
+.aaa-brand-expand-indicator{
+  display:none;
+}
+@media (min-width:768px){
+  .aaa-desktop-collapse-control{
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    color:var(--muted);
+    border-radius:8px;
+  }
+  .aaa-desktop-collapse-control:hover{
+    color:var(--accent-text);
+    background:var(--ui-hover);
+  }
+  .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    position:relative;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon .aaa-brand-mark,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon .aaa-brand-mark{
+    visibility:hidden;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    display:block;
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    color:var(--accent-text);
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:var(--accent-soft)!important;
+    border:1px solid var(--accent)!important;
+  }
+}
+@media (max-width:767px){
+  /* The nav opener carries no theme-tinted square. Keep the ring and glyph
+     geometry, which have their own --ui-logo-border / --ui-logo-glyph colors. */
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-sidebar-open .aaa-brand-toggle{
+    background:transparent!important;
+    background-image:none!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    border-radius:0!important;
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher .aaa-brand-mark,
+  .aaa-sidebar-open .aaa-sidebar-brand-icon,
+  .aaa-sidebar-open .aaa-sidebar-brand-icon .aaa-brand-mark{
+    background:transparent!important;
+    background-image:none!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    border-radius:0!important;
+    outline:none;
+    overflow:visible;
+  }
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    display:grid;
+    place-items:center;
+    width:30px!important;
+    height:30px!important;
+  }
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-brand-mark{
+    width:30px!important;
+    height:30px!important;
+  }
+  .aaa-sidebar-open .aaa-desktop-collapse-control{display:none!important}
+  .aaa-sidebar-open .aaa-mobile-close-control{
+    display:grid!important;
+    place-items:center;
+    flex:0 0 40px;
+    height:40px;
+    width:40px;
+    min-width:40px;
+    padding:0;
+    margin-left:auto;
+    color:var(--text);
+    background:transparent;
+    border:0;
+    border-radius:9px;
+  }
+  .aaa-sidebar-open .aaa-mobile-close-control:active{background:var(--ui-hover)}
+  .aaa-sidebar-open .aaa-brand .aaa-wordmark{
+    flex:1;min-width:0;
+    display:flex!important;
+    flex-direction:column;
+    justify-content:center;
+    gap:2px;
+  }
+  .aaa-sidebar-open .aaa-wordmark strong{
+    font-size:14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .aaa-sidebar-open .aaa-wordmark small{
+    font-size:10px;
+  }
+  .aaa-sidebar-open nav[aria-label="Main navigation"]{
+    min-height:0!important;
+    max-height:none!important;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-sidebar-open .aaa-mobile-current-section-control{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    box-sizing:border-box;
+    position:sticky;
+    top:0;
+    z-index:3;
+    height:56px;
+    min-height:56px;
+    width:100%;
+    padding:7px 14px;
+    color:var(--text);
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+    text-align:left;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-icon{
+    flex:0 0 32px;
+    width:32px;height:32px;
+    display:grid;place-items:center;
+    color:var(--accent-text);
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface-2);
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text{
+    min-width:0;flex:1;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text strong{
+    font-size:14px;font-weight:750;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text small{
+    font-size:10px;
+    line-height:1.15;
+    color:var(--muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-arrow{
+    flex:0 0 auto;
+    color:var(--muted);
+    transform:rotate(-90deg);
+    transition:transform .15s ease;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-arrow.is-open{
+    transform:rotate(0);
+    color:var(--accent-text);
+  }
+  .aaa-sidebar-open .aaa-sidebar-nav-divider{
+    display:flex!important;
+    position:relative;
+    z-index:4;
+    flex:0 0 18px!important;
+    height:18px;
+    min-height:18px;
+    width:100%;
+    padding:0;
+    touch-action:none;
+    user-select:none;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages nav[aria-label="Main navigation"]{
+    flex:0 0 56px!important;
+    height:56px!important;
+    max-height:56px!important;
+    overflow:hidden!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages nav[aria-label="Main navigation"]>.aaa-nav-row{
+    display:none!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-pages nav[aria-label="Main navigation"]{
+    flex:1 1 0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-pages .aaa-context{
+    display:none!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-split nav[aria-label="Main navigation"]{
+    flex:0 0 var(--aaa-mobile-nav-percent,40%)!important;
+    height:auto!important;
+    max-height:calc(100dvh - 235px)!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages .aaa-context,
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-split .aaa-context{
+    display:flex!important;
+    flex:1 1 0!important;
+    min-height:0!important;
+  }
+  .aaa-sidebar-open .aaa-context-heading{
+    min-height:44px;
+    height:44px;
+  }
+  .aaa-sidebar-open .aaa-context-scroll{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+}
+
+/* Preserve the Companion's theme, typography and border for tooltips sitewide.
+   Only long contextual explanations wrap instead of overflowing the tooltip. */
+.aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+  min-height:34px;
+  height:auto;
+  max-width:min(220px,calc(100vw - 16px));
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.3;
+}

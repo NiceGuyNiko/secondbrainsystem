@@ -1,6 +1,8 @@
 "use client";
-import { useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties } from "react";
 import BrandMark from "@/components/brand-mark";
+import ThemedTooltips from "@/components/themed-tooltips";
+import {toggleMobileSidebarMode,modeForMobileSidebarDivider,modeAfterSidebarPageSelection,type MobileSidebarMode} from "@/lib/mobile-sidebar-model";
 import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
 import DemoDatabaseWorkshop from "@/components/demo-database-workshop";
@@ -44,7 +46,6 @@ import {
   Plus,
   Settings2,
   Check,
-  Menu,
   X,
   BookOpen,
   Layers3,
@@ -55,6 +56,8 @@ import {
   ChevronRight,
   PenLine,
   PanelRightOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 type Section =
   | "Calendar"
@@ -87,6 +90,12 @@ function Workspace() {
     [contextId, setContextId] = useState<string | undefined>(),
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
+  // On phones show the current page's subpages first; tap the page heading
+  // to browse all pages, or pull the divider to expose both lists.
+  const [mobileSidebarMode,setMobileSidebarMode]=useState<MobileSidebarMode>("subpages");
+  const [mobileNavPercent,setMobileNavPercent]=useState(40);
+  const mobileSidebarDrag=useRef<{y:number;navPx:number;panelPx:number;moved:boolean}|null>(null);
+  const mobileSidebarDidDrag=useRef(false);
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
   const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
@@ -312,7 +321,7 @@ function Workspace() {
     (rows: ContextItem[]) => setContext(rows),
     [],
   );
-  const nav = (s: Section) => {
+  const nav = (s: Section, keepMobileDrawer=false) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
     setSection(s);
     setContextId(s==="Workspaces"&&engineEnabled?"writing":s==="Developing IT"?"widgets":undefined);
@@ -321,7 +330,8 @@ function Workspace() {
     setDatabaseRecordId(null);
     setCompanionRecord(null);
     setWidgetConfiguration(null);
-    setMobileOpen(false);
+    setMobileOpen(keepMobileDrawer&&typeof window!=="undefined"&&window.matchMedia("(max-width:767px)").matches);
+    setMobileSidebarMode(modeAfterSidebarPageSelection());
     setMobileCalendars(false);
     setProfileMenu(false);
   };
@@ -438,7 +448,9 @@ function Workspace() {
         <button className="aaa-mobile-brand-launcher"
           aria-label="Open navigation menu"
           title="Open navigation"
+          data-aaa-tooltip="Open navigation"
           onClick={() => {
+            setMobileSidebarMode("subpages");
             setMobileOpen(true);
             setMobileCalendars(false);
           }}
@@ -451,6 +463,7 @@ function Workspace() {
         <button className="aaa-mobile-companion-launcher"
           aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"}
           title="The Companion"
+          data-aaa-tooltip="The Companion"
           aria-expanded={agendaMode!=="closed"}
           onClick={toggleAgenda}
         >
@@ -458,20 +471,23 @@ function Workspace() {
         </button>
       </header>
       <aside
-        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""}`}
+        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""} aaa-sidebar-nav-mode-${mobileSidebarMode}`}
         aria-label="Workspace navigation"
+        style={{"--aaa-mobile-nav-percent":mobileNavPercent+"%"} as CSSProperties}
       >
         <div className="aaa-brand">
           <button
-            className="aaa-icon-slot"
+            className="aaa-icon-slot aaa-brand-toggle"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => {
               if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
               else toggleSidebar();
             }}
           >
-            <span className="aaa-logo">
+            <span className="aaa-logo aaa-sidebar-brand-icon">
               <BrandMark size={34} label="All About Action" />
+              <PanelLeftOpen className="aaa-brand-expand-indicator" size={25} aria-hidden="true"/>
             </span>
           </button>
           <div className="aaa-sidebar-label aaa-wordmark">
@@ -479,17 +495,42 @@ function Workspace() {
             <small>{ownedPageTitle(displayName, section)}</small>
           </div>
           <button
-            className="aaa-collapse-control"
-            aria-label="Close navigation"
-            onClick={() => {
-              if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
-              else toggleSidebar();
-            }}
+            className="aaa-collapse-control aaa-desktop-collapse-control"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+            onClick={toggleSidebar}
           >
-            <Menu size={18} />
+            <PanelLeftClose size={20}/>
+          </button>
+          <button
+            className="aaa-mobile-close-control"
+            aria-label="Close navigation"
+            title="Close navigation"
+            onClick={()=>setMobileOpen(false)}
+          >
+            <X size={20}/>
           </button>
         </div>
         <nav aria-label="Main navigation">
+          <button type="button" className="aaa-mobile-current-section-control"
+            aria-expanded={mobileSidebarMode!=="subpages"}
+            aria-label={mobileSidebarMode==="pages"?"Show "+navigationLabel(section)+" subpages":"Browse all pages"}
+            onClick={()=>setMobileSidebarMode(mode=>toggleMobileSidebarMode(mode))}>
+            <span className="aaa-mobile-section-icon">
+              {section==="Calendar"?<CalendarDays size={20}/>
+              :section==="Goals"?<Target size={20}/>
+              :section==="Library"?<LibraryBig size={20}/>
+              :section==="Databases"?<Database size={20}/>
+              :section==="Workspaces"?<Layers3 size={20}/>
+              :section==="Settings"?<Settings2 size={20}/>
+              :<BookOpen size={20}/>}
+            </span>
+            <span className="aaa-mobile-section-text">
+              <strong>{navigationLabel(section)}</strong>
+              <small>{mobileSidebarMode==="pages"?"Select a page to view its subpages":mobileSidebarMode==="split"?"Page navigation and subpages":"Tap to browse all pages"}</small>
+            </span>
+            <ChevronDown className={mobileSidebarMode==="pages"?"aaa-mobile-section-arrow is-open":"aaa-mobile-section-arrow"} size={18}/>
+          </button>
           {(
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
@@ -510,7 +551,7 @@ function Workspace() {
               aria-label={navigationLabel(name)}
               aria-current={section === name ? "page" : undefined}
               className={`aaa-nav-row ${section === name ? "active" : ""}`}
-              onClick={() => nav(name)}
+              onClick={() => nav(name,true)}
             >
               <span className="aaa-icon-slot">
                 <Icon size={21} />
@@ -524,6 +565,51 @@ function Workspace() {
             </button>
           ))}
         </nav>
+        <button type="button" className="aaa-sidebar-nav-divider aaa-companion-pull" role="separator"
+          aria-label="Resize navigation and subpages" aria-orientation="horizontal"
+          aria-valuemin={12} aria-valuemax={86}
+          aria-valuenow={mobileSidebarMode==="subpages"?12:mobileSidebarMode==="pages"?86:mobileNavPercent}
+          title="Drag to reveal pages and subpages, or tap to switch layout"
+          onPointerDown={e=>{
+            if(e.button!==0 && e.pointerType!=="touch")return;
+            const aside=e.currentTarget.closest<HTMLElement>(".aaa-sidebar");
+            const navigation=aside?.querySelector<HTMLElement>('nav[aria-label="Main navigation"]');
+            const panelPx=aside?.getBoundingClientRect().height||window.innerHeight;
+            mobileSidebarDrag.current={y:e.clientY,navPx:navigation?.getBoundingClientRect().height||56,panelPx,moved:false};
+            mobileSidebarDidDrag.current=false;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={e=>{
+            const start=mobileSidebarDrag.current;
+            if(!start)return;
+            if(Math.abs(e.clientY-start.y)>6)start.moved=true;
+            if(!start.moved)return;
+            const percent=Math.max(12,Math.min(86,Math.round((start.navPx+e.clientY-start.y)/start.panelPx*100)));
+            setMobileNavPercent(percent);
+            setMobileSidebarMode(modeForMobileSidebarDivider(percent));
+          }}
+          onPointerUp={()=>{
+            if(mobileSidebarDrag.current?.moved)mobileSidebarDidDrag.current=true;
+            mobileSidebarDrag.current=null;
+          }}
+          onPointerCancel={()=>{mobileSidebarDrag.current=null;}}
+          onKeyDown={e=>{
+            if(e.key==="Home"){e.preventDefault();setMobileSidebarMode("subpages");}
+            else if(e.key==="End"){e.preventDefault();setMobileSidebarMode("pages");}
+            else if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+              e.preventDefault();
+              const next=Math.max(12,Math.min(86,mobileNavPercent+(e.key==="ArrowDown"?8:-8)));
+              setMobileNavPercent(next);setMobileSidebarMode(modeForMobileSidebarDivider(next));
+            }
+          }}
+          onClick={()=>{
+            if(mobileSidebarDidDrag.current){mobileSidebarDidDrag.current=false;return;}
+            setMobileSidebarMode(mode=>mode==="subpages"?"split":"subpages");
+          }}>
+          <span className="aaa-companion-pull-track"/>
+          <span className="aaa-companion-pull-pill">{mobileSidebarMode==="subpages"?<ChevronDown size={14}/>:<ChevronDown size={14} style={{transform:"rotate(180deg)"}}/>}</span>
+          <span className="aaa-companion-pull-track"/>
+        </button>
         <div className="aaa-context">
           <div className="aaa-context-heading">
             <button
@@ -570,7 +656,12 @@ function Workspace() {
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={c.title}
                   aria-pressed={section === "Databases"?(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
-                  onClick={() => contextClick(c.id)}
+                  onClick={() => {
+                    contextClick(c.id);
+                    // Let expandable workspace group headings reveal their children.
+                    // Calendar toggles stay open so several calendars can be changed.
+                    if(!(section==="Workspaces"&&c.id==="writing"))setMobileOpen(false);
+                  }}
                 >
                   <span className="aaa-icon-slot">
                     {c.id==="writing"?(writingExpanded?<ChevronDown size={18}/>:<ChevronRight size={18}/>)
@@ -607,6 +698,7 @@ function Workspace() {
           onSignOut={() => void signOut()}
         />
       </aside>
+      <ThemedTooltips/>
       {mobileCalendars && (
         <div className="aaa-mobile-calendars">
           <div className="aaa-options">
