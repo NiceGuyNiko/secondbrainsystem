@@ -270,3 +270,59 @@ export function matchWidgetStackHeight(items:readonly PageWidget[],id:string):Pa
     ...item,config:{...item.config,heightPx:height}
   }:item);
 }
+
+/**
+ * Double-clicking the corner triangle toggles between its saved fixed height
+ * and intrinsic content height. It does NOT change width or layout placement.
+ * The renderer makes the body overflow-visible when fitContent is enabled.
+ */
+export function toggleWidgetContentFit(items:readonly PageWidget[],id:string):PageWidget[]{
+  return items.map(item=>item.id===id
+    ?{...item,config:{...item.config,fitContent:item.config.fitContent!==true}}
+    :item);
+}
+
+/**
+ * The bottom-edge divider matches the height of the adjacent column, rather
+ * than stretching the widget to the full section width.
+ *
+ * For two items in a single standalone stack, it matches the other item
+ * directly. In multi-column bands, it adjusts the clicked widget so its
+ * column's total height matches its closest neighboring column's total
+ * height, accounting for the vertical gaps and the other stacked widgets.
+ */
+export function matchWidgetAdjacentHeight(
+  items:readonly PageWidget[],id:string,gap=14,chromeHeight=0
+):PageWidget[]{
+  const item=items.find(w=>w.id===id);
+  if(!item)return [...items];
+  const band=widgetLayoutBands(items.filter(w=>widgetSectionId(w)===widgetSectionId(item)))
+    .find(row=>row.lanes.some(l=>l.widgets.some(w=>w.id===id))||
+      row.spans?.some(s=>s.widgets.some(w=>w.id===id)));
+  if(!band)return [...items];
+  const laneIndex=band.lanes.findIndex(l=>l.widgets.some(w=>w.id===id));
+  const stack=laneIndex>=0?band.lanes[laneIndex].widgets:
+    band.spans?.find(s=>s.widgets.some(w=>w.id===id))?.widgets??[];
+  if(!stack.length)return [...items];
+  const laneTotal=(widgets:readonly PageWidget[])=>
+    widgets.reduce((sum,w)=>sum+widgetHeightPx(w)+chromeHeight,0)+Math.max(0,widgets.length-1)*gap;
+  const peers=laneIndex>=0
+    ?[band.lanes[laneIndex-1],band.lanes[laneIndex+1]].filter((lane):lane is WidgetLayoutLane=>!!lane)
+    :band.lanes;
+  const adjacent=peers
+    .sort((a,b)=>Math.abs(laneTotal(a.widgets)-laneTotal(stack))-
+      Math.abs(laneTotal(b.widgets)-laneTotal(stack)))[0];
+  const directlyStacked=stack.length===2?stack.find(w=>w.id!==id):undefined;
+  // On a single-column stack, keep the established pair-matching behavior.
+  const targetHeight=!adjacent&&directlyStacked
+    ?widgetHeightPx(directlyStacked)
+    :adjacent
+      ?laneTotal(adjacent.widgets)-
+        (laneTotal(stack)-widgetHeightPx(item))
+      :null;
+  if(targetHeight===null||!Number.isFinite(targetHeight))return [...items];
+  return items.map(w=>w.id===id
+    ?{...w,config:{...w.config,fitContent:false,
+      heightPx:Math.max(160,Math.min(1200,Math.round(targetHeight/8)*8))}}
+    :w);
+}

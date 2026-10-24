@@ -2886,3 +2886,189 @@ input[type="range"]{
     max-height:21px!important;
   }
 }
+
+
+/* Arrange Mode V4 — permanent, distinguishable insertion guides.
+   Purple follows the same theme accent used for the scrollbar and corner.
+   Targets stay visually discoverable BEFORE hovering, and never appear in
+   Use Mode (the buttons are not mounted there). */
+.aaa-widget-sections-arranging .aaa-widget-canvas{
+  gap:24px;
+  padding-bottom:10px;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-band{
+  position:relative;
+  padding-bottom:8px;
+  overflow:visible;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane{
+  gap:14px;
+  align-items:stretch;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop{
+  appearance:none;
+  outline-offset:1px;
+  border:0;
+  border-radius:6px;
+  background:transparent!important;
+  box-shadow:none;
+  display:block;
+  padding:0;
+  z-index:25;
+  cursor:copy;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop{
+  position:relative;
+  flex:0 0 18px;
+  width:calc(100% - 20px);
+  margin:-6px 10px 0;
+  height:18px;
+  min-height:18px;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-20px;
+  width:100%;
+  height:24px;
+  z-index:26;
+}
+.aaa-widget-sections-arranging .aaa-widget-divider-stroke{
+  display:block;
+  position:absolute;
+  height:4px;
+  top:7px;
+  left:2px;
+  right:2px;
+  background:var(--accent)!important;
+  border-radius:99px;
+  opacity:1;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);
+  transition:height .12s ease,opacity .12s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop>.aaa-widget-divider-stroke{
+  height:5px;
+  top:10px;
+  left:0;
+  right:0;
+  background:var(--accent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-guide-label{
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:0px;
+  transform:translateX(-50%);
+  display:block;
+  color:var(--accent-text);
+  background:var(--bg);
+  padding:1px 8px;
+  font-size:10px;
+  line-height:16px;
+  white-space:nowrap;
+  letter-spacing:.02em;
+  font-weight:700;
+  border-radius:8px;
+  pointer-events:none;
+  opacity:.85;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop>.aaa-widget-guide-label{
+  top:4px;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop:hover .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop.is-target .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop:hover .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-band-new-row .aaa-widget-band-row-drop .aaa-widget-divider-stroke{
+  height:7px;
+  background:var(--accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent),
+    0 0 12px color-mix(in srgb,var(--accent) 60%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop:hover .aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop.is-target .aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop:hover .aaa-widget-guide-label{
+  opacity:1;
+  color:var(--text);
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop::before{
+  display:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider::before{
+  background:var(--accent)!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before{
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-insertion::after{
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)!important;
+}
+/* Resize bars and insertion bars are distinct: height bars adjust the card,
+   short bars add to a column, long bars create a new full-width row. */
+.aaa-widget-sections-arranging .aaa-widget-height-divider{
+  z-index:22;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before{
+  height:4px;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before{
+  height:6px;
+}
+/* Arrange cards reserve footer space OUTSIDE the saved Use Mode content
+   height, so the page preview isn't clipped simply because controls appear. */
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-head,
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-resize{
+  flex-shrink:0;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-body{
+  min-height:0;
+  scrollbar-color:var(--accent) transparent;
+}
+.aaa-widget-style-blend .aaa-widget-card.aaa-widget-arranging .aaa-widget-card-body{
+  outline:1px solid color-mix(in srgb,var(--accent) 18%,transparent);
+  outline-offset:-1px;
+  border-radius:7px;
+}
+/* Corner double click sets intrinsic height, without changing the width.
+   The existing fixed height remains saved and is restored on the next
+   double click, or replaced if the user manually drags to resize. */
+.aaa-widget-layout-fit{
+  height:auto!important;
+  min-height:160px;
+  align-self:flex-start;
+  width:100%;
+}
+.aaa-widget-layout-fit>.aaa-widget-card{
+  height:auto!important;
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  min-height:160px!important;
+}
+.aaa-widget-layout-fit>.aaa-widget-card>.aaa-widget-card-body{
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  min-height:max-content!important;
+  max-height:none!important;
+  height:auto!important;
+}
+.aaa-widget-layout-fit>.aaa-widget-card>.aaa-widget-card-body .aaa-widget-table-scroll{
+  overflow-x:auto;
+  overflow-y:visible;
+  max-height:none!important;
+}
+.aaa-widget-layout-fit .aaa-widget-card-resize{
+  min-height:34px;
+}
+.aaa-widget-layout-fit .aaa-widget-records{
+  max-height:none!important;
+  overflow:visible!important;
+}
+@media(max-width:680px){
+  .aaa-widget-sections-arranging .aaa-widget-band-row-drop{bottom:-18px;}
+  .aaa-widget-sections-arranging .aaa-widget-lane-stack-drop{width:calc(100% - 16px);margin-left:8px;margin-right:8px;}
+}
