@@ -22,6 +22,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Database schema contract (includes demo/asset references)
+        run: npm run db:contract
       - name: Tests (PGlite database tests included)
         run: npm test
       - name: Typecheck
