@@ -63,7 +63,7 @@ test("left + combined 2+3 creates nested 1+2+3 while preserving child span",()=>
     assert.equal(tree[0].children[1].kind,"group");
   }
   assert.equal(result.find(w=>w.id==="w5")?.width,9);
-  assert.deepEqual(result.map(w=>w.id).sort(),starting.map(w=>w.id).concat("w5").sort());
+  assert.deepEqual(result.map(w=>w.id).sort(),starting.map(w=>w.id).sort());
 });
 test("combined 2+3 + right creates nested 2+3+4",()=>{
   const starting=placeWidget(makeFour(),[sec],"w4",combine("w1",1,2));
