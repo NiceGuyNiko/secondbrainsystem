@@ -152,3 +152,28 @@ export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly W
   }
   return publish(sections,items,group);
 }
+
+/**
+ * Expand a widget to the full section width without changing its source record
+ * or discarding sibling widgets. When it shares a row, extract it into its own
+ * full-width band immediately beneath that row. This is the double-click
+ * shortcut for the triangular resize handle.
+ */
+export function expandWidgetToSectionWidth(
+  items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,fillGaps=true
+):PageWidget[]{
+  const widget=items.find(item=>item.id===id);
+  if(!widget)return [...items];
+  const sameSection=items.filter(item=>widgetSectionId(item)===widgetSectionId(widget));
+  const band=widgetLayoutBands(sameSection).find(row=>row.lanes.some(lane=>lane.widgets.some(w=>w.id===id)));
+  if(!band)return [...items];
+  const other=band.lanes.flatMap(lane=>lane.widgets).find(item=>item.id!==id);
+  if(other){
+    return placeWidget(items,sections,id,{
+      sectionId:widgetSectionId(widget),targetId:other.id,edge:"new-row"
+    },fillGaps);
+  }
+  // A lone widget has no neighbor to swap against. Preserve its placement
+  // identity while explicitly setting its width to the complete 12-unit row.
+  return items.map(item=>item.id===id?{...item,width:12}:item);
+}

@@ -26,6 +26,7 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     let lastTouch=0;
     let pending:TouchPress|null=null;
     let pressTimer:ReturnType<typeof setTimeout>|null=null;
+    let tapDismissTimer:ReturnType<typeof setTimeout>|null=null;
     let suppressOriginClick:HTMLElement|null=null;
     // Removing titles for icon buttons on touch prevents Safari's own tooltip
     // from lingering even after our React tooltip closes. The originals are
@@ -33,7 +34,9 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     const mobileTitles=new Map<HTMLElement,string>();
     const mobileViewport=()=>window.matchMedia("(max-width:767px), (hover:none) and (pointer:coarse)").matches;
     const stopTimer=()=>{if(pressTimer!==null){clearTimeout(pressTimer);pressTimer=null;}};
+    const stopTapDismiss=()=>{if(tapDismissTimer!==null){clearTimeout(tapDismissTimer);tapDismissTimer=null;}};
     const hide=()=>{
+      stopTapDismiss();
       const previous=active.current;
       if(previous?.nativeTitle!==null&&previous?.nativeTitle!==undefined
          &&!previous.element.hasAttribute("title")
@@ -72,6 +75,7 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
       return titleOrLabel(button)?button:null;
     };
     const suppressNativeTitle=(button:HTMLElement)=>{
+      button.setAttribute("data-aaa-touch-help","");
       const title=button.getAttribute("title");
       if(title!==null&&!mobileTitles.has(button)){
         mobileTitles.set(button,title);
@@ -89,18 +93,35 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
       active.current={element,nativeTitle};
       const glyph=element.querySelector("svg, .aaa-brand-mark")??element;
       const rect=glyph.getBoundingClientRect();
-      const width=Math.min(220,Math.max(58,Math.ceil(label.length*6.3+22)));
-      const lines=Math.max(1,Math.ceil((label.length*6.3)/Math.max(38,width-20)));
-      const height=Math.max(34,16+lines*14);
-      const position=positionCompanionPopover(rect,
-        {width:window.innerWidth,height:window.innerHeight},
-        {width,height},"center");
+      // PC help is a one-line label beside the icon, never a narrow wrapped
+      // popover that cuts off names such as Databases.
+      const width=Math.min(360,Math.max(64,Math.ceil(label.length*7.1+26)));
+      const height=34;
+      const viewport={width:window.innerWidth,height:window.innerHeight};
+      const besideLeft=rect.right+10;
+      const left=!onMobile&&besideLeft+width<=viewport.width-8
+        ?besideLeft
+        :!onMobile&&rect.left-width-10>=8
+          ?rect.left-width-10
+          :positionCompanionPopover(rect,viewport,{width,height},"center").left;
+      const top=onMobile
+        ?positionCompanionPopover(rect,viewport,{width,height},"center").top
+        :Math.max(8,Math.min(rect.top+(rect.height-height)/2,viewport.height-height-8));
+      const position={left,top};
       setTooltip({label,width,...position});
       // In tap mode the triggering action can navigate away. Never leave a
       // tooltip attached to an icon that React removed from the page.
-      if(onMobile)window.requestAnimationFrame(()=>{
-        if(active.current?.element===element&&!element.isConnected)hide();
-      });
+      if(onMobile){
+        window.requestAnimationFrame(()=>{
+          if(active.current?.element===element&&!element.isConnected)hide();
+        });
+        if(mobileMode==="tap"){
+          // Tap-mode labels fade on their own after a brief reading window.
+          tapDismissTimer=setTimeout(()=>{
+            if(active.current?.element===element)hide();
+          },2600);
+        }
+      }
     };
     const onPointerOver=(event:PointerEvent)=>{
       if(mobileViewport()||Date.now()-lastTouch<1500||event.pointerType==="touch")return;
@@ -148,6 +169,9 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
           if(!press||press.element!==button||press.pointerId!==event.pointerId)return;
           press.activated=true;
           suppressOriginClick=button;
+          // iOS/Safari sometimes selects text during a held icon press.
+          // Restrict selection suppression to this deliberate help gesture.
+          window.getSelection()?.removeAllRanges();
           show(button,true);
         },520);
       }
@@ -190,9 +214,12 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
       }
     };
     const onContextMenu=(event:MouseEvent)=>{
-      if(!mobileViewport()||mobileMode==="off")return;
+      if(!mobileViewport())return;
       const eligible=findMobile(event.target);
-      if(eligible)event.preventDefault();
+      if(eligible){
+        event.preventDefault();
+        if(mobileMode!=="off")window.getSelection()?.removeAllRanges();
+      }
     };
     const onKeyDown=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){stopTimer();pending=null;hide();}

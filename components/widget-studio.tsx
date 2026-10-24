@@ -6,7 +6,7 @@ import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
+import {expandWidgetToSectionWidth,placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -700,8 +700,9 @@ export default function WidgetStudio(p:Props){
         <span className="aaa-widget-height-caption">{Math.round(height)}px tall · drag corner to resize</span>
       </footer>}
       {arrange&&<>
-        <button type="button" className="aaa-widget-resize-corner" aria-label={`Resize ${title} width and height`} title="Drag to resize both dimensions"
-          onPointerDown={e=>startResize(e,widget,"both")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>
+        <button type="button" className="aaa-widget-resize-corner" aria-label={`Resize ${title}. Double-click to fill this section's width.`} title="Drag to resize; double-click to fill full section width"
+          onPointerDown={e=>{if(e.detail>=2)return;startResize(e,widget,"both")}} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
+          onDoubleClick={e=>{e.preventDefault();e.stopPropagation();resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);saveLayout(expandWidgetToSectionWidth(instanceList,pageSections,widget.id,fillGaps))}}/>
       </>}
     </article>;
   };
@@ -835,22 +836,42 @@ export default function WidgetStudio(p:Props){
               return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}>
                 {band.lanes.map((lane,laneIndex)=><div className="aaa-widget-layout-lane-shell" key={lane.id} style={{flex:`${lane.width} 1 0`}}>
                   <div className="aaa-widget-layout-lane">
-                    {lane.widgets.map((widget,widgetIndex)=><div className="aaa-widget-layout-item" key={widget.id} style={{height:widgetHeightPx(widget)}}>
-                      {widgetIndex>0&&arrange&&<button className="aaa-widget-stack-divider" type="button" title="Drag to change the widget height above" aria-label={`Resize height above ${widget.title||"widget"}`}
-                        onPointerDown={e=>startResize(e,lane.widgets[widgetIndex-1],"y")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}
+                    {lane.widgets.map(widget=><div className="aaa-widget-layout-item" key={widget.id} style={{height:widgetHeightPx(widget)}}>
                       {widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id))}
+                      {arrange&&<button className="aaa-widget-height-divider" type="button"
+                        title={"Drag to resize "+(widget.title||"widget")+" height; drop a widget to stack below"}
+                        aria-label={"Resize height of "+(widget.title||"widget")+"; stack widgets below"}
+                        onPointerDown={e=>startResize(e,widget,"y")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
+                        onKeyDown={e=>{
+                          if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();
+                            const direction=e.key==="ArrowDown"?24:-24;
+                            saveLayout(instanceList.map(item=>item.id===widget.id
+                              ?{...item,config:{...item.config,heightPx:Math.max(160,Math.min(1200,widgetHeightPx(item)+direction))}}:item));
+                          }
+                        }}
+                        onDragOver={e=>{if(!drag||drag===widget.id)return;e.preventDefault();e.stopPropagation();hint({sectionId:section.id,targetId:widget.id,edge:"below"})}}
+                        onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop({sectionId:section.id,targetId:widget.id,edge:"below"})}}/>}
                     </div>)}
                   </div>
                   {arrange&&laneIndex<band.lanes.length-1&&<button className="aaa-widget-lane-divider" type="button" title="Drag to resize both neighboring columns" aria-label={`Resize column next to ${lane.widgets[0]?.title||"widget"}`}
                     onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint({sectionId:section.id,targetId:lane.widgets[0]?.id??null,edge:"right"})}}
                     onPointerDown={e=>startResize(e,lane.widgets[0],"x")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}</div>)}
                 {used<12&&<div className="aaa-widget-layout-spacer" style={{flex:`${12-used} 1 0`}}/>}
-                {arrange&&drag&&band.lanes.length>0&&(()=>{
-                  const lastLane=band.lanes[band.lanes.length-1];
-                  const afterId=lastLane.widgets[lastLane.widgets.length-1]?.id??null;
+                {arrange&&band.lanes.length>0&&(()=>{
+                  const allInBand=band.lanes.flatMap(lane=>lane.widgets);
+                  const afterId=allInBand.find(widget=>widget.id!==drag)?.id??null;
                   return <div className="aaa-widget-band-row-drop" role="presentation"
-                    onDragOver={e=>{e.preventDefault();e.stopPropagation();if(afterId!==drag)hint({sectionId:section.id,targetId:afterId,edge:"new-row"})}}
-                    onDrop={e=>{e.preventDefault();e.stopPropagation();if(afterId!==drag)commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"});else{setDrag(null);setDropHint(null)}}}/>;
+                    title="Full-width row divider. Drag a widget here to insert a new 100% row."
+                    onDragOver={e=>{
+                      if(!drag||!afterId)return;
+                      e.preventDefault();e.stopPropagation();
+                      hint({sectionId:section.id,targetId:afterId,edge:"new-row"});
+                    }}
+                    onDrop={e=>{
+                      if(!drag||!afterId)return;
+                      e.preventDefault();e.stopPropagation();
+                      commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"});
+                    }}/>;
                 })()}
               </div>;
             })}

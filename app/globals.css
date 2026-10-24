@@ -2390,3 +2390,214 @@ input[type="range"]{
   overflow-wrap:anywhere;
   line-height:1.3;
 }
+
+/* Arrange Mode V2: persistent, discoverable dividers. The visible stroke is
+   3-4px wide but every hit target is 14-18px. Use Mode renders none of these
+   controls, and the drag target never mutates layout until drop. */
+.aaa-widget-canvas .aaa-widget-layout-band{
+  overflow:visible;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider{
+  right:-14px;
+  width:14px;
+  top:0;bottom:0;
+  z-index:17;
+  display:block;
+  background:transparent;
+  cursor:ew-resize;
+  touch-action:none;
+  padding:0;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider::before{
+  content:"";
+  display:block;
+  position:absolute;
+  top:4px;bottom:4px;left:5px;
+  width:4px;
+  border-radius:99px;
+  opacity:1;
+  background:color-mix(in srgb,var(--accent-bright) 73%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 14%,transparent);
+  transition:background .12s,width .12s,left .12s;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider:hover::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:focus-visible::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:active::before{
+  left:4px;width:6px;
+  background:var(--accent-bright);
+}
+.aaa-widget-layout-item{
+  overflow:visible;
+}
+.aaa-widget-height-divider{
+  position:absolute;
+  z-index:15;
+  display:block;
+  left:6px;right:6px;bottom:-9px;
+  height:18px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  padding:0;
+  cursor:ns-resize;
+  touch-action:none;
+}
+.aaa-widget-height-divider::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:7px;
+  height:4px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent-bright) 72%,var(--border));
+  opacity:1;
+}
+.aaa-widget-height-divider:hover::before,
+.aaa-widget-height-divider:focus-visible::before,
+.aaa-widget-height-divider:active::before{
+  height:5px;
+  top:6px;
+  background:var(--accent-bright);
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop{
+  position:absolute;
+  left:0;right:0;
+  bottom:-16px;
+  width:100%;
+  height:13px;
+  z-index:19;
+  display:block;
+  cursor:copy;
+  background:transparent;
+  pointer-events:auto;
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:5px;
+  height:3px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent-bright) 55%,var(--border));
+  opacity:.84;
+  transition:height .12s,background .12s;
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop:hover::before,
+.aaa-widget-layout-band.aaa-widget-band-new-row .aaa-widget-band-row-drop::before{
+  background:var(--accent-bright);
+  opacity:1;
+  height:5px;top:4px;
+}
+.aaa-widget-layout-band.aaa-widget-band-new-row::after{
+  display:none!important;
+}
+@media(max-width:680px){
+  /* Mobile widget stacks still show height and row insertion dividers,
+     while adjacent desktop-only column dividers are hidden. */
+  .aaa-widget-canvas .aaa-widget-lane-divider{display:none}
+}
+/* A double click on the solid corner expands the view to a 100%-width band.
+   Keep its tooltip and focus outline discoverable in Arrange Mode. */
+.aaa-widget-resize-corner:focus-visible,
+.aaa-widget-height-divider:focus-visible,
+.aaa-widget-lane-divider:focus-visible{
+  outline:2px solid var(--accent-bright);
+  outline-offset:2px;
+}
+/* Collapsed sidebar: the emblem and expand glyph occupy identical square
+   targets and are treated with logo colors, never generic hover fills. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand-toggle{
+    display:grid!important;
+    place-items:center;
+    width:54px!important;
+    height:48px;
+    min-width:54px;
+    padding:0;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:28px!important;height:28px!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    display:grid;place-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark{
+    width:21px!important;height:21px!important;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    width:21px;height:21px;
+    color:var(--ui-logo-glyph,var(--accent-text))!important;
+    stroke:var(--ui-logo-glyph,var(--accent-text));
+    stroke-width:2.25;
+    filter:drop-shadow(0 0 1px var(--ui-logo-border,var(--accent)));
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+  }
+}
+/* Tooltips: desktop labels are placed to the right of their glyph and never
+   forced to wrap; long labels (Databases, Configure...) keep their full text. */
+@media(hover:hover) and (pointer:fine){
+  .aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+    height:34px;
+    max-width:min(360px,calc(100vw - 16px))!important;
+    white-space:nowrap!important;
+    overflow-wrap:normal;
+    word-break:normal;
+    padding:7px 12px;
+  }
+}
+/* Prevent Safari selection/callouts only for icon controls that have been
+   identified as eligible touch-help targets. Leave other page text selectable. */
+@media(hover:none), (pointer:coarse){
+  button[data-aaa-touch-help]{
+    -webkit-user-select:none!important;
+    user-select:none!important;
+    -webkit-touch-callout:none;
+  }
+  .aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+}
+/* Compact Agenda blocks are readable even at 24-35px tall. The full start
+   and end remain available through the accessible name and block details. */
+.aaa-companion-block.aaa-companion-block-compact{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  padding:2px 6px;
+  gap:0;
+  min-height:0;
+}
+.aaa-companion-block.aaa-companion-block-compact strong{
+  display:block;
+  width:100%;
+  min-width:0;
+  font-size:11px;
+  font-weight:750;
+  line-height:1.12;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  overflow:hidden;
+}
+
+/* Keep the two mobile navigation emblems at the Companion's 21px glyph size
+   within the same generous 40px touch target. */
+@media(max-width:767px){
+  .aaa-mobile-header .aaa-mobile-brand-launcher .aaa-brand-mark,
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-brand-mark{
+    width:21px!important;
+    height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
+  }
+}

@@ -105,13 +105,20 @@ export default function CompanionAgendaView(p:Props){
         {Array.from({length:24},(_,h)=><div className="aaa-companion-hour" style={{top:h*60}} key={h}>
           <span>{p.format(String(h).padStart(2,"0")+":00")}</span>
         </div>)}
-        {blocks.map(({o,start,end,lane,lanes})=><button key={occurrenceKey(o)}
-          className={"event-chip event-"+p.colour(o.event)+" aaa-companion-block"}
-          style={{top:start,height:Math.max(24,end-start),left:"calc(52px + (100% - 55px) * "+(lane/lanes)+")",width:"calc((100% - 55px) * "+(1/lanes)+")"}}
-          onClick={()=>p.onSelected(occurrenceKey(o))}><strong>{o.event.title}</strong>
-          <small>{p.format(o.start||o.event.start)} – {p.format(o.end||o.event.end)}</small>
-          {!!o.event.tasks.length&&<small>{o.event.tasks.filter(t=>t.done).length}/{o.event.tasks.length} tasks</small>}
-        </button>)}
+        {blocks.map(({o,start,end,lane,lanes})=>{
+          const duration=end-start;
+          const compact=duration<54;
+          const when=p.format(o.start||o.event.start)+" – "+p.format(o.end||o.event.end);
+          return <button key={occurrenceKey(o)}
+            className={"event-chip event-"+p.colour(o.event)+" aaa-companion-block"+(compact?" aaa-companion-block-compact":"")}
+            title={o.event.title+" · "+when}
+            aria-label={o.event.title+", "+when}
+            style={{top:start,height:Math.max(24,duration),left:"calc(52px + (100% - 55px) * "+(lane/lanes)+")",width:"calc((100% - 55px) * "+(1/lanes)+")"}}
+            onClick={()=>p.onSelected(occurrenceKey(o))}><strong>{o.event.title}</strong>
+            {!compact&&<small>{when}</small>}
+            {duration>=76&&!!o.event.tasks.length&&<small>{o.event.tasks.filter(t=>t.done).length}/{o.event.tasks.length} tasks</small>}
+          </button>;
+        })}
         {p.date===p.today&&<div className="aaa-companion-now" style={{top:nowMinute}}><i/></div>}
       </div>
     </div>
