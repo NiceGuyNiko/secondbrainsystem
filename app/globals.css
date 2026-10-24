@@ -2868,3 +2868,21 @@ input[type="range"]{
     filter:drop-shadow(0 0 1px var(--ui-logo-border,var(--accent)))!important;
   }
 }
+
+/* Final sizing override: older .aaa-logo rules use !important, so the
+   logo glyph and collapsed expand glyph must each explicitly override them. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:21px!important;
+    height:21px!important;
+    min-width:21px!important;
+    max-width:21px!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark,
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-expand-indicator{
+    width:21px!important;
+    height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
+  }
+}

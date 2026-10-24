@@ -553,7 +553,7 @@ function Workspace() {
           ).filter(x=>x.name==="Fluid Calendar"?effective.fluidCalendar:x.name==="Think About It"?effective.thinkAboutIt:true).map(({ name, icon: Icon, badge }) => (
             <button
               key={name}
-              title={navigationLabel(name)}
+              title={collapsed?navigationLabel(name):undefined}
               aria-label={navigationLabel(name)}
               aria-current={section === name ? "page" : undefined}
               className={`aaa-nav-row ${section === name ? "active" : ""}`}
@@ -620,7 +620,7 @@ function Workspace() {
           <div className="aaa-context-heading">
             <button
               className="aaa-icon-slot"
-              title={calendarSection ? "Manage calendars" : contextualTitle}
+              title={collapsed?(calendarSection ? "Manage calendars" : contextualTitle):undefined}
               aria-label={
                 calendarSection ? "Manage calendars" : contextualTitle
               }
@@ -651,7 +651,7 @@ function Workspace() {
             {calendarSection ? (
               calendarControls
             ) : section === "Settings" ? (
-              settingsSections.map(({name,icon:Icon})=><button key={name} className={`aaa-context-row ${settingsSection===name?'active':''}`} title={name} aria-pressed={settingsSection===name} onClick={()=>{setSettingsSection(name);setMobileOpen(false)}}><span className="aaa-icon-slot"><Icon size={18}/></span><span className="aaa-sidebar-label">{name}</span></button>)
+              settingsSections.map(({name,icon:Icon})=><button key={name} className={`aaa-context-row ${settingsSection===name?'active':''}`} title={collapsed?name:undefined} aria-pressed={settingsSection===name} onClick={()=>{setSettingsSection(name);setMobileOpen(false)}}><span className="aaa-icon-slot"><Icon size={18}/></span><span className="aaa-sidebar-label">{name}</span></button>)
             ) : (
               contextual.map((c) => (
                 <button
@@ -660,7 +660,7 @@ function Workspace() {
                     (section==="Databases"&&(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id))||
                     ((section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
-                  title={c.title}
+                  title={collapsed?c.title:undefined}
                   aria-pressed={section === "Databases"?(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
                   onClick={() => {
                     contextClick(c.id);

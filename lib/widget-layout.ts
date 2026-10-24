@@ -163,6 +163,27 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   }else{
     destination.push({id:"band-"+id,lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]});
   }
+  // A spanning group references its pair of adjacent columns. If a later
+  // rearrangement removes or inserts columns, preserve every spanning widget
+  // as a visible full-width row rather than leaving an orphaned invisible
+  // layout item with an out-of-range column reference.
+  for(const bands of group.values()){
+    for(let bi=0;bi<bands.length;bi++){
+      const band=bands[bi];
+      const invalid=(band.spans??[]).filter(span=>
+        band.lanes.length<3||span.startLane!==band.lanes.length-2||span.laneCount!==2);
+      if(!invalid.length)continue;
+      band.spans=(band.spans??[]).filter(span=>!invalid.includes(span));
+      let inserted=0;
+      for(const span of invalid)for(const widget of span.widgets){
+        bands.splice(bi+1+inserted,0,{
+          id:"band-"+widget.id,lanes:[{id:"lane-"+widget.id,width:12,widgets:[widget]}]
+        });
+        inserted++;
+      }
+      bi+=inserted;
+    }
+  }
   // Existing columns regain available width if an entire lane was moved away.
   // Don't overwrite the widths of a destination band that was only stacked.
   for(const bands of group.values())for(const band of bands){
