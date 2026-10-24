@@ -326,3 +326,35 @@ export function matchWidgetAdjacentHeight(
       heightPx:Math.max(160,Math.min(1200,Math.round(targetHeight/8)*8))}}
     :w);
 }
+
+/**
+ * The two widget resize affordances are independently configurable per profile.
+ * "none" deliberately leaves source and layout records unchanged.
+ */
+export type WidgetDoubleClickAction="fit-content"|"match-height"|"full-width"|"none";
+
+export function applyWidgetDoubleClickAction(
+  items:readonly PageWidget[],
+  sections:readonly WidgetPageSection[],
+  id:string,
+  action:WidgetDoubleClickAction,
+  fillGaps=true,
+  gap=14,
+  chromeHeight=0
+):PageWidget[]{
+  switch(action){
+    case "fit-content":return toggleWidgetContentFit(items,id);
+    case "match-height":return matchWidgetAdjacentHeight(items,id,gap,chromeHeight);
+    case "full-width":return expandWidgetToSectionWidth(items,sections,id,fillGaps);
+    default:return [...items];
+  }
+}
+
+export function widgetDoubleClickDescription(action:WidgetDoubleClickAction):string{
+  switch(action){
+    case "fit-content":return "fit the widget contents to their full height";
+    case "match-height":return "match the neighboring column or stacked widget height";
+    case "full-width":return "move this widget into its own full-width row";
+    default:return "do nothing";
+  }
+}

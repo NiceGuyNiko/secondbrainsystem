@@ -768,6 +768,7 @@ function Workspace() {
                 <div className="aaa-settings-panel aaa-demo-notice" role="note"><h2>Widget system is waiting for the database connection</h2><p>The database engine must be enabled for this environment. Existing planning and database records remain untouched.</p></div>
               ) : (section==="Library"||section==="Goals"||section==="Developing IT") ? (
                 <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle} headerPosition={preferences.widgetHeaderPosition}
+                  cornerDoubleClick={preferences.widgetCornerDoubleClick} bottomDoubleClick={preferences.widgetBottomDoubleClick}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
                   onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
                   onConfigure={setWidgetConfiguration}
@@ -787,6 +788,8 @@ function Workspace() {
                   companion={preferences.companion} onCompanion={setCompanion}
                   widgetStyle={preferences.widgetStyle} onWidgetStyle={widgetStyle=>setPreferences(()=>({widgetStyle}))}
                   widgetHeaderPosition={preferences.widgetHeaderPosition} onWidgetHeaderPosition={widgetHeaderPosition=>setPreferences(()=>({widgetHeaderPosition}))}
+                  widgetCornerDoubleClick={preferences.widgetCornerDoubleClick} onWidgetCornerDoubleClick={widgetCornerDoubleClick=>setPreferences(()=>({widgetCornerDoubleClick}))}
+                  widgetBottomDoubleClick={preferences.widgetBottomDoubleClick} onWidgetBottomDoubleClick={widgetBottomDoubleClick=>setPreferences(()=>({widgetBottomDoubleClick}))}
                   mobileTooltipMode={preferences.mobileTooltipMode} onMobileTooltipMode={setMobileTooltipMode}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}

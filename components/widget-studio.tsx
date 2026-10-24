@@ -6,7 +6,7 @@ import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {expandWidgetToSectionWidth,matchWidgetAdjacentHeight,toggleWidgetContentFit,placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane} from "@/lib/widget-layout";
+import {applyWidgetDoubleClickAction,expandWidgetToSectionWidth,placeWidget,resizeWidgetLane,widgetDoubleClickDescription,widgetLayoutBands,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -14,7 +14,9 @@ import PlanningWorkspace from "@/components/planning-workspace";
 type Mode="library"|"goals"|"widgets";
 type Selection={kind:"definition"|"instance";id:string}|null;
 type Props={
-  mode:Mode;visualStyle?:"classic"|"studio"|"blend";headerPosition?:"top"|"bottom";activePageId?:string;newPageIntent?:number;
+  mode:Mode;visualStyle?:"classic"|"studio"|"blend";headerPosition?:"top"|"bottom";
+  cornerDoubleClick?:WidgetDoubleClickAction;bottomDoubleClick?:WidgetDoubleClickAction;
+  activePageId?:string;newPageIntent?:number;
   onPages?:(items:{id:string;title:string}[])=>void;
   onPage?:(id:string)=>void;
   onConfigure:(target:WidgetConfigureTarget|null)=>void;
@@ -676,6 +678,7 @@ export default function WidgetStudio(p:Props){
     const title=widget.title||def?.name||"Goals & projects";
     const folded=arrange&&collapsedWidgets.includes(widget.id);
     const fitContent=widget.config.fitContent===true;
+    const cornerAction=p.cornerDoubleClick??"fit-content";
     const chromeLocked=widget.config.chromeLocked===true;
     const hideChrome=!arrange&&chromeLocked;
     const labelsShown=cfg.showTitle||cfg.showDatabase||cfg.showViewTag;
@@ -686,9 +689,7 @@ export default function WidgetStudio(p:Props){
       onDrop={e=>{e.stopPropagation();e.preventDefault();if(drag===widget.id){setDrag(null);setDropHint(null)}else commitDrop(dropTargetFor(e,widget))}}
       onDragEnd={()=>{setDrag(null);setDropHint(null)}}>
       {(!hideChrome||labelsShown)&&<header className="aaa-widget-card-head">
-        <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
-              {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
-            </svg></span>}
+        <div className="aaa-widget-title-group">
           <div className="aaa-widget-title-stack">
             {cfg.showViewTag&&<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":widgetIsSynced(widget)?"WIDGET SYNC · LINKED":"CONNECTED VIEW"}</span>}
             {(cfg.showTitle||folded)&&(!hideChrome
@@ -703,7 +704,12 @@ export default function WidgetStudio(p:Props){
               aria-label={(chromeLocked?"Unlock ":"Lock ")+title+" controls"} aria-pressed={chromeLocked}
               onClick={()=>changeInstance(widget.id,{config:{...widget.config,chromeLocked:!chromeLocked}})}>
               {chromeLocked?<Lock size={16}/>:<Unlock size={16}/>}
-            </button><button type="button" title="Expand to full section width (new row)"
+            </button>
+            <span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section"
+              aria-label={`Drag ${title}`}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
+              {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
+            </svg></span>
+            <button type="button" title="Expand to full section width (new row)"
               aria-label={"Move "+title+" into its own full-width row"}
               onClick={()=>saveLayout(expandWidgetToSectionWidth(instanceList,pageSections,widget.id,fillGaps))}>
               <Maximize2 size={16}/>
@@ -721,17 +727,17 @@ export default function WidgetStudio(p:Props){
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
           <option value="">Overview</option>{pageSections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
         </select></label>
-        <span className="aaa-widget-height-caption">{fitContent?"Content-fit height":Math.round(height)+"px tall"} · double-click corner to {fitContent?"return to fixed height":"show all content"}</span>
+        <span className="aaa-widget-height-caption">{fitContent?"Content-fit height":Math.round(height)+"px tall"} · double-click corner: {cornerAction==="fit-content"?(fitContent?"restore fixed height":"fit contents"):widgetDoubleClickDescription(cornerAction)}</span>
       </footer>}
       {arrange&&<>
         <button type="button" className="aaa-widget-resize-corner"
-          aria-label={`Resize ${title}. Double-click to ${fitContent?"restore fixed height":"fit all record content"}.`}
-          title={fitContent?"Drag to resize; double-click to restore saved height":"Drag to resize; double-click to fit content height"}
+          aria-label={`Resize ${title}. Double-click to ${cornerAction==="fit-content"&&fitContent?"restore saved fixed height":widgetDoubleClickDescription(cornerAction)}.`}
+          title={`Drag to resize; double-click to ${cornerAction==="fit-content"&&fitContent?"restore saved fixed height":widgetDoubleClickDescription(cornerAction)}`}
           onPointerDown={e=>{if(e.detail>=2)return;startResize(e,widget,"both")}}
           onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
           onDoubleClick={e=>{e.preventDefault();e.stopPropagation();
             resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
-            saveLayout(toggleWidgetContentFit(instanceList,widget.id));
+            if(cornerAction!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,cornerAction,fillGaps,14,arrange?34:0));
           }}/>
       </>}
     </article>;
@@ -819,6 +825,8 @@ export default function WidgetStudio(p:Props){
           {index===0?<LayoutGrid size={14}/>:<BookOpen size={14}/>} {item.title}
         </button>)}
         <button className="aaa-widget-page-add" onClick={()=>setCreatingPage(true)}><Plus size={14}/> Page</button>
+        {page&&<button className="aaa-widget-page-add aaa-widget-section-add" type="button"
+          title="Add a section to the current page" onClick={()=>setCreatingSection(true)}><Plus size={14}/> Section</button>}
       </nav>
       {renamingPage&&page&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();renamePage()}}>
         <input autoFocus aria-label="Rename page" maxLength={100} value={pageDraft} onChange={e=>setPageDraft(e.target.value)}/>
@@ -839,8 +847,9 @@ export default function WidgetStudio(p:Props){
         {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
       {page?<div className={"aaa-widget-sections"+(arrange?" aaa-widget-sections-arranging":"")}>
-        {arrange&&<div className="aaa-widget-section-toolbar"><span>Drag a widget to an insertion line. Release to rearrange; drag its corner or column dividers to resize.</span>
-          <button className="aaa-widget-secondary" onClick={()=>setCreatingSection(true)}><Plus size={15}/> Add section</button></div>}
+        <div className="aaa-widget-section-toolbar"><span>{arrange
+          ?"Drag a widget to an insertion line. Release to rearrange; drag its corner or column dividers to resize."
+          :"Switch to Arrange mode to rearrange or resize widgets."}</span></div>
         {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
           <input autoFocus aria-label="New section name" placeholder="e.g. World History, Project Progress…" maxLength={100} value={newSection} onChange={e=>setNewSection(e.target.value)}/>
           <button type="submit" disabled={!newSection.trim()||busy}><Check size={15}/> Create section</button>
@@ -877,13 +886,14 @@ export default function WidgetStudio(p:Props){
                 style={{height:arrange&&collapsedWidgets.includes(widget.id)?58:widget.config.fitContent===true?"auto":widgetHeightPx(widget)+(arrange?34:0)}}>
                 {widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id))}
                 {arrange&&<button className="aaa-widget-height-divider" type="button"
-                  title={"Drag to resize "+(widget.title||"widget")+" height; double-click to match the neighboring column or stacked widget"}
-                  aria-label={"Resize "+(widget.title||"widget")+" height or match neighboring widget"}
+                  title={"Drag to resize "+(widget.title||"widget")+" height; double-click to "+widgetDoubleClickDescription(p.bottomDoubleClick??"match-height")}
+                  aria-label={"Resize "+(widget.title||"widget")+" height; double-click to "+widgetDoubleClickDescription(p.bottomDoubleClick??"match-height")}
                   onPointerDown={e=>startResize(e,widget,"y")} onPointerMove={resizeMove}
                   onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
                   onDoubleClick={e=>{e.preventDefault();e.stopPropagation();
                     resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
-                    saveLayout(matchWidgetAdjacentHeight(instanceList,widget.id,14,arrange?34:0));
+                    const action=p.bottomDoubleClick??"match-height";
+                    if(action!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,action,fillGaps,14,arrange?34:0));
                   }}
                   onKeyDown={e=>{
                     if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();

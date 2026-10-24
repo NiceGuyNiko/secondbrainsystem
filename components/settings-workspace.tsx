@@ -9,6 +9,7 @@ import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
 import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import type {MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
+import type {WidgetDoubleClickAction} from "@/lib/widget-layout";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
 import { activeProfile } from "@/lib/settings/model";
 import { networkGuard } from "@/lib/demo/network-guard";
@@ -35,6 +36,8 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
   widgetStyle:"classic"|"studio"|"blend"; onWidgetStyle:(v:"classic"|"studio"|"blend")=>void;
   widgetHeaderPosition:"top"|"bottom"; onWidgetHeaderPosition:(v:"top"|"bottom")=>void;
+  widgetCornerDoubleClick:WidgetDoubleClickAction; onWidgetCornerDoubleClick:(v:WidgetDoubleClickAction)=>void;
+  widgetBottomDoubleClick:WidgetDoubleClickAction; onWidgetBottomDoubleClick:(v:WidgetDoubleClickAction)=>void;
   mobileTooltipMode:MobileTooltipMode; onMobileTooltipMode:(v:MobileTooltipMode)=>void;
   dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
@@ -85,6 +88,29 @@ export default function SettingsWorkspace(p:Props) {
         <Switch label="Put widget title and controls at the bottom" checked={p.widgetHeaderPosition==="bottom"}
           onChange={value=>p.onWidgetHeaderPosition(value?"bottom":"top")}
           description="Move the title, Configure, duplicate and other widget controls below the widget contents. Individual widget lock buttons can hide the control strip in Use Mode while keeping whichever title and labels you enabled."/>
+        <h3>Double-click actions</h3>
+        <p className="calendar-muted">Choose what a double-click does in Arrange Mode. These choices apply to widgets in Library and Goals and are saved to your current profile. Dragging still resizes normally.</p>
+        <div className="aaa-widget-double-click-grid">
+          <label htmlFor="aaa-widget-corner-double-click">Corner triangle
+            <select id="aaa-widget-corner-double-click" value={p.widgetCornerDoubleClick}
+              onChange={e=>p.onWidgetCornerDoubleClick(e.target.value as WidgetDoubleClickAction)}>
+              <option value="fit-content">Fit content height (default)</option>
+              <option value="match-height">Match neighboring height</option>
+              <option value="full-width">Move to full-width row</option>
+              <option value="none">Do nothing</option>
+            </select>
+          </label>
+          <label htmlFor="aaa-widget-bottom-double-click">Bottom height divider
+            <select id="aaa-widget-bottom-double-click" value={p.widgetBottomDoubleClick}
+              onChange={e=>p.onWidgetBottomDoubleClick(e.target.value as WidgetDoubleClickAction)}>
+              <option value="match-height">Match neighboring height (default)</option>
+              <option value="fit-content">Fit content height</option>
+              <option value="full-width">Move to full-width row</option>
+              <option value="none">Do nothing</option>
+            </select>
+          </label>
+        </div>
+        <p className="calendar-muted">Fit content height reveals the whole record view without changing its width. Match neighboring height adjusts the clicked widget. Full-width row changes its placement. You can always use the separate full-width button.</p>
         <h3>Fluid layout</h3>
         <Switch label="Automatically fill available space" checked={fillGaps} onChange={setFillGaps}
           description="On by default. When you add, remove or resize columns, the remaining widgets fill gaps. Turn this off to preserve unoccupied width when moving widgets."/>

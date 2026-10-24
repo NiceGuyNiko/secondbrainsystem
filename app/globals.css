@@ -3072,3 +3072,102 @@ input[type="range"]{
   .aaa-widget-sections-arranging .aaa-widget-band-row-drop{bottom:-18px;}
   .aaa-widget-sections-arranging .aaa-widget-lane-stack-drop{width:calc(100% - 16px);margin-left:8px;margin-right:8px;}
 }
+
+
+/* Navigation and widget control alignment: October 2026 preview corrections.
+   The collapsed rail exposes the emblem as the sole Expand control. The
+   separate Collapse icon must disappear after collapsing, including when
+   earlier desktop rules use display:grid!important. */
+@media(min-width:768px){
+  .aaa-collapsed .aaa-sidebar .aaa-desktop-collapse-control,
+  .aaa-collapsed .aaa-sidebar .aaa-collapse-control.aaa-desktop-collapse-control{
+    display:none!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+  .aaa-collapsed .aaa-sidebar .aaa-brand-toggle{
+    margin-inline:auto!important;
+  }
+}
+/* The six-dot drag grip is now part of the right-side action group, directly
+   beside Lock. It must never indent the title in Arrange Mode. */
+.aaa-widget-card-actions>.aaa-widget-drag-handle{
+  width:28px!important;
+  height:28px!important;
+  min-width:28px;
+  min-height:28px;
+  max-width:28px;
+  flex:0 0 28px;
+  padding:4px;
+  margin:0 2px;
+  border:1px dashed var(--border);
+  border-radius:6px;
+  display:grid!important;
+  place-items:center;
+  grid-row:auto!important;
+  cursor:grab;
+  color:var(--accent-text);
+  background:transparent;
+}
+.aaa-widget-card-actions>.aaa-widget-drag-handle:hover,
+.aaa-widget-card-actions>.aaa-widget-drag-handle:focus-visible{
+  background:var(--accent-soft);
+  border-color:var(--accent);
+}
+.aaa-widget-card-actions>.aaa-widget-drag-handle:active{cursor:grabbing}
+.aaa-widget-card-actions>.aaa-widget-drag-handle svg{pointer-events:none}
+.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group{
+  display:flex!important;
+  align-items:center!important;
+}
+.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group>.aaa-widget-title-stack{
+  grid-column:auto;
+  min-width:0;
+}
+/* The Section adder now shares the persistent page-tab row beside +Page.
+   Keep the brief Arrange/Use hint in a constant-height strip so switching
+   modes does not shift the beginning of the section list. */
+.aaa-widget-page-tabs>.aaa-widget-section-add{
+  border-style:dashed;
+  color:var(--text);
+}
+.aaa-widget-page-tabs>.aaa-widget-section-add:hover{
+  border-color:var(--accent);
+  color:var(--accent-text);
+}
+.aaa-widget-section-toolbar{
+  min-height:22px;
+  height:auto;
+  display:flex;
+  align-items:center;
+  margin-bottom:0;
+  white-space:normal;
+}
+.aaa-widget-double-click-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:14px;
+  margin:12px 0;
+}
+.aaa-widget-double-click-grid label{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  color:var(--muted);
+  font-size:12px;
+}
+.aaa-widget-double-click-grid select{
+  min-width:0;
+  width:100%;
+  min-height:38px;
+  background:var(--surface-2);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 10px;
+}
+@media(max-width:760px){
+  .aaa-widget-double-click-grid{grid-template-columns:1fr;}
+}

@@ -4,6 +4,7 @@
 // Fluid Calendar and Think About It beta choices, theme and sidebar. Profiles hold configuration
 // only: every profile of an account sees the same calendar events, thoughts, goals and tasks.
 import type { AgendaPreference } from "@/lib/agenda-state";
+import type {WidgetDoubleClickAction} from "@/lib/widget-layout";
 import {parseMobileTooltipMode,DEFAULT_MOBILE_TOOLTIP_MODE,type MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
 import {defaultCompanion,parseCompanion,type CompanionPreferences} from "@/lib/companion-config";
 import {parseCalendarDateFormat,type CalendarDateFormat} from "@/lib/calendar-date-format";
@@ -17,6 +18,8 @@ export type ProfilePreferences = {
   betaFeatures: BetaFeatures;
   widgetStyle: "classic" | "studio" | "blend";
   widgetHeaderPosition:"top"|"bottom";
+  widgetCornerDoubleClick:WidgetDoubleClickAction;
+  widgetBottomDoubleClick:WidgetDoubleClickAction;
   agendaPreference: AgendaPreference;
   lastPinned: boolean;
   companion: CompanionPreferences;
@@ -38,6 +41,8 @@ export const defaultPreferences: ProfilePreferences = {
   betaFeatures: { fluidCalendar: false, thinkAboutIt: false },
   widgetStyle: "classic",
   widgetHeaderPosition:"top",
+  widgetCornerDoubleClick:"fit-content",
+  widgetBottomDoubleClick:"match-height",
   agendaPreference: "toggle",
   lastPinned: false,
   companion: defaultCompanion,
@@ -65,6 +70,8 @@ export function parsePreferences(raw: unknown, fallback: ProfilePreferences = de
     betaFeatures: { fluidCalendar: bool(beta.fluidCalendar, fallback.betaFeatures.fluidCalendar), thinkAboutIt: bool(beta.thinkAboutIt, fallback.betaFeatures.thinkAboutIt) },
     widgetStyle: pick(p.widgetStyle, ["classic", "studio", "blend"] as const, fallback.widgetStyle),
     widgetHeaderPosition:pick(p.widgetHeaderPosition,["top","bottom"] as const,fallback.widgetHeaderPosition),
+    widgetCornerDoubleClick:pick(p.widgetCornerDoubleClick,["fit-content","match-height","full-width","none"] as const,fallback.widgetCornerDoubleClick),
+    widgetBottomDoubleClick:pick(p.widgetBottomDoubleClick,["fit-content","match-height","full-width","none"] as const,fallback.widgetBottomDoubleClick),
     agendaPreference: pick(p.agendaPreference, ["column", "pin", "toggle"] as const, fallback.agendaPreference),
     lastPinned: bool(p.lastPinned, fallback.lastPinned),
     companion: parseCompanion(p.companion),
