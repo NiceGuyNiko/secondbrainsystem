@@ -3485,3 +3485,31 @@ input[type="range"]{
     z-index:43;
   }
 }
+
+/* The six-dot movement grip belongs visually to the widget's header center,
+   rather than being pushed around by the changing number of action icons.
+   Titles use ellipsis before crossing into the handle's 29px square. */
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-head{
+  position:relative;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-title-group{
+  flex:0 1 43%;
+  max-width:calc(50% - 20px);
+  min-width:0;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-actions>.aaa-widget-drag-handle{
+  position:absolute!important;
+  left:50%;
+  top:50%;
+  right:auto;
+  transform:translate(-50%,-50%);
+  margin:0!important;
+  z-index:3;
+  display:grid!important;
+  place-items:center;
+  width:28px!important;
+  height:28px!important;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
+  display:none!important;
+}
