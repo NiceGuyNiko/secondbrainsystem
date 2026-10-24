@@ -3,10 +3,14 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end";
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end"|"split-span-left"|"split-span-right";
 export type WidgetDropTarget={
   sectionId:string;targetId:string|null;edge:WidgetDropEdge;
   spanStartLane?:number;spanLaneCount?:number;
+  /** The optional proportion assigned to a newly inserted physical column. */
+  newColumnShare?:number;
+  /** Split the existing combined region evenly, leaving outside widths alone. */
+  preserveGroupWidth?:boolean;
   /** Add the inserted physical lane to an existing merged area. Used when
    * clicking an edge beside a merged widget instead of creating a gap. */
   extendSpanWidgetId?:string;
@@ -17,7 +21,9 @@ export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLa
 
 export const MAX_WIDGET_COLUMNS=4;
 const MIN_WIDTH=2;
-const safeWidth=(value:number)=>Math.max(MIN_WIDTH,Math.min(12,Math.round(value)));
+// Fractions are essential for 33% + three equal children of the other 67%.
+// Persist a small, stable precision rather than rounding back to 12 integers.
+const safeWidth=(value:number)=>Math.max(MIN_WIDTH,Math.min(12,Math.round(value*1000)/1000));
 const bandId=(item:PageWidget)=>typeof item.config.layoutBand==="string"?item.config.layoutBand:"band-"+item.id;
 const laneId=(item:PageWidget)=>typeof item.config.layoutLane==="string"?item.config.layoutLane:"lane-"+item.id;
 const rebalance=(band:WidgetLayoutBand)=>{
@@ -25,8 +31,24 @@ const rebalance=(band:WidgetLayoutBand)=>{
   // Deliberately never run this as part of a drag-over preview.
   const lanes=band.lanes;
   if(!lanes.length)return;
-  const each=Math.floor(12/lanes.length);
-  lanes.forEach((lane,index)=>{lane.width=each+(index<12%lanes.length?1:0)});
+  const each=12/lanes.length;
+  lanes.forEach(lane=>{lane.width=each});
+};
+
+const shareNewColumn=(band:WidgetLayoutBand,newLane:WidgetLayoutLane,share:number)=>{
+  const existing=band.lanes.filter(lane=>lane!==newLane);
+  if(!existing.length)return;
+  const desired=Math.max(MIN_WIDTH,Math.min(12-existing.length*MIN_WIDTH,12*share));
+  const available=12-desired-existing.length*MIN_WIDTH;
+  const original=existing.map(lane=>Math.max(MIN_WIDTH,lane.width));
+  const total=original.reduce((sum,width)=>sum+width,0);
+  let used=0;
+  existing.forEach((lane,index)=>{
+    lane.width=index===existing.length-1?12-desired-used:
+      MIN_WIDTH+available*original[index]/total;
+    used+=lane.width;
+  });
+  newLane.width=desired;
 };
 
 // Preserve existing column proportions when a sibling leaves the row.
@@ -106,6 +128,21 @@ const conflictingSpans=(a:WidgetLayoutSpan,b:WidgetLayoutSpan)=>{
   if(intervalEnd(a)<=b.startLane||intervalEnd(b)<=a.startLane)return false;
   return !containsSpan(a,b)&&!containsSpan(b,a)&&!(a.startLane===b.startLane&&a.laneCount===b.laneCount);
 };
+/** All contiguous selections exposed by the single purple range guide. */
+export function widgetColumnRanges(count:number):{start:number;count:number}[]{
+  const valid=Math.max(0,Math.min(MAX_WIDGET_COLUMNS,Math.floor(count)));
+  return Array.from({length:valid},(_,start)=>
+    Array.from({length:valid-start},(_,offset)=>({start,count:offset+1}))).flat();
+}
+/** Existing nested spans are safe only for identical, contained or containing
+ * ranges. A sideways overlap needs a separate row-layout operation instead. */
+export function canPlaceWidgetRange(band:WidgetLayoutBand,start:number,count:number):boolean{
+  if(count===1)return start>=0&&start<band.lanes.length&&
+    !(band.spans??[]).some(span=>start>=span.startLane&&start<intervalEnd(span));
+  if(count<2||start<0||start+count>band.lanes.length)return false;
+  const proposed:WidgetLayoutSpan={startLane:start,laneCount:count,widgets:[]};
+  return !(band.spans??[]).some(span=>conflictingSpans(span,proposed));
+}
 export function widgetVisualHierarchy(band:WidgetLayoutBand):WidgetVisualNode[]{
   const spans=band.spans??[];
   const build=(start:number,end:number,excluded?:WidgetLayoutSpan):WidgetVisualNode[]=>{
@@ -264,6 +301,38 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
         id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
       });
     }
+  }else if(destinationBand&&destinationSpan&&
+    (target.edge==="split-span-left"||target.edge==="split-span-right")){
+    // Splitting D below B+C must NOT invent a fifth physical column.
+    // The inserted widget occupies one edge track of D's existing range;
+    // D retains its identity and the remaining contiguous track(s).
+    const fromLeft=target.edge==="split-span-left";
+    const first=destinationSpan.startLane;
+    const last=first+destinationSpan.laneCount-1;
+    const splitIndex=fromLeft?first:last;
+    const remainingStart=fromLeft?first+1:first;
+    const remainingCount=destinationSpan.laneCount-1;
+    const splitLane=destinationBand.lanes[splitIndex];
+    const survivor=destinationBand.lanes[remainingStart];
+    const nestedConflict=(destinationBand.spans??[]).some(span=>span!==destinationSpan&&
+      span.startLane>=first&&span.startLane+span.laneCount<=last+1);
+    if(splitLane&&survivor&&remainingCount>=1&&!nestedConflict){
+      splitLane.widgets.push(moving);
+      if(remainingCount===1){
+        survivor.widgets.push(...destinationSpan.widgets);
+        destinationBand.spans=destinationBand.spans?.filter(span=>span!==destinationSpan);
+      }else{
+        destinationSpan.startLane=remainingStart;
+        destinationSpan.laneCount=remainingCount;
+        spanAnchors.set(destinationSpan,destinationBand.lanes
+          .slice(remainingStart,remainingStart+remainingCount).map(lane=>lane.id));
+      }
+    }else{
+      // No record is discarded when a nested area cannot safely be split.
+      destination.splice(destination.indexOf(destinationBand)+1,0,{
+        id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
+      });
+    }
   }else if(destinationSpan&&(target.edge==="above"||target.edge==="below")){
     const idx=destinationSpan.widgets.findIndex(w=>w.id===target.targetId);
     destinationSpan.widgets.splice(idx+(target.edge==="below"?1:0),0,moving);
@@ -287,6 +356,10 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
           ?destinationBand.spans?.find(span=>
             span.widgets.some(w=>w.id===target.extendSpanWidgetId))
           :undefined;
+        const originalSpanIds=affectedSpan?spanAnchors.get(affectedSpan)??[]:[];
+        const originalSpanWidth=destinationBand.lanes
+          .filter(lane=>originalSpanIds.includes(lane.id))
+          .reduce((sum,lane)=>sum+lane.width,0);
         if(affectedSpan){
           const identities=spanAnchors.get(affectedSpan);
           if(identities?.length&&insertionIndex===affectedSpan.startLane){
@@ -298,7 +371,15 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
           }
         }
         destinationBand.lanes.splice(insertionIndex,0,newLane);
-        rebalance(destinationBand);
+        if(target.preserveGroupWidth&&affectedSpan&&
+          originalSpanWidth/Math.max(1,(spanAnchors.get(affectedSpan)?.length??0))>=MIN_WIDTH){
+          const ids=spanAnchors.get(affectedSpan)??[];
+          const shared=originalSpanWidth/ids.length;
+          destinationBand.lanes.filter(lane=>ids.includes(lane.id))
+            .forEach(lane=>{lane.width=shared});
+        }else if(typeof target.newColumnShare==="number"&&Number.isFinite(target.newColumnShare))
+          shareNewColumn(destinationBand,newLane,target.newColumnShare);
+        else rebalance(destinationBand);
       }else{
         // Four columns are the smallest usable snap. Stack rather than overflow.
         destinationLane.widgets.splice(target.edge==="left"?0:destinationLane.widgets.length,0,moving);
@@ -349,8 +430,11 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   // Existing columns regain available width if an entire lane was moved away.
   // Don't overwrite the widths of a destination band that was only stacked.
   for(const bands of group.values())for(const band of bands){
-    if(band===destinationBand&&band.lanes.reduce((sum,l)=>sum+l.width,0)===12)continue;
-    if(fillGaps&&band.lanes.reduce((sum,l)=>sum+l.width,0)!==12)fillBand(band);
+    const width=band.lanes.reduce((sum,l)=>sum+l.width,0);
+    // Three equal children of a 67% group produce repeating decimals. They
+    // are complete columns, not a gap that should be snapped to integer slots.
+    if(band===destinationBand&&Math.abs(width-12)<.005)continue;
+    if(fillGaps&&Math.abs(width-12)>=.005)fillBand(band);
   }
   group.set(target.sectionId,destination);
   return publish(sections,items,group);

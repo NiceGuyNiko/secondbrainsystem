@@ -3865,6 +3865,74 @@ input[type="range"]{
   outline:2px solid var(--accent);
   outline-offset:2px;
 }
+
+/* One placement chooser replaces a forest of overlapping combination bars.
+   It is shared by column, stack, range, and full-width insertion guides. */
+.aaa-widget-placement-backdrop{
+  position:fixed;inset:0;z-index:10020;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:#0009;backdrop-filter:blur(3px);
+}
+.aaa-widget-placement-dialog{
+  width:min(540px,100%);max-height:min(90vh,850px);overflow:auto;
+  color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-radius:15px;
+  box-shadow:0 24px 75px #0006;padding:20px;
+}
+.aaa-widget-placement-dialog>header,
+.aaa-widget-placement-dialog>footer{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+.aaa-widget-placement-dialog>header{margin-bottom:12px}
+.aaa-widget-placement-dialog>header small{color:var(--accent);font-size:10px;letter-spacing:.11em;font-weight:750}
+.aaa-widget-placement-dialog h3{font-size:19px;font-weight:720;margin:4px 0}
+.aaa-widget-placement-dialog p{font-size:12px;line-height:1.5;color:var(--muted)}
+.aaa-widget-placement-dialog button{cursor:pointer}
+.aaa-widget-placement-dialog>header>button{
+  display:grid;place-items:center;width:30px;height:30px;
+  border:1px solid var(--border);border-radius:8px;flex-shrink:0;
+}
+.aaa-widget-placement-field{
+  display:flex;flex-direction:column;gap:9px;padding:14px 0;
+  border-top:1px solid var(--border);
+}
+.aaa-widget-placement-field>strong,
+.aaa-widget-placement-field>label>strong{font-size:12px}
+.aaa-widget-placement-grid{display:grid;gap:5px}
+.aaa-widget-placement-grid>span{
+  display:grid;place-items:center;height:43px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--bg);color:var(--muted);font-size:12px;
+}
+.aaa-widget-placement-grid>span.selected{
+  background:color-mix(in srgb,var(--accent) 22%,var(--surface));
+  border-color:var(--accent);color:var(--text);
+}
+.aaa-widget-placement-ranges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.aaa-widget-placement-ranges>button{
+  border:1px solid var(--border);border-radius:7px;
+  padding:8px 5px;font-size:12px;background:var(--bg);
+}
+.aaa-widget-placement-ranges>button.selected{
+  border-color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 19%,var(--surface));
+}
+.aaa-widget-placement-ranges>button:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+.aaa-widget-placement-options{display:flex;flex-direction:column;gap:9px}
+.aaa-widget-placement-options label{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}
+.aaa-widget-placement-options input{accent-color:var(--accent)}
+.aaa-widget-placement-field select{
+  width:100%;padding:9px 10px;background:var(--bg);
+  color:var(--text);border:1px solid var(--border);border-radius:8px;
+}
+.aaa-widget-placement-dialog>footer{justify-content:flex-end;margin-top:8px}
+.aaa-widget-placement-dialog>footer button{
+  display:flex;align-items:center;gap:6px;border:1px solid var(--border);
+  border-radius:8px;padding:9px 13px;font-size:12px;
+}
+.aaa-widget-placement-dialog>footer .aaa-widget-primary{border-color:var(--accent)}
 /* Structural dividers remain discoverable and resizable, but do not shout.
    Their plus markers deliberately follow the tiny unframed glyph language
    of the current Vercel preview, not the big circular mockup buttons. */
