@@ -28,6 +28,13 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     let pressTimer:ReturnType<typeof setTimeout>|null=null;
     let tapDismissTimer:ReturnType<typeof setTimeout>|null=null;
     let suppressOriginClick:HTMLElement|null=null;
+    let desktopClicked:HTMLElement|null=null;
+    let desktopClickedTitle:string|null=null;
+    const restoreDesktopClick=()=>{
+      if(desktopClicked&&desktopClickedTitle!==null&&!desktopClicked.hasAttribute("title"))
+        desktopClicked.setAttribute("title",desktopClickedTitle);
+      desktopClicked=null;desktopClickedTitle=null;
+    };
     // Removing titles for icon buttons on touch prevents Safari's own tooltip
     // from lingering even after our React tooltip closes. The originals are
     // restored only when switching back to desktop or on component cleanup.
@@ -61,6 +68,15 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     };
     const findDesktop=(target:EventTarget|null)=>{
       if(!(target instanceof Element))return null;
+      const sidebar=target.closest(".aaa-sidebar");
+      if(sidebar){
+        // Expanded navigation already has labels; the AAA emblem never
+        // receives a tooltip. The collapse control does, at any width.
+        if(target.closest(".aaa-brand-toggle"))return null;
+        if(target.closest(".aaa-desktop-collapse-control"))
+          return target.closest<HTMLElement>(".aaa-desktop-collapse-control");
+        if(!sidebar.closest(".aaa-collapsed"))return null;
+      }
       return target.closest<HTMLElement>("[data-aaa-tooltip], [title]");
     };
     const findMobile=(target:EventTarget|null):HTMLElement|null=>{
@@ -126,10 +142,15 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     const onPointerOver=(event:PointerEvent)=>{
       if(mobileViewport()||Date.now()-lastTouch<1500||event.pointerType==="touch")return;
       const target=findDesktop(event.target);
+      if(target===desktopClicked)return;
+      if(desktopClicked&&target!==desktopClicked)restoreDesktopClick();
       if(target)show(target,false);
     };
     const onPointerOut=(event:PointerEvent)=>{
       if(mobileViewport()||Date.now()-lastTouch<1500)return;
+      if(desktopClicked&&event.target instanceof Node&&desktopClicked.contains(event.target)&&
+         !(event.relatedTarget instanceof Node&&desktopClicked.contains(event.relatedTarget)))
+        restoreDesktopClick();
       const current=active.current?.element;
       if(!current)return;
       if(event.relatedTarget instanceof Node&&current.contains(event.relatedTarget))return;
@@ -139,7 +160,7 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
       // Touch focusing a button is not an intent to see a tooltip.
       if(mobileViewport()||Date.now()-lastTouch<1500)return;
       const target=findDesktop(event.target);
-      if(target)show(target,false);
+      if(target&&target!==desktopClicked)show(target,false);
     };
     const onFocusOut=(event:FocusEvent)=>{
       if(mobileViewport())return;
@@ -149,7 +170,17 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
       if(event.target instanceof Node&&current.contains(event.target))hide();
     };
     const onPointerDown=(event:PointerEvent)=>{
-      if(event.pointerType!=="touch")return;
+      if(event.pointerType!=="touch"){
+        const target=findDesktop(event.target);
+        if(target&&active.current?.element===target){
+          const original=active.current.nativeTitle;
+          hide();
+          desktopClicked=target;
+          desktopClickedTitle=original;
+          if(original!==null)target.removeAttribute("title");
+        }
+        return;
+      }
       // A fresh touch must not inherit the previous long-press click guard.
       suppressOriginClick=null;
       lastTouch=Date.now();
@@ -248,7 +279,7 @@ export default function ThemedTooltips({mobileMode="hold"}:{mobileMode?:MobileTo
     document.addEventListener("scroll",onScroll,true);
     window.addEventListener("resize",onResize);
     return()=>{
-      stopTimer();pending=null;hide();reinstateMobileTitles();
+      stopTimer();pending=null;hide();restoreDesktopClick();reinstateMobileTitles();
       document.removeEventListener("pointerover",onPointerOver,true);
       document.removeEventListener("pointerout",onPointerOut,true);
       document.removeEventListener("pointerdown",onPointerDown,true);

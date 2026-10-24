@@ -33,7 +33,8 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   demoIsolation:boolean;
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
-  widgetStyle:"classic"|"studio"; onWidgetStyle:(v:"classic"|"studio")=>void;
+  widgetStyle:"classic"|"studio"|"blend"; onWidgetStyle:(v:"classic"|"studio"|"blend")=>void;
+  widgetHeaderPosition:"top"|"bottom"; onWidgetHeaderPosition:(v:"top"|"bottom")=>void;
   mobileTooltipMode:MobileTooltipMode; onMobileTooltipMode:(v:MobileTooltipMode)=>void;
   dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
@@ -71,16 +72,19 @@ export default function SettingsWorkspace(p:Props) {
     {p.section==="The Companion"&&<CompanionSettings options={p.companion} onChange={p.onCompanion} preference={p.agendaPreference} onPreference={p.onAgendaPreference}/>}
     {p.section==="Widgets"&&<section className="aaa-settings-card aaa-widget-style-settings" aria-labelledby="widget-style-heading">
       <header><h2 id="widget-style-heading">Widget design</h2><p>Change the presentation of widgets in Library, Goals and Developing IT. Your data, saved views, page layouts and theme stay the same.</p></header>
-      <Switch label="Use Studio design" checked={p.widgetStyle==="studio"} onChange={on=>p.onWidgetStyle(on?"studio":"classic")} description="Inspired by the Templates Lab: richer surfaces, graphic accents, dashboard summaries and workshop-style cards."/>
       <div className="aaa-widget-style-options" role="group" aria-label="Widget design style">
-        {(["classic","studio"] as const).map(style=><button key={style} type="button" aria-pressed={p.widgetStyle===style} className={p.widgetStyle===style?"active":""} onClick={()=>p.onWidgetStyle(style)}>
+        {(["classic","studio","blend"] as const).map(style=><button key={style} type="button" aria-pressed={p.widgetStyle===style} className={p.widgetStyle===style?"active":""} onClick={()=>p.onWidgetStyle(style)}>
           <span className={"aaa-widget-style-thumbnail aaa-widget-style-thumbnail-"+style} aria-hidden="true"><i/><i/><i/></span>
-          <strong>{style==="classic"?"Classic":"Studio"}</strong>
-          <small>{style==="classic"?"The original clean, practical widget canvas.":"The Templates Lab-inspired layered dashboard."}</small>
+          <strong>{style==="classic"?"Classic":style==="studio"?"Studio":"Blend"}</strong>
+          <small>{style==="classic"?"Clean, practical cards with distinct surfaces.":style==="studio"?"Layered dashboards with richer accent treatments.":"Widget content stays visible, while its background and border blend into your page."}</small>
         </button>)}
       </div>
       <p className="calendar-muted">Both styles inherit your selected Appearance theme. This choice is saved to your current test profile.</p>
       <div className="aaa-widget-gap-setting">
+        <h3>Widget control placement</h3>
+        <Switch label="Put widget title and controls at the bottom" checked={p.widgetHeaderPosition==="bottom"}
+          onChange={value=>p.onWidgetHeaderPosition(value?"bottom":"top")}
+          description="Move the title, Configure, duplicate and other widget controls below the widget contents. Individual widget lock buttons can hide the control strip in Use Mode while keeping whichever title and labels you enabled."/>
         <h3>Fluid layout</h3>
         <Switch label="Automatically fill available space" checked={fillGaps} onChange={setFillGaps}
           description="On by default. When you add, remove or resize columns, the remaining widgets fill gaps. Turn this off to preserve unoccupied width when moving widgets."/>

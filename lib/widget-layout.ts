@@ -1,12 +1,13 @@
-import {widgetSectionId,type PageWidget,type WidgetPageSection} from "@/lib/widget-system";
+import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} from "@/lib/widget-system";
 
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"new-row"|"section-end";
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"section-end";
 export type WidgetDropTarget={sectionId:string;targetId:string|null;edge:WidgetDropEdge};
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
-export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[]};
+export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
+export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
 
 const MIN_WIDTH=2;
 const safeWidth=(value:number)=>Math.max(MIN_WIDTH,Math.min(12,Math.round(value)));
@@ -50,6 +51,18 @@ export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[
         candidate.lanes.reduce((n,l)=>n+l.width,0)+safeWidth(item.width)<=12)band=candidate;
     }
     if(!band){band={id:bandId(item),lanes:[]};bands.push(band)}
+    // Spanning widgets are owned by their original band, but occupy a lower
+    // row underneath two adjacent columns (e.g. 33/33 + 67 under columns 2+3).
+    const start=item.config.layoutSpanStart;
+    const count=item.config.layoutSpanCount;
+    if(explicit&&Number.isInteger(start)&&Number.isInteger(count)&&
+       typeof start==="number"&&typeof count==="number"&&start>=0&&count>=2){
+      if(!band.spans)band.spans=[];
+      let span=band.spans.find(s=>s.startLane===start&&s.laneCount===count);
+      if(!span){span={startLane:start,laneCount:count,widgets:[]};band.spans.push(span)}
+      span.widgets.push(item);
+      continue;
+    }
     let lane=band.lanes.find(l=>l.id===laneId(item));
     if(!lane){lane={id:laneId(item),width:safeWidth(item.width),widgets:[]};band.lanes.push(lane)}
     lane.widgets.push(item);
@@ -57,7 +70,11 @@ export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[
   return bands;
 }
 
-const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b=>({...b,lanes:b.lanes.map(l=>({...l,widgets:[...l.widgets]}))}));
+const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b=>({
+  ...b,
+  lanes:b.lanes.map(l=>({...l,widgets:[...l.widgets]})),
+  spans:b.spans?.map(s=>({...s,widgets:[...s.widgets]}))
+}));
 
 function publish(sections:readonly WidgetPageSection[],all:readonly PageWidget[],bySection:Map<string,WidgetLayoutBand[]>):PageWidget[]{
   const sectionIds=["",...sections.map(section=>section.id)];
@@ -65,11 +82,20 @@ function publish(sections:readonly WidgetPageSection[],all:readonly PageWidget[]
   const result:PageWidget[]=[];
   for(const sectionId of inOrder){
     const bands=bySection.get(sectionId)??[];
-    for(const band of bands)for(const lane of band.lanes){
-      for(const widget of lane.widgets){
+    for(const band of bands){
+      for(const lane of band.lanes)for(const widget of lane.widgets){
         const config:Record<string,unknown>={...widget.config,layoutBand:band.id,layoutLane:lane.id};
+        delete config.layoutSpanStart;delete config.layoutSpanCount;
         if(sectionId)config.sectionId=sectionId;else delete config.sectionId;
         result.push({...widget,config,width:lane.width,position:result.length});
+      }
+      for(const span of band.spans??[])for(const widget of span.widgets){
+        const width=band.lanes.slice(span.startLane,span.startLane+span.laneCount)
+          .reduce((sum,lane)=>sum+lane.width,0);
+        const config:Record<string,unknown>={...widget.config,layoutBand:band.id,layoutLane:"span-"+widget.id,
+          layoutSpanStart:span.startLane,layoutSpanCount:span.laneCount};
+        if(sectionId)config.sectionId=sectionId;else delete config.sectionId;
+        result.push({...widget,config,width:width||12,position:result.length});
       }
     }
   }
@@ -85,16 +111,36 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
     group.set(sectionId,mutableBands(items.filter(w=>widgetSectionId(w)===sectionId)));
   }
   for(const bands of group.values())for(let bi=bands.length-1;bi>=0;bi--){
+    const spans=bands[bi].spans??[];
+    for(let si=spans.length-1;si>=0;si--){
+      spans[si].widgets=spans[si].widgets.filter(w=>w.id!==id);
+      if(!spans[si].widgets.length)spans.splice(si,1);
+    }
     for(let li=bands[bi].lanes.length-1;li>=0;li--){
       const lane=bands[bi].lanes[li];lane.widgets=lane.widgets.filter(w=>w.id!==id);
       if(!lane.widgets.length)bands[bi].lanes.splice(li,1);
     }
-    if(!bands[bi].lanes.length)bands.splice(bi,1);
+    if(!bands[bi].lanes.length&&!(bands[bi].spans?.length))bands.splice(bi,1);
   }
   const destination=group.get(target.sectionId)??[];
-  const destinationBand=destination.find(b=>b.lanes.some(l=>l.widgets.some(w=>w.id===target.targetId)));
+  const destinationBand=destination.find(b=>b.lanes.some(l=>l.widgets.some(w=>w.id===target.targetId))||
+    b.spans?.some(s=>s.widgets.some(w=>w.id===target.targetId)));
   const destinationLane=destinationBand?.lanes.find(l=>l.widgets.some(w=>w.id===target.targetId));
-  if(destinationBand&&target.edge==="new-row"){
+  const destinationSpan=destinationBand?.spans?.find(s=>s.widgets.some(w=>w.id===target.targetId));
+  if(destinationBand&&destinationLane&&target.edge==="span-below"&&destinationBand.lanes.length>=3){
+    // The persistent 67%-width divider below columns 2+3 is an explicit
+    // nested target. Its widgets stay attached to this SAME row and grow
+    // under both columns, not merely under the second column.
+    const startLane=destinationBand.lanes.length-2;
+    const laneCount=2;
+    if(!destinationBand.spans)destinationBand.spans=[];
+    let span=destinationBand.spans.find(s=>s.startLane===startLane&&s.laneCount===laneCount);
+    if(!span){span={startLane,laneCount,widgets:[]};destinationBand.spans.push(span)}
+    span.widgets.push(moving);
+  }else if(destinationSpan&&(target.edge==="above"||target.edge==="below")){
+    const idx=destinationSpan.widgets.findIndex(w=>w.id===target.targetId);
+    destinationSpan.widgets.splice(idx+(target.edge==="below"?1:0),0,moving);
+  }else if(destinationBand&&target.edge==="new-row"){
     // Insert a full-width band immediately after the hovered band, not at the
     // end of the section. It is intentionally distinct from stacking below.
     destination.splice(destination.indexOf(destinationBand)+1,0,{
@@ -167,7 +213,8 @@ export function expandWidgetToSectionWidth(
   const sameSection=items.filter(item=>widgetSectionId(item)===widgetSectionId(widget));
   const band=widgetLayoutBands(sameSection).find(row=>row.lanes.some(lane=>lane.widgets.some(w=>w.id===id)));
   if(!band)return [...items];
-  const other=band.lanes.flatMap(lane=>lane.widgets).find(item=>item.id!==id);
+  const other=[...band.lanes.flatMap(lane=>lane.widgets),
+    ...(band.spans??[]).flatMap(span=>span.widgets)].find(item=>item.id!==id);
   if(other){
     return placeWidget(items,sections,id,{
       sectionId:widgetSectionId(widget),targetId:other.id,edge:"new-row"
@@ -176,4 +223,27 @@ export function expandWidgetToSectionWidth(
   // A lone widget has no neighbor to swap against. Preserve its placement
   // identity while explicitly setting its width to the complete 12-unit row.
   return items.map(item=>item.id===id?{...item,width:12}:item);
+}
+
+
+/**
+ * When exactly two widgets share a vertical lane, a double-click on the
+ * smaller matches the taller widget; a double-click on the taller matches the
+ * smaller. This changes only the clicked widget's display height.
+ */
+export function matchWidgetStackHeight(items:readonly PageWidget[],id:string):PageWidget[]{
+  const own=items.find(item=>item.id===id);
+  if(!own)return [...items];
+  const band=widgetLayoutBands(items.filter(item=>widgetSectionId(item)===widgetSectionId(own)))
+    .find(row=>row.lanes.some(lane=>lane.widgets.some(item=>item.id===id))||
+      row.spans?.some(span=>span.widgets.some(item=>item.id===id)));
+  const lane=band?.lanes.find(lane=>lane.widgets.some(item=>item.id===id));
+  const stack=lane?.widgets??band?.spans?.find(span=>span.widgets.some(item=>item.id===id))?.widgets??[];
+  if(stack.length!==2)return [...items];
+  const peer=stack.find(item=>item.id!==id);
+  if(!peer)return [...items];
+  const height=widgetHeightPx(peer);
+  return items.map(item=>item.id===id?{
+    ...item,config:{...item.config,heightPx:height}
+  }:item);
 }

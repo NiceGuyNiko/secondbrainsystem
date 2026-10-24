@@ -1,12 +1,12 @@
 "use client";
 import {Fragment,useCallback,useEffect,useRef,useState} from "react";
-import {ArrowDown,ArrowUp,BookOpen,Check,ChevronRight,Copy,Database,LayoutGrid,Link2,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
+import {ArrowDown,ArrowUp,BookOpen,Check,ChevronDown,ChevronRight,ChevronUp,Copy,Database,LayoutGrid,Link2,Lock,Unlock,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
 import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {expandWidgetToSectionWidth,placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget} from "@/lib/widget-layout";
+import {expandWidgetToSectionWidth,matchWidgetStackHeight,placeWidget,resizeWidgetLane,widgetLayoutBands,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -14,7 +14,7 @@ import PlanningWorkspace from "@/components/planning-workspace";
 type Mode="library"|"goals"|"widgets";
 type Selection={kind:"definition"|"instance";id:string}|null;
 type Props={
-  mode:Mode;visualStyle?:"classic"|"studio";activePageId?:string;newPageIntent?:number;
+  mode:Mode;visualStyle?:"classic"|"studio"|"blend";headerPosition?:"top"|"bottom";activePageId?:string;newPageIntent?:number;
   onPages?:(items:{id:string;title:string}[])=>void;
   onPage?:(id:string)=>void;
   onConfigure:(target:WidgetConfigureTarget|null)=>void;
@@ -38,6 +38,10 @@ export default function WidgetStudio(p:Props){
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
   const [arrange,setArrange]=useState(true);
+  // Temporary Arrange Mode folding only; saved sizes and record views remain
+  // unchanged in Use Mode and after reload.
+  const [collapsedWidgets,setCollapsedWidgets]=useState<string[]>([]);
+  const flipWidgetCollapse=(id:string)=>setCollapsedWidgets(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
   const [fillGaps]=useWidgetGapFill();
   const [selected,setSelected]=useState<Selection>(null);
   const [creatingPage,setCreatingPage]=useState(false);
@@ -147,6 +151,9 @@ export default function WidgetStudio(p:Props){
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
   const instanceList=data.instances.filter(w=>w.page_id===page?.id).sort((a,b)=>a.position-b.position);
+  const allWidgetsCollapsed=instanceList.length>0&&instanceList.every(w=>collapsedWidgets.includes(w.id));
+  const toggleAllWidgetCollapse=()=>setCollapsedWidgets(old=>allWidgetsCollapsed?old.filter(id=>!instanceList.some(w=>w.id===id))
+    :[...new Set([...old,...instanceList.map(w=>w.id)])]);
   const pageSections=data.sections.filter(s=>s.page_id===page?.id).sort((a,b)=>a.position-b.position);
   // Dragging never changes the rendered layout. Only a thin insertion guide moves;
   // the actual placement is calculated once when the pointer is released.
@@ -667,33 +674,45 @@ export default function WidgetStudio(p:Props){
     const cfg=def?effectiveConfig(def,widget):widgetConfig({});
     const height=widgetHeightPx(widget);
     const title=widget.title||def?.name||"Goals & projects";
-    return <article key={widget.id} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${arrange?"aaa-widget-arranging":""} ${drag===widget.id?"aaa-widget-dragging":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
+    const folded=arrange&&collapsedWidgets.includes(widget.id);
+    const chromeLocked=widget.config.chromeLocked===true;
+    const hideChrome=!arrange&&chromeLocked;
+    const labelsShown=cfg.showTitle||cfg.showDatabase||cfg.showViewTag;
+    return <article key={widget.id} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${arrange?"aaa-widget-arranging":""} ${folded?"aaa-widget-folded":""} ${hideChrome?"aaa-widget-chrome-locked":""} ${p.headerPosition==="bottom"?"aaa-widget-header-bottom":""} ${drag===widget.id?"aaa-widget-dragging":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
       style={{height:"100%",minHeight:0}}
       onDragStart={e=>{if(!arrange)return;setDrag(widget.id);e.dataTransfer.setData("text/plain",widget.id);e.dataTransfer.effectAllowed="move"}}
       onDragOver={e=>widgetHover(e,widget)}
       onDrop={e=>{e.stopPropagation();e.preventDefault();if(drag===widget.id){setDrag(null);setDropHint(null)}else commitDrop(dropTargetFor(e,widget))}}
       onDragEnd={()=>{setDrag(null);setDropHint(null)}}>
-      <header className="aaa-widget-card-head">
+      {(!hideChrome||labelsShown)&&<header className="aaa-widget-card-head">
         <div className="aaa-widget-title-group">{arrange&&<span className="aaa-widget-drag-handle" draggable title="Drag to rearrange or move into another section" aria-label={`Drag ${title}`}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
               {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
             </svg></span>}
           <div className="aaa-widget-title-stack">
             {cfg.showViewTag&&<span className="aaa-widget-lab-kicker">{widget.kind==="goals"?"PLANNING / LIVE":widgetIsSynced(widget)?"WIDGET SYNC · LINKED":"CONNECTED VIEW"}</span>}
-            {cfg.showTitle&&<button type="button" className="aaa-widget-title-button" title="Configure this widget" onClick={()=>def&&select("instance",widget.id)}>{title}</button>}
+            {(cfg.showTitle||folded)&&(!hideChrome
+              ?<button type="button" className="aaa-widget-title-button" title="Configure this widget" onClick={()=>def&&select("instance",widget.id)}>{title}</button>
+              :<strong className="aaa-widget-title-button">{title}</strong>)}
             {cfg.showDatabase&&def&&<button className="aaa-widget-source-button" type="button" onClick={()=>select("instance",widget.id)}>{data.databases.find(x=>x.id===sourceOf(widget).databaseId)?.name||"Unconnected"}</button>}
           </div></div>
-        <div className="aaa-widget-card-actions">
-          {arrange&&<><button title="Move widget earlier" aria-label="Move widget earlier" disabled={index===0} onClick={()=>shift(widget.id,-1)}><ArrowUp size={15}/></button><button title="Move widget later" aria-label="Move widget later" disabled={index===instanceList.length-1} onClick={()=>shift(widget.id,1)}><ArrowDown size={15}/></button></>}
+        {!hideChrome&&<div className="aaa-widget-card-actions">
+          {arrange&&<><button type="button" title={folded?"Expand widget":"Collapse widget"} aria-label={(folded?"Expand ":"Collapse ")+title}
+            aria-expanded={!folded} onClick={()=>flipWidgetCollapse(widget.id)}>{folded?<ChevronDown size={16}/>:<ChevronUp size={16}/>}</button>
+            <button type="button" title={chromeLocked?"Unlock widget controls in Use Mode":"Lock widget controls in Use Mode"}
+              aria-label={(chromeLocked?"Unlock ":"Lock ")+title+" controls"} aria-pressed={chromeLocked}
+              onClick={()=>changeInstance(widget.id,{config:{...widget.config,chromeLocked:!chromeLocked}})}>
+              {chromeLocked?<Lock size={16}/>:<Unlock size={16}/>}
+            </button><button title="Move widget earlier" aria-label="Move widget earlier" disabled={index===0} onClick={()=>shift(widget.id,-1)}><ArrowUp size={15}/></button><button title="Move widget later" aria-label="Move widget later" disabled={index===instanceList.length-1} onClick={()=>shift(widget.id,1)}><ArrowDown size={15}/></button></>}
           {def&&<button title="Configure in The Companion" aria-label="Configure widget" onClick={()=>select("instance",widget.id)}><Settings2 size={16}/></button>}
           {def&&<button title="Duplicate to another page" aria-label={`Duplicate ${title}`} onClick={()=>{setDuplicate(widget);setDuplicatePageId(page?.id||"");setDuplicateMode("independent")}}><Copy size={15}/></button>}
           <button title="Remove view, with optional source database deletion" aria-label={`Delete ${title} view`} onClick={()=>{setRemoveTarget({kind:"instance",id:widget.id,databaseId:sourceOf(widget).databaseId});setRemoveCore(false);setDeleteConfirmation("")}}><Trash2 size={15}/></button>
-        </div>
-      </header>
-      <div className="aaa-widget-card-body">
+        </div>}
+      </header>}
+      {!folded&&<div className="aaa-widget-card-body">
         {widget.kind==="goals"?<PlanningWorkspace key={widget.id} section="Goals" onContext={p.onPlanningContext??(()=>{})} onOpenPage={p.onOpenRecord} onSchedule={p.onSchedule??(()=>{})}/>
         :def?renderRecords(widget.id,def,widget):<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
-      </div>
-      {arrange&&<footer className="aaa-widget-card-resize">
+      </div>}
+      {arrange&&!folded&&<footer className="aaa-widget-card-resize">
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
           <option value="">Overview</option>{pageSections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
         </select></label>
@@ -702,7 +721,13 @@ export default function WidgetStudio(p:Props){
       {arrange&&<>
         <button type="button" className="aaa-widget-resize-corner" aria-label={`Resize ${title}. Double-click to fill this section's width.`} title="Drag to resize; double-click to fill full section width"
           onPointerDown={e=>{if(e.detail>=2)return;startResize(e,widget,"both")}} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
-          onDoubleClick={e=>{e.preventDefault();e.stopPropagation();resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);saveLayout(expandWidgetToSectionWidth(instanceList,pageSections,widget.id,fillGaps))}}/>
+          onDoubleClick={e=>{e.preventDefault();e.stopPropagation();resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
+            const stack=widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(widget)))
+              .flatMap(b=>[...b.lanes.map(l=>l.widgets),...(b.spans??[]).map(s=>s.widgets)])
+              .find(w=>w.some(i=>i.id===widget.id));
+            saveLayout(stack?.length===2?matchWidgetStackHeight(instanceList,widget.id)
+              :expandWidgetToSectionWidth(instanceList,pageSections,widget.id,fillGaps));
+          }}/>
       </>}
     </article>;
   };
@@ -710,7 +735,7 @@ export default function WidgetStudio(p:Props){
   if(loading)return <section className="aaa-widget-studio"><div className="aaa-widget-empty">Loading your widget system…</div></section>;
   if(error&&data.pages.length===0&&data.definitions.length===0)return <section className="aaa-widget-studio aaa-widget-error"><h2>Widget system unavailable</h2><p>{error}</p><p>The separate widget tables may need to be installed in this Supabase environment. Existing data is untouched.</p><button onClick={()=>{setLoading(true);void load().catch(report).finally(()=>setLoading(false))}}><RefreshCw size={15}/> Retry</button></section>;
 
-  return <section className={"aaa-widget-studio "+(p.visualStyle==="studio"?"aaa-widget-studio-lab":"")}>
+  return <section className={"aaa-widget-studio "+(p.visualStyle==="studio"?"aaa-widget-studio-lab":p.visualStyle==="blend"?"aaa-widget-style-blend":"")}>
     {error&&<div className="aaa-widget-alert" role="alert">{error}<button onClick={()=>setError("")} aria-label="Dismiss error"><X size={14}/></button></div>}
     {notice&&<div className="aaa-widget-alert" role="status">{notice}<button onClick={()=>setNotice("")} aria-label="Dismiss notice"><X size={14}/></button></div>}
     {removeTarget&&(()=>{
@@ -774,7 +799,11 @@ export default function WidgetStudio(p:Props){
         <div className="aaa-widget-hero-actions"><div className="aaa-widget-mode" role="group" aria-label="Page editing mode">
           <button aria-pressed={!arrange} className={!arrange?"active":""} onClick={()=>setArrange(false)}>Use mode</button>
           <button aria-pressed={arrange} className={arrange?"active":""} onClick={()=>setArrange(true)}>Arrange mode</button>
-        </div>{arrange&&page&&<button className="aaa-widget-secondary" onClick={()=>{setPageDraft(page.title);setRenamingPage(true)}}><Pencil size={15}/> Rename page</button>}
+        </div>{arrange&&page&&<button className="aaa-widget-secondary" aria-pressed={allWidgetsCollapsed}
+            title={allWidgetsCollapsed?"Expand all widgets":"Collapse all widgets to titles"} onClick={toggleAllWidgetCollapse}>
+            {allWidgetsCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>} {allWidgetsCollapsed?"Expand all":"Collapse all"}
+          </button>}
+        {arrange&&page&&<button className="aaa-widget-secondary" onClick={()=>{setPageDraft(page.title);setRenamingPage(true)}}><Pencil size={15}/> Rename page</button>}
         <button className="aaa-widget-secondary" disabled={busy} onClick={()=>setCreatingDatabase(true)}><Database size={16}/> New database</button>
         <button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget(pageSections[0]?.id??"")}><Plus size={16}/> New widget</button>
         {arrange&&<button className="aaa-widget-primary" onClick={()=>{setPickerSection(pageSections[0]?.id??"");setAddWidget(true)}}><Plus size={16}/> Add widget</button>}</div>
@@ -804,7 +833,7 @@ export default function WidgetStudio(p:Props){
         {data.definitions.map(def=><button key={def.id} onClick={()=>void addDefinition(def)}><LayoutGrid size={16}/>{def.name}<small>Independent view · {data.databases.find(db=>db.id===def.database_id)?.name||"Unconnected"}</small><Plus size={16}/></button>)}
         {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
-      {page?<div className="aaa-widget-sections">
+      {page?<div className={"aaa-widget-sections"+(arrange?" aaa-widget-sections-arranging":"")}>
         {arrange&&<div className="aaa-widget-section-toolbar"><span>Drag a widget to an insertion line. Release to rearrange; drag its corner or column dividers to resize.</span>
           <button className="aaa-widget-secondary" onClick={()=>setCreatingSection(true)}><Plus size={15}/> Add section</button></div>}
         {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
@@ -833,46 +862,71 @@ export default function WidgetStudio(p:Props){
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {widgetLayoutBands(widgets).map(band=>{
               const used=band.lanes.reduce((sum,lane)=>sum+lane.width,0);
+              // The last two of 3+ columns form a right-side cluster. Its
+              // lower insertion line spans BOTH columns (67% for thirds).
+              // A tall left column stays independent of the cluster rows.
+              const startLane=band.lanes.length>=3?band.lanes.length-2:-1;
+              const cluster=band.spans?.find(s=>s.startLane===startLane&&s.laneCount===2);
+              const spanTarget=startLane>=0?band.lanes.slice(startLane).flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id:null;
+              const renderItem=(widget:PageWidget)=><div className="aaa-widget-layout-item" key={widget.id}
+                style={{height:arrange&&collapsedWidgets.includes(widget.id)?58:widgetHeightPx(widget)}}>
+                {widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id))}
+                {arrange&&<button className="aaa-widget-height-divider" type="button"
+                  title={"Drag to resize "+(widget.title||"widget")+" height; double-click to match the other widget in this column"}
+                  aria-label={"Resize height of "+(widget.title||"widget")}
+                  onPointerDown={e=>startResize(e,widget,"y")} onPointerMove={resizeMove}
+                  onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
+                  onDoubleClick={e=>{e.preventDefault();e.stopPropagation();saveLayout(matchWidgetStackHeight(instanceList,widget.id))}}
+                  onKeyDown={e=>{
+                    if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();
+                      const direction=e.key==="ArrowDown"?24:-24;
+                      saveLayout(instanceList.map(item=>item.id===widget.id
+                        ?{...item,config:{...item.config,heightPx:Math.max(160,Math.min(1200,widgetHeightPx(item)+direction))}}:item));
+                    }
+                  }}
+                  onDragOver={e=>{if(!drag||drag===widget.id)return;e.preventDefault();e.stopPropagation();
+                    hint({sectionId:section.id,targetId:widget.id,edge:"below"})}}
+                  onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();
+                    commitDrop({sectionId:section.id,targetId:widget.id,edge:"below"})}}/>}
+              </div>;
+              const renderLane=(lane:WidgetLayoutLane,laneIndex:number)=><div className="aaa-widget-layout-lane-shell" key={lane.id}
+                style={{flex:`${lane.width} 1 0`}}>
+                <div className="aaa-widget-layout-lane">{lane.widgets.map(renderItem)}</div>
+                {arrange&&laneIndex<band.lanes.length-1&&<button className="aaa-widget-lane-divider" type="button"
+                  title="Drag to resize both neighboring columns"
+                  aria-label={`Resize column next to ${lane.widgets[0]?.title||"widget"}`}
+                  onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();
+                    hint({sectionId:section.id,targetId:lane.widgets[0]?.id??null,edge:"right"})}}
+                  onPointerDown={e=>startResize(e,lane.widgets[0],"x")}
+                  onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}
+              </div>;
+              const afterId=band.lanes.flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id??
+                band.spans?.flatMap(s=>s.widgets).find(w=>w.id!==drag)?.id??null;
               return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}>
-                {band.lanes.map((lane,laneIndex)=><div className="aaa-widget-layout-lane-shell" key={lane.id} style={{flex:`${lane.width} 1 0`}}>
-                  <div className="aaa-widget-layout-lane">
-                    {lane.widgets.map(widget=><div className="aaa-widget-layout-item" key={widget.id} style={{height:widgetHeightPx(widget)}}>
-                      {widgetCard(widget,instanceList.findIndex(row=>row.id===widget.id))}
-                      {arrange&&<button className="aaa-widget-height-divider" type="button"
-                        title={"Drag to resize "+(widget.title||"widget")+" height; drop a widget to stack below"}
-                        aria-label={"Resize height of "+(widget.title||"widget")+"; stack widgets below"}
-                        onPointerDown={e=>startResize(e,widget,"y")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
-                        onKeyDown={e=>{
-                          if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();
-                            const direction=e.key==="ArrowDown"?24:-24;
-                            saveLayout(instanceList.map(item=>item.id===widget.id
-                              ?{...item,config:{...item.config,heightPx:Math.max(160,Math.min(1200,widgetHeightPx(item)+direction))}}:item));
-                          }
-                        }}
-                        onDragOver={e=>{if(!drag||drag===widget.id)return;e.preventDefault();e.stopPropagation();hint({sectionId:section.id,targetId:widget.id,edge:"below"})}}
-                        onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop({sectionId:section.id,targetId:widget.id,edge:"below"})}}/>}
-                    </div>)}
+                {startLane>=1?<>
+                  {band.lanes.slice(0,startLane).map((lane,i)=>renderLane(lane,i))}
+                  <div className="aaa-widget-span-cluster" style={{flex:`${band.lanes.slice(startLane).reduce((sum,l)=>sum+l.width,0)} 1 0`}}>
+                    <div className="aaa-widget-span-cluster-columns">
+                      {band.lanes.slice(startLane).map((lane,i)=>renderLane(lane,startLane+i))}
+                    </div>
+                    {(cluster?.widgets??[]).map(renderItem)}
+                    {arrange&&<button className={"aaa-widget-span-insertion"+(dropHint?.edge==="span-below"&&dropHint.targetId===spanTarget?" is-target":"")}
+                      title="Drag a widget here to span the two columns above"
+                      aria-label="Insert a widget below both neighboring columns"
+                      type="button"
+                      onDragOver={e=>{if(!drag||!spanTarget)return;e.preventDefault();e.stopPropagation();
+                        hint({sectionId:section.id,targetId:spanTarget,edge:"span-below"})}}
+                      onDrop={e=>{if(!drag||!spanTarget)return;e.preventDefault();e.stopPropagation();
+                        commitDrop({sectionId:section.id,targetId:spanTarget,edge:"span-below"})}}/>}
                   </div>
-                  {arrange&&laneIndex<band.lanes.length-1&&<button className="aaa-widget-lane-divider" type="button" title="Drag to resize both neighboring columns" aria-label={`Resize column next to ${lane.widgets[0]?.title||"widget"}`}
-                    onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint({sectionId:section.id,targetId:lane.widgets[0]?.id??null,edge:"right"})}}
-                    onPointerDown={e=>startResize(e,lane.widgets[0],"x")} onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>}</div>)}
+                </>:band.lanes.map(renderLane)}
                 {used<12&&<div className="aaa-widget-layout-spacer" style={{flex:`${12-used} 1 0`}}/>}
-                {arrange&&band.lanes.length>0&&(()=>{
-                  const allInBand=band.lanes.flatMap(lane=>lane.widgets);
-                  const afterId=allInBand.find(widget=>widget.id!==drag)?.id??null;
-                  return <div className="aaa-widget-band-row-drop" role="presentation"
-                    title="Full-width row divider. Drag a widget here to insert a new 100% row."
-                    onDragOver={e=>{
-                      if(!drag||!afterId)return;
-                      e.preventDefault();e.stopPropagation();
-                      hint({sectionId:section.id,targetId:afterId,edge:"new-row"});
-                    }}
-                    onDrop={e=>{
-                      if(!drag||!afterId)return;
-                      e.preventDefault();e.stopPropagation();
-                      commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"});
-                    }}/>;
-                })()}
+                {arrange&&band.lanes.length>0&&<div className="aaa-widget-band-row-drop" role="presentation"
+                  title="Full-width section row divider. Drop here to create a 100% row."
+                  onDragOver={e=>{if(!drag||!afterId)return;e.preventDefault();e.stopPropagation();
+                    hint({sectionId:section.id,targetId:afterId,edge:"new-row"})}}
+                  onDrop={e=>{if(!drag||!afterId)return;e.preventDefault();e.stopPropagation();
+                    commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"})}}/>}
               </div>;
             })}
             {arrange&&!widgets.length&&<button className="aaa-widget-empty-slot" onClick={()=>void createAndPlaceWidget(section.id)}><Plus size={20}/> Add a widget</button>}

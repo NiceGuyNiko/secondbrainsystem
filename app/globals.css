@@ -2602,3 +2602,269 @@ input[type="range"]{
     max-height:21px!important;
   }
 }
+
+/* Arrange V3: dividers need an unmistakable visible stroke against both
+   dark and light themes. They exist only in Arrange Mode. */
+.aaa-widget-sections-arranging .aaa-widget-page-section+.aaa-widget-page-section{
+  border-top:4px solid color-mix(in srgb,var(--accent-bright) 90%,white 10%);
+  margin-top:22px;
+  padding-top:22px;
+}
+.aaa-widget-sections-arranging .aaa-widget-page-section+.aaa-widget-page-section::before{
+  content:"Section divider";
+  display:block;
+  width:max-content;
+  margin:-32px auto 13px;
+  padding:2px 9px;
+  position:relative;
+  background:var(--bg);
+  font-size:10px;
+  color:var(--accent-text);
+  font-weight:750;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider{
+  background:transparent!important;
+  z-index:24;
+  width:16px;
+  right:-15px;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider::before{
+  width:5px!important;
+  left:5px!important;
+  border:1px solid var(--accent-bright);
+  opacity:1!important;
+  background:var(--accent-bright)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-bright) 24%,transparent),
+    0 0 10px color-mix(in srgb,var(--accent-bright) 45%,transparent);
+}
+.aaa-widget-canvas .aaa-widget-lane-divider:hover::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:focus-visible::before{
+  width:7px!important;left:4px!important;
+  background:var(--accent-text)!important;
+}
+.aaa-widget-canvas .aaa-widget-height-divider::before,
+.aaa-widget-layout-band .aaa-widget-band-row-drop::before{
+  background:var(--accent-bright)!important;
+  height:4px;
+  opacity:1!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-bright) 24%,transparent);
+}
+/* Mixed-width nested layout: in 33/33/33, the first column remains independent
+   while the right two form a group with a 67%-wide spanning drop target. */
+.aaa-widget-span-cluster{
+  display:flex;
+  flex-direction:column;
+  flex-shrink:1;
+  min-width:0;
+  gap:14px;
+  position:relative;
+}
+.aaa-widget-span-cluster-columns{
+  display:flex;
+  align-items:stretch;
+  min-width:0;
+  width:100%;
+  gap:14px;
+}
+.aaa-widget-span-cluster>.aaa-widget-layout-item{
+  flex:0 0 auto;
+  width:100%;
+  align-self:stretch;
+}
+.aaa-widget-span-insertion{
+  position:relative;
+  flex:0 0 15px;
+  height:15px;
+  display:block;
+  width:100%;
+  border:0;
+  margin:-7px 0 -7px;
+  padding:0;
+  background:transparent;
+  cursor:copy;
+  z-index:20;
+  touch-action:none;
+}
+.aaa-widget-span-insertion::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:5px;
+  height:5px;
+  background:var(--accent-bright);
+  border-radius:99px;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-bright) 25%,transparent);
+  opacity:.93;
+}
+.aaa-widget-span-insertion:hover::after,
+.aaa-widget-span-insertion.is-target::after{
+  top:4px;
+  height:7px;
+  background:var(--accent-text);
+}
+.aaa-widget-canvas .aaa-widget-band-row-drop{
+  height:16px;
+  bottom:-17px;
+}
+.aaa-widget-canvas .aaa-widget-band-row-drop::before{
+  height:5px;
+  top:4px;
+}
+/* The folded state leaves the complete original widget dimensions in storage.
+   Only its arrangement preview shrinks to one title/control strip. */
+.aaa-widget-card.aaa-widget-folded{
+  min-height:0!important;
+  overflow:visible;
+}
+.aaa-widget-folded .aaa-widget-card-head{
+  min-height:52px;
+  height:100%;
+  border:0;
+  padding:6px 12px;
+}
+.aaa-widget-folded .aaa-widget-title-button{
+  font-size:13px;
+}
+.aaa-widget-card-actions button[aria-pressed="true"]{
+  color:var(--accent-text);
+  background:var(--accent-soft);
+}
+.aaa-widget-sections-arranging .aaa-widget-section-toolbar{position:relative}
+.aaa-widget-style-options{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.aaa-widget-style-thumbnail-blend{
+  background:var(--bg)!important;
+  border:1px dashed var(--accent-bright);
+}
+.aaa-widget-style-thumbnail-blend i{
+  background:color-mix(in srgb,var(--accent) 42%,transparent);
+}
+.aaa-widget-style-blend .aaa-widget-card{
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-head{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-resize{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-body{
+  background:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-table,
+.aaa-widget-style-blend .aaa-widget-table-scroll,
+.aaa-widget-style-blend .aaa-widget-records,
+.aaa-widget-style-blend .aaa-widget-record-shell{
+  background:transparent;
+}
+.aaa-widget-style-blend .aaa-widget-card.aaa-widget-arranging{
+  border:1px dashed color-mix(in srgb,var(--accent) 55%,transparent)!important;
+}
+/* The page owner may put chrome beneath content. The body and optional
+   section footer are unchanged, and the corner handle remains at the corner. */
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-body{order:1;}
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-resize{order:2;}
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-head{
+  order:3;
+  border-top:1px solid var(--border);
+  border-bottom:0;
+  background:transparent;
+}
+.aaa-widget-card.aaa-widget-header-bottom.aaa-widget-folded .aaa-widget-card-head{
+  order:0;
+  border:0;
+}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-card-head{
+  border:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  padding:8px 10px!important;
+  min-height:0;
+}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-card-actions{display:none!important;}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-title-stack{
+  background:transparent!important;
+}
+/* Persistent page title and companion launcher stay reachable while content
+   beneath the toolbar scrolls. Mobile uses the separately fixed top bar. */
+.aaa-working-surface>.aaa-page-toolbar{
+  position:sticky;
+  top:0;
+  z-index:27;
+  background:var(--bg);
+  box-shadow:0 1px 0 var(--border);
+}
+@media(max-width:767px){
+  .aaa-page-toolbar{top:0;}
+  .aaa-widget-style-options{grid-template-columns:1fr;}
+  .aaa-widget-span-cluster{width:100%;flex:auto!important;}
+  .aaa-widget-span-cluster-columns{flex-direction:column;}
+  .aaa-widget-span-cluster-columns>.aaa-widget-layout-lane-shell{flex:auto!important;}
+}
+/* Header controls have the same 40x40 hit box and 21x21 glyph as the Companion
+   launcher, using the emblem's palette for the collapsed Expand affordance. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand{
+    box-sizing:border-box;
+    min-height:68px;
+    height:68px;
+    max-height:68px;
+    padding:0 14px;
+    gap:8px;
+    align-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle,
+  .aaa-collapsed .aaa-sidebar .aaa-brand-toggle{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px!important;
+    flex:0 0 40px;
+    padding:0!important;
+    margin:0;
+    display:grid!important;
+    place-items:center;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:21px!important;height:21px!important;
+    display:grid!important;place-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark,
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-expand-indicator{
+    width:21px!important;height:21px!important;
+  }
+  .aaa-sidebar .aaa-desktop-collapse-control{
+    display:grid!important;
+    place-items:center;
+    flex:0 0 40px;
+    width:40px!important;
+    height:40px!important;
+    min-width:40px;
+    margin-left:auto;
+  }
+  .aaa-sidebar .aaa-desktop-collapse-control svg{
+    width:21px;height:21px;
+  }
+  .aaa-collapsed .aaa-sidebar .aaa-brand{padding:0 14px!important;}
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    color:var(--ui-logo-glyph,var(--accent-text))!important;
+    stroke:var(--ui-logo-glyph,var(--accent-text))!important;
+    filter:drop-shadow(0 0 1px var(--ui-logo-border,var(--accent)))!important;
+  }
+}

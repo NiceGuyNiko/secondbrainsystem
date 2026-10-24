@@ -484,8 +484,8 @@ function Workspace() {
         <div className="aaa-brand">
           <button
             className="aaa-icon-slot aaa-brand-toggle"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "All About Action navigation"}
+            title={undefined}
             onClick={() => {
               if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
               else toggleSidebar();
@@ -493,7 +493,7 @@ function Workspace() {
           >
             <span className="aaa-logo aaa-sidebar-brand-icon">
               <BrandMark size={34} label="All About Action" />
-              <PanelLeftOpen className="aaa-brand-expand-indicator" size={25} aria-hidden="true"/>
+              <PanelLeftOpen className="aaa-brand-expand-indicator" size={21} aria-hidden="true"/>
             </span>
           </button>
           <div className="aaa-sidebar-label aaa-wordmark">
@@ -767,7 +767,7 @@ function Workspace() {
               ) : (section==="Library"||section==="Developing IT"||section==="Goals") && !widgetEngineEnabled ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note"><h2>Widget system is waiting for the database connection</h2><p>The database engine must be enabled for this environment. Existing planning and database records remain untouched.</p></div>
               ) : (section==="Library"||section==="Goals"||section==="Developing IT") ? (
-                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle}
+                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle} headerPosition={preferences.widgetHeaderPosition}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
                   onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
                   onConfigure={setWidgetConfiguration}
@@ -786,6 +786,7 @@ function Workspace() {
                   agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
                   companion={preferences.companion} onCompanion={setCompanion}
                   widgetStyle={preferences.widgetStyle} onWidgetStyle={widgetStyle=>setPreferences(()=>({widgetStyle}))}
+                  widgetHeaderPosition={preferences.widgetHeaderPosition} onWidgetHeaderPosition={widgetHeaderPosition=>setPreferences(()=>({widgetHeaderPosition}))}
                   mobileTooltipMode={preferences.mobileTooltipMode} onMobileTooltipMode={setMobileTooltipMode}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
