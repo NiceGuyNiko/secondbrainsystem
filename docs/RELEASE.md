@@ -1,5 +1,7 @@
 # Release and verification
 
+> **Current policy:** For any release involving Supabase, follow [DB-SCHEMA-RELEASE-GATE.md](DB-SCHEMA-RELEASE-GATE.md). The October 2026 code/schema drift incidents and current staging/production release gates are recorded there. The historical status below is not current release authorization.
+
 ## Current state — 14 October 2026
 
 > Historical record. Since this was written, PR #14 and PR #15 were merged; `main` is at `fbc6cdb` and is the production deployment. Current plan: `docs/NEXT-BUILD-PLAN.md`.

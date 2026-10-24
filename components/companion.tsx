@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type MouseEvent,type SyntheticEvent} from "react";
 import {createPortal} from "react-dom";
-import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft} from "lucide-react";
+import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft,Settings2,Database} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
 import type {AgendaMode} from "@/components/agenda";
 import {type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
@@ -13,6 +13,9 @@ import {contextKey,type CompanionPreferences,type CompanionTool,type CompanionTa
 import {initialPaneState,cloneCompanionView,addRecentReference,
   type CompanionPaneState,type CompanionSlot,type ContextViewState,type ThoughtsViewState} from "@/lib/companion-pane-state";
 import {positionCompanionPopover} from "@/lib/companion-popover-position";
+import WidgetConfigurePanel from "@/components/widget-configure-panel";
+import WidgetDatabaseEditorPanel from "@/components/widget-database-editor-panel";
+import type {WidgetConfigureTarget} from "@/lib/widget-system";
 
 const tools: {key:CompanionTool;title:string}[] = [
   {key:"agenda",title:"The Agenda"},
@@ -32,6 +35,8 @@ type Props={
   onOptions:(change:Partial<CompanionPreferences>)=>void;
   target:CompanionTarget;
   profileKey:string;
+  configuration?:WidgetConfigureTarget|null;
+  onConfigureClose?:()=>void;
 };
 export default function Companion(p:Props){
   const [top,setTop]=useState<CompanionTool>(p.options.primary);
@@ -39,6 +44,7 @@ export default function Companion(p:Props){
   useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary);},[p.options.primary,p.options.secondary]);
   const [fixed,setFixed]=useState<CompanionTool|null>(null);
   const [drawerHeight,setDrawerHeight]=useState(p.options.layout==="split"?100-p.options.splitPercent:0);
+  const [databaseEditorId,setDatabaseEditorId]=useState<string|null>(null);
   const drawerHeightRef=useRef(drawerHeight);
   useEffect(()=>{
     const value=p.options.layout==="split"?100-p.options.splitPercent:0;
@@ -74,6 +80,26 @@ export default function Companion(p:Props){
   const [previewWidth,setPreviewWidth]=useState(p.options.widthPx);
   const previewWidthRef=useRef(p.options.widthPx);
   useEffect(()=>{previewWidthRef.current=p.options.widthPx;setPreviewWidth(p.options.widthPx);},[p.options.widthPx]);
+  // Keep iOS Safari from treating a swipe inside the lower tool as a page
+  // pull-to-refresh. The Companion's own panes remain independently scrollable.
+  useEffect(()=>{
+    if(p.mode==="closed"||typeof window==="undefined"||!window.matchMedia("(max-width:767px)").matches)return;
+    const previousOverflow=document.body.style.overflow;
+    const previousOverscroll=document.documentElement.style.overscrollBehaviorY;
+    document.body.style.overflow="hidden";
+    document.documentElement.style.overscrollBehaviorY="none";
+    return()=>{
+      document.body.style.overflow=previousOverflow;
+      document.documentElement.style.overscrollBehaviorY=previousOverscroll;
+    };
+  },[p.mode]);
+  useEffect(()=>{
+    const sourceId=p.configuration?.autoEditDatabase?p.configuration.databaseId:null;
+    setDatabaseEditorId(sourceId??null);
+    if(sourceId&&drawerHeightRef.current<35){
+      drawerHeightRef.current=50;setDrawerHeight(50);
+    }
+  },[p.configuration?.id,p.configuration?.databaseId,p.configuration?.autoEditDatabase]);
   const clampWidth=(w:number)=>Math.max(300,Math.min(Math.min(720,Math.max(300,window.innerWidth-360)),Math.round(w)));
   const updateWidth=(w:number)=>{
     const next=clampWidth(w);previewWidthRef.current=next;setPreviewWidth(next);return next;
@@ -127,6 +153,7 @@ export default function Companion(p:Props){
   };
 
   const selectTool=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(slot==="top"&&p.configuration)p.onConfigureClose?.();
     if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
     let nextBottom=slot==="bottom"?tool:bottom;
@@ -184,10 +211,13 @@ export default function Companion(p:Props){
   const tabList=(slot:CompanionSlot,value:CompanionTool)=>
     <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
       className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
-      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={value===t.key}
+      {slot==="top"&&p.configuration&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
+        <Settings2 size={20}/>{p.options.tabDisplay!=="icons"&&<span>CONFIGURE</span>}
+      </button>}
+      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration?false:value===t.key}
         aria-label={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
+        className={!p.configuration&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
         onMouseEnter={e=>showTabTooltip(e,t.title)}
         onMouseLeave={()=>setTabTooltip(null)}
         onFocus={e=>showTabTooltip(e,t.title)}
@@ -198,14 +228,15 @@ export default function Companion(p:Props){
       </button>)}
     </nav>;
   const secondaryHeader=()=><header className="aaa-hybrid-header aaa-companion-secondary-header">
-    {tabList("bottom",bottom)}
-    <div className="aaa-companion-header-actions">
-      <button title={fixed===bottom?"Unpin second tool":"Keep second tool selected"} aria-label={fixed===bottom?"Unpin second tool":"Pin second tool"}
-        aria-pressed={fixed===bottom} onClick={()=>setFixed(fixed===bottom?null:bottom)}>
-        {fixed===bottom?<Pin size={15}/>:<PinOff size={15}/>}
-      </button>
-    </div>
+    {databaseEditorId&&p.configuration?<div className="aaa-widget-secondary-context-title"><Database size={15}/> DATABASE · PROPERTIES</div>:tabList("bottom",bottom)}
+    {databaseEditorId&&<button className="aaa-widget-secondary-context-close" onClick={()=>{
+      setDatabaseEditorId(null);if(p.options.layout==="single"){drawerHeightRef.current=0;setDrawerHeight(0)}
+    }} aria-label="Close second database Context"><X size={16}/></button>}
   </header>;
+  const editDatabaseInContext=(id:string)=>{
+    setDatabaseEditorId(id);
+    if(drawerHeightRef.current<35){drawerHeightRef.current=50;setDrawerHeight(50)}
+  };
   const body=(slot:CompanionSlot,tool:CompanionTool)=>{
     if(tool==="agenda")return <CompanionAgendaView
       date={panes[slot].agenda.date} today={p.today} now={p.now}
@@ -259,7 +290,13 @@ export default function Companion(p:Props){
       <header className="aaa-hybrid-header">
         {tabList("top",top)}
         <div className="aaa-companion-header-actions">
-          {canPin(p.preference,p.mode)&&<button aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
+          <button type="button" className="aaa-companion-mobile-second" aria-label={drawerHeight>0?"Close second Companion panel":"Open second Companion panel"}
+            aria-expanded={drawerHeight>0} aria-controls="aaa-companion-second-pane"
+            title={drawerHeight>0?"Hide second panel":"Show second panel"}
+            onClick={()=>commitDrawer(drawerHeightRef.current>0?0:Math.max(35,100-p.options.splitPercent))}>
+            <PanelsTopLeft size={19}/>
+          </button>
+          {canPin(p.preference,p.mode)&&<button className="aaa-companion-pin-action" aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
             title={p.mode==="pinned"?"Unpin":"Pin"} onClick={()=>p.onMode(p.mode==="pinned"?"overlay":"pinned")}>
             {p.mode==="pinned"?<PinOff size={17}/>:<Pin size={17}/>}</button>}
           {p.preference!=="column"&&<button aria-label="Close Companion" onClick={()=>p.onMode("closed")}><X size={17}/></button>}
@@ -267,7 +304,7 @@ export default function Companion(p:Props){
       </header>
       <div className="aaa-hybrid-sections">
         <div className="aaa-hybrid-slot aaa-hybrid-primary">
-          <div className="aaa-hybrid-slot-body">{body("top",top)}</div>
+          <div className="aaa-hybrid-slot-body">{p.configuration?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()} onEditDatabase={editDatabaseInContext}/>:body("top",top)}</div>
         </div>
         <button type="button" className={"aaa-companion-pull"+(drawerHeight>0?" is-open":"")}
           role="separator" aria-label={drawerHeight>0?"Drag down to hide second tool":"Drag up to reveal second tool"}
@@ -311,9 +348,11 @@ export default function Companion(p:Props){
             {drawerHeight>0?<ChevronDown size={14}/>:<ChevronUp size={14}/>}
           </span><span className="aaa-companion-pull-track"/>
         </button>
-        {drawerHeight>0&&<div className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
+        {drawerHeight>0&&<div id="aaa-companion-second-pane" className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
           {secondaryHeader()}
-          <div className="aaa-hybrid-slot-body">{body("bottom",bottom)}</div>
+          <div className="aaa-hybrid-slot-body">{databaseEditorId&&p.configuration?<WidgetDatabaseEditorPanel target={p.configuration} databaseId={databaseEditorId} onClose={()=>{
+            setDatabaseEditorId(null);if(p.options.layout==="single"){drawerHeightRef.current=0;setDrawerHeight(0)}
+          }}/>:body("bottom",bottom)}</div>
         </div>}
       </div>
       {message&&<div className="aaa-companion-message" role="status">{message}<button onClick={()=>setMessage("")} aria-label="Dismiss"><X size={13}/></button></div>}

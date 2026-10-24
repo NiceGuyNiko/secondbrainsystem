@@ -17,10 +17,10 @@ const contrast = (a: string, b: string) => {
 };
 const tokens = (preset: string) => themeTokens({ ...appearanceDefaults, preset });
 
-test("Eleven manually selectable themes: the seven dark themes and four designed light themes", () => {
-  assert.deepEqual(darkPalettes.map((p) => p.name), ["Midnight", "Slate", "Forest", "Deep Ocean", "Warm Botanical", "Neon Evergreen", "Black & Gold"]);
+test("Twelve manually selectable themes: eight dark themes and four designed light themes", () => {
+  assert.deepEqual(darkPalettes.map((p) => p.name), ["Darkest Night", "Midnight", "Slate", "Forest", "Deep Ocean", "Warm Botanical", "Neon Evergreen", "Black & Gold"]);
   assert.deepEqual(lightPalettes.map((p) => p.name), ["Porcelain & Ink", "Warm Linen", "Sage Studio", "Blue Hour"]);
-  assert.equal(new Set(palettes.map((p) => p.id)).size, 11);
+  assert.equal(new Set(palettes.map((p) => p.id)).size, 12);
   for (const p of palettes) assert.equal(schemeOf({ ...appearanceDefaults, preset: p.id }), p.scheme);
 });
 

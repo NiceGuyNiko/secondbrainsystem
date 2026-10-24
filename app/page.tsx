@@ -1,12 +1,17 @@
 "use client";
-import { useEffect, useLayoutEffect, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, type CSSProperties } from "react";
 import BrandMark from "@/components/brand-mark";
+import ThemedTooltips from "@/components/themed-tooltips";
+import {toggleMobileSidebarMode,modeForMobileSidebarDivider,modeAfterSidebarPageSelection,type MobileSidebarMode} from "@/lib/mobile-sidebar-model";
 import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
+import DemoDatabaseWorkshop from "@/components/demo-database-workshop";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
+import WidgetStudio from "@/components/widget-studio";
+import {widgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetProperty,type WidgetView,type WidgetDefinition} from "@/lib/widget-system";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
 import { supabase } from "@/lib/supabase";
 import { classifyDatabaseEngineProbe,type DatabaseEngineState } from "@/lib/db-engine/production-readiness";
@@ -41,20 +46,24 @@ import {
   Plus,
   Settings2,
   Check,
-  Menu,
   X,
   BookOpen,
   Layers3,
+  LayoutGrid,
   Zap,
   ArrowLeft,
   ChevronDown,
   ChevronRight,
   PenLine,
   PanelRightOpen,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 type Section =
   | "Calendar"
   | "Goals"
+  | "Library"
+  | "Developing IT"
   | "Workspaces"
   | "Databases"
   | "Resources"
@@ -81,8 +90,18 @@ function Workspace() {
     [contextId, setContextId] = useState<string | undefined>(),
     [returnSection, setReturnSection] = useState<Section>("Calendar"),
     [notice, setNotice] = useState("");
+  // On phones show the current page's subpages first; tap the page heading
+  // to browse all pages, or pull the divider to expose both lists.
+  const [mobileSidebarMode,setMobileSidebarMode]=useState<MobileSidebarMode>("subpages");
+  const [mobileNavPercent,setMobileNavPercent]=useState(40);
+  const mobileSidebarDrag=useRef<{y:number;navPx:number;panelPx:number;moved:boolean}|null>(null);
+  const mobileSidebarDidDrag=useRef(false);
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
+  const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
+  const [widgetPages,setWidgetPages]=useState<{library:ContextItem[];goals:ContextItem[]}>({library:[],goals:[]});
+  const [newWidgetPageIntent,setNewWidgetPageIntent]=useState(0);
+  const updateWidgetPages=useCallback((area:"library"|"goals",items:ContextItem[])=>setWidgetPages(prev=>JSON.stringify(prev[area])===JSON.stringify(items)?prev:{...prev,[area]:items}),[]);
   const onCompanionRecord=useCallback((value:CompanionTarget|null)=>setCompanionRecord(previous=>JSON.stringify(previous)===JSON.stringify(value)?previous:value),[]);
   const [databaseCategory, setDatabaseCategory] = useState<DatabaseCategory>("Characters");
   const [databaseRecordId, setDatabaseRecordId] = useState<string | null>(null);
@@ -111,12 +130,13 @@ function Workspace() {
     return()=>{live=false};
   },[production]);
   const engineEnabled=staging||(production&&productionEngineState==="ready");
+  const widgetEngineEnabled=engineEnabled||(environment.ok&&environment.data==="demo");
   const stagingDatabaseName=stagingDatabases.find(d=>d.id===stagingDatabaseId)?.name||"Characters";
   const refreshStagingDatabases=useCallback(async()=>{
     const {data,error}=await supabase.from("db_databases").select("id,name")
       .is("archived_at",null).order("name").limit(150);
     if(error)throw new Error(error.message);
-    const rows=(data??[]).filter(d=>d.name.toLowerCase()!=="perspectives");
+    const rows=isDemo?(data??[]):(data??[]).filter(d=>d.name.toLowerCase()!=="perspectives");
     setStagingDatabases(rows);
     setStagingDatabaseId(id=>rows.some(x=>x.id===id)?id:(rows.find(x=>x.name.toLowerCase()==="characters")??rows[0])?.id??"");
   },[]);
@@ -151,9 +171,9 @@ function Workspace() {
     finally{setSettingUpDatabases(false)}
   };
   useEffect(()=>{
-    if(!engineEnabled||section!=="Databases")return;
+    if(!(engineEnabled||isDemo)||(section!=="Databases"&&!(section==="Developing IT"&&contextId==="databases")))return;
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
-  },[engineEnabled,section,refreshStagingDatabases]);
+  },[engineEnabled,section,contextId,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
@@ -162,6 +182,8 @@ function Workspace() {
   const setStartDay = (startDay: string) => setPreferences(() => ({ startDay: startDay as ProfilePreferences["startDay"] }));
   const setClock = (clock: string) => setPreferences(() => ({ clock: clock as ProfilePreferences["clock"] }));
   const setEventDateFormat = (eventDateFormat: ProfilePreferences["eventDateFormat"]) => setPreferences(() => ({ eventDateFormat }));
+  const setMobileTooltipMode = (mobileTooltipMode: ProfilePreferences["mobileTooltipMode"]) =>
+    setPreferences(() => ({ mobileTooltipMode }));
   const setHidden = (change: (old: string[]) => string[]) => setPreferences((p) => ({ hiddenCalendars: change(p.hiddenCalendars) }));
   const setAppearance = (appearance: Appearance) => setPreferences(() => ({ appearance }));
   const [agendaMode, setAgendaMode] = useState<AgendaMode>("closed"),
@@ -180,6 +202,73 @@ function Workspace() {
     if(next!=="closed"&&agendaPreference==="toggle")setLastPinned(next==="pinned");
   },[agendaPreference,setLastPinned]);
   const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):"closed");
+  const buildWidgetFromDatabase=async(databaseId:string)=>{
+    if(!databaseId)return;
+    try{
+      const [source,views,properties]=await Promise.all([
+        supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
+        supabase.from("db_views").select("id,database_id,name,layout,config"),
+        supabase.from("db_properties").select("id,database_id,name,type,config,position").is("archived_at",null)
+      ]);
+      const initialError=source.error||views.error||properties.error;if(initialError)throw new Error(initialError.message);
+      const allDatabases=(source.data??[]) as WidgetDatabase[];
+      const db=allDatabases.find(d=>d.id===databaseId);if(!db)throw new Error("Select a database to build a widget from.");
+      const {data:created,error}=await supabase.from("aaa_widget_definitions")
+        .insert({name:db.name+" widget",database_id:db.id,config:{renderer:"table",editable:true}})
+        .select("id,name,database_id,view_id,config").single();
+      if(error)throw new Error(error.message);
+      let master=created as WidgetDefinition;
+      const id=master.id;
+      const save=async(patch:Partial<WidgetDefinition>)=>{
+        master={...master,...patch};
+        const {error:saveError}=await supabase.from("aaa_widget_definitions").update(patch).eq("id",id);
+        if(saveError)setNotice(saveError.message);
+      };
+      const refresh=async()=>{
+        const [dbs,props,vws]=await Promise.all([
+          supabase.from("db_databases").select("id,name,icon").is("archived_at",null),
+          supabase.from("db_properties").select("id,database_id,name,type,config,position").is("archived_at",null),
+          supabase.from("db_views").select("id,database_id,name,layout,config")
+        ]);
+        const fault=dbs.error||props.error||vws.error;if(fault)throw new Error(fault.message);
+        setWidgetConfiguration(previous=>previous?.id===id?{...previous,databases:(dbs.data??[]) as WidgetDatabase[],properties:(props.data??[]) as WidgetProperty[],views:(vws.data??[]) as WidgetView[]}:previous);
+      };
+      const changeSource=(databaseId:string|null,viewId:string|null)=>{
+        void save({database_id:databaseId,view_id:viewId,config:{...master.config,filters:[],sorts:[]}});
+        setWidgetConfiguration(previous=>previous?.id===id?{...previous,databaseId,viewId,config:widgetConfig({...master.config,filters:[],sorts:[]})}:previous);
+      };
+      setWidgetConfiguration({id,kind:"definition",title:master.name,databaseId:db.id,viewId:null,autoEditDatabase:true,config:widgetConfig(master.config),
+        databases:allDatabases,views:(views.data??[]) as WidgetView[],properties:(properties.data??[]) as WidgetProperty[],
+        onConfig:patch=>{
+          const config=widgetConfig({...master.config,...patch});void save({config});
+          setWidgetConfiguration(previous=>previous?.id===id?{...previous,config}:previous);
+        },onSource:changeSource,
+        onRename:name=>{void save({name});setWidgetConfiguration(previous=>previous?.id===id?{...previous,title:name}:previous)},
+        onCreateDatabase:async name=>{
+          const newId=crypto.randomUUID();
+          const {error:newError}=await supabase.rpc("db_create_database",{p_id:newId,p_name:name,p_dataset:"acceptance"});
+          if(newError)throw new Error(newError.message);
+          await save({database_id:newId,view_id:null});
+          setWidgetConfiguration(previous=>previous?.id===id?{...previous,databaseId:newId,viewId:null}:previous);
+          await refresh();void refreshStagingDatabases();return newId;
+        },
+        onAddProperty:async(dbId,name,type)=>{
+          const {data:existing,error:readError}=await supabase.from("db_properties").select("id").eq("database_id",dbId);
+          if(readError)throw new Error(readError.message);
+          const {error:insertError}=await supabase.from("db_properties").insert({id:crypto.randomUUID(),database_id:dbId,name,type,position:existing?.length??0,config:{},archived_at:null});
+          if(insertError)throw new Error(insertError.message);
+          await refresh();
+        },
+        onUpdateProperty:async(propId,patch)=>{
+          const {error:updateError}=await supabase.from("db_properties").update(patch).eq("id",propId);
+          if(updateError)throw new Error(updateError.message);
+          await refresh();
+        }
+      });
+      changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode);
+      setNotice(`${db.name} widget created in Developing IT → Widgets. Configure it here while keeping the database open.`);
+    }catch(e){setNotice(e instanceof Error?e.message:String(e))}
+  };
   useEffect(()=>{setAgendaMode(m=>m==="closed"?m:openAgenda(agendaPreference,lastPinned));},[agendaPreference,lastPinned]);
   // Leaving a beta destination when its switch (or Developer Mode) is turned off. Nothing is deleted.
   useEffect(()=>{
@@ -234,15 +323,21 @@ function Workspace() {
     (rows: ContextItem[]) => setContext(rows),
     [],
   );
-  const nav = (s: Section) => {
+  const nav = (s: Section, keepMobileDrawer=false) => {
     if((s==="Fluid Calendar"&&!effective.fluidCalendar)||(s==="Think About It"&&!effective.thinkAboutIt))return;
-    setSection(s);
-    setContextId(s==="Workspaces"&&engineEnabled?"writing":undefined);
-    if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
-    setContext([]);
-    setDatabaseRecordId(null);
-    setCompanionRecord(null);
-    setMobileOpen(false);
+    // Selecting the same page from the mobile page picker should reveal its
+    // subpages, not reset whichever record or subpage was already open.
+    if(!(keepMobileDrawer&&s===section)){
+      setSection(s);
+      setContextId(s==="Workspaces"&&engineEnabled?"writing":s==="Developing IT"?"widgets":undefined);
+      if(s==="Workspaces"&&engineEnabled)setWritingExpanded(true);
+      setContext([]);
+      setDatabaseRecordId(null);
+      setCompanionRecord(null);
+      setWidgetConfiguration(null);
+    }
+    setMobileOpen(keepMobileDrawer&&typeof window!=="undefined"&&window.matchMedia("(max-width:767px)").matches);
+    setMobileSidebarMode(modeAfterSidebarPageSelection());
     setMobileCalendars(false);
     setProfileMenu(false);
   };
@@ -256,8 +351,14 @@ function Workspace() {
     section === "Calendar" || section === "Fluid Calendar";
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
+    : section === "Developing IT"
+      ? [{id:"widgets",title:"Widgets"},{id:"databases",title:"Databases"}]
+    : section === "Library"
+      ? widgetPages.library
+    : section === "Goals"
+      ? widgetPages.goals
     : section === "Databases"
-      ? engineEnabled?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
+      ? engineEnabled||isDemo?stagingDatabases.map(d=>({id:d.id,title:d.name})):DATABASE_CATEGORIES.map((c) => ({ id: c.id, title: c.label }))
     : section==="Workspaces"&&engineEnabled
       ? [{id:"writing",title:"Writing"},...(writingExpanded?[{id:"writing-events",title:"Events"}]:[]),...context.filter(c=>c.id!=="writing"&&c.id!=="writing-events")]
     : section === "Resources" || section === "Think About It"
@@ -265,24 +366,28 @@ function Workspace() {
       : context;
   const contextualTitle = calendarSection
     ? "Calendars"
-    : section === "Databases"
-      ? "Databases"
-    : section === "Resources" || section === "Think About It"
-      ? "Collections"
-      : section === "Settings"
-        ? "Settings"
-        : section;
+    : section === "Developing IT" ? "Developing IT"
+    : section === "Library" ? "Library"
+    : section === "Goals" ? "Goals"
+    : section === "Databases" ? "Databases"
+    : section === "Resources" || section === "Think About It" ? "Collections"
+    : section === "Settings" ? "Settings"
+    : section;
+  // The nav is location-based. Personalization belongs in the branded subtitle
+  // and in the always-visible mobile page header instead.
+  const navigationLabel=(name:Section)=>name;
   const contextClick = (id: string) => {
     if (calendarSection)
       setHidden((old) =>
         old.includes(id) ? old.filter((c) => c !== id) : [...old, id],
       );
     else if (section === "Databases") {
-      if(engineEnabled)setStagingDatabaseId(id);
+      if(engineEnabled||isDemo)setStagingDatabaseId(id);
       else setDatabaseCategory(id as DatabaseCategory);
       setDatabaseRecordId(null);
     } else if (section === "Resources" || section === "Think About It")
       setActiveThought(id);
+    else if(section==="Library"||section==="Goals"||section==="Developing IT")setContextId(id);
     else if(section==="Workspaces"&&engineEnabled&&id==="writing"){
       setWritingExpanded(open=>!open);setContextId("writing");
     } else setContextId(id);
@@ -323,17 +428,17 @@ function Workspace() {
     </>
   );
   const companionTarget: CompanionTarget = companionRecord && ((section==="Databases"&&engineEnabled)||(section==="Workspaces"&&contextId==="writing-events")) ? companionRecord : {
-    id: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):(contextId||section),
-    title: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section==="Workspaces"&&contextId==="writing-events"?"Events":section==="Workspaces"&&contextId==="writing"?"Writing":section==="Settings"?settingsSection:section,
-    databaseId: section==="Databases"?(engineEnabled?stagingDatabaseId:databaseCategory):section,
-    databaseName: section==="Databases"?(engineEnabled?stagingDatabaseName:databaseCategory):section,
+    id: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseId:databaseCategory):(contextId||section),
+    title: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseName:databaseCategory):section==="Workspaces"&&contextId==="writing-events"?"Events":section==="Workspaces"&&contextId==="writing"?"Writing":section==="Settings"?settingsSection:section,
+    databaseId: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseId:databaseCategory):section,
+    databaseName: section==="Databases"?(engineEnabled||isDemo?stagingDatabaseName:databaseCategory):section,
     workspaceId: section==="Workspaces"||section==="Databases"?"nobody-special":"general",
     workspaceName: section==="Workspaces"||section==="Databases"?"Nobody Special":"All About Action",
     kind:"page",
     fields:[
       {id:"location",label:"Current location",value:section},
       ...(contextId?[{id:"selection",label:"Selected area",value:contextId}]:[]),
-      ...(section==="Databases"?[{id:"database",label:"Database",value:engineEnabled?stagingDatabaseName:databaseCategory}]:[])
+      ...(section==="Databases"?[{id:"database",label:"Database",value:engineEnabled||isDemo?stagingDatabaseName:databaseCategory}]:[])
     ]
   };
   if (!settings) return <main className="grid min-h-screen place-items-center">Loading your workspace…</main>;
@@ -346,41 +451,49 @@ function Workspace() {
         </div>
       )}
       <header className="aaa-mobile-header">
-        <button
+        <button className="aaa-mobile-brand-launcher"
           aria-label="Open navigation menu"
+          title="Open navigation"
+          data-aaa-tooltip="Open navigation"
           onClick={() => {
+            setMobileSidebarMode("subpages");
             setMobileOpen(true);
             setMobileCalendars(false);
           }}
         >
-          <Menu size={21} />
+          <BrandMark size={30} />
         </button>
-        <strong>
-          <BrandMark size={28} />
-          All About Action
+        <strong className="aaa-mobile-current-page" title={ownedPageTitle(displayName,section)}>
+          {ownedPageTitle(displayName,section)}
         </strong>
-        <button
-          aria-label="Calendar visibility"
-          onClick={() => setMobileCalendars(!mobileCalendars)}
+        <button className="aaa-mobile-companion-launcher"
+          aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"}
+          title="The Companion"
+          data-aaa-tooltip="The Companion"
+          aria-expanded={agendaMode!=="closed"}
+          onClick={toggleAgenda}
         >
-          <CalendarDays size={20} />
+          <PanelRightOpen size={21} />
         </button>
       </header>
       <aside
-        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""}`}
+        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""} aaa-sidebar-nav-mode-${mobileSidebarMode}`}
         aria-label="Workspace navigation"
+        style={{"--aaa-mobile-nav-percent":mobileNavPercent+"%"} as CSSProperties}
       >
         <div className="aaa-brand">
           <button
-            className="aaa-icon-slot"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="aaa-icon-slot aaa-brand-toggle"
+            aria-label={collapsed ? "Expand sidebar" : "All About Action navigation"}
+            title={undefined}
             onClick={() => {
               if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
               else toggleSidebar();
             }}
           >
-            <span className="aaa-logo">
+            <span className="aaa-logo aaa-sidebar-brand-icon">
               <BrandMark size={34} label="All About Action" />
+              <PanelLeftOpen className="aaa-brand-expand-indicator" size={21} aria-hidden="true"/>
             </span>
           </button>
           <div className="aaa-sidebar-label aaa-wordmark">
@@ -388,23 +501,50 @@ function Workspace() {
             <small>{ownedPageTitle(displayName, section)}</small>
           </div>
           <button
-            className="aaa-collapse-control"
-            aria-label="Close navigation"
-            onClick={() => {
-              if (matchMedia("(max-width:767px)").matches) setMobileOpen(false);
-              else toggleSidebar();
-            }}
+            className="aaa-collapse-control aaa-desktop-collapse-control"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+            onClick={toggleSidebar}
           >
-            <Menu size={18} />
+            <PanelLeftClose size={20}/>
+          </button>
+          <button
+            className="aaa-mobile-close-control"
+            aria-label="Close navigation"
+            title="Close navigation"
+            onClick={()=>setMobileOpen(false)}
+          >
+            <X size={20}/>
           </button>
         </div>
         <nav aria-label="Main navigation">
+          <button type="button" className="aaa-mobile-current-section-control"
+            aria-expanded={mobileSidebarMode!=="subpages"}
+            aria-label={mobileSidebarMode==="pages"?"Show "+navigationLabel(section)+" subpages":"Browse all pages"}
+            onClick={()=>setMobileSidebarMode(mode=>toggleMobileSidebarMode(mode))}>
+            <span className="aaa-mobile-section-icon">
+              {section==="Calendar"?<CalendarDays size={20}/>
+              :section==="Goals"?<Target size={20}/>
+              :section==="Library"?<LibraryBig size={20}/>
+              :section==="Databases"?<Database size={20}/>
+              :section==="Workspaces"?<Layers3 size={20}/>
+              :section==="Settings"?<Settings2 size={20}/>
+              :<BookOpen size={20}/>}
+            </span>
+            <span className="aaa-mobile-section-text">
+              <strong>{navigationLabel(section)}</strong>
+              <small>{mobileSidebarMode==="pages"?"Select a page to view its subpages":mobileSidebarMode==="split"?"Page navigation and subpages":"Tap to browse all pages"}</small>
+            </span>
+            <ChevronDown className={mobileSidebarMode==="pages"?"aaa-mobile-section-arrow is-open":"aaa-mobile-section-arrow"} size={18}/>
+          </button>
           {(
             [
               { name: "Calendar", icon: CalendarDays, badge: "GO" },
-              { name: "Goals", icon: Target, badge: "NA" },
-              { name: "Workspaces", icon: Layers3, badge: engineEnabled ? "BETA" : "NA" },
+              { name: "Goals", icon: Target, badge: "BETA" },
+              { name: "Library", icon: LibraryBig, badge: "BETA" },
+              { name: "Developing IT", icon: Settings2, badge: "BETA" },
               { name: "Databases", icon: Database, badge: "BETA" },
+              { name: "Workspaces", icon: Layers3, badge: "NA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
@@ -413,16 +553,16 @@ function Workspace() {
           ).filter(x=>x.name==="Fluid Calendar"?effective.fluidCalendar:x.name==="Think About It"?effective.thinkAboutIt:true).map(({ name, icon: Icon, badge }) => (
             <button
               key={name}
-              title={name}
-              aria-label={name}
+              title={collapsed?navigationLabel(name):undefined}
+              aria-label={navigationLabel(name)}
               aria-current={section === name ? "page" : undefined}
               className={`aaa-nav-row ${section === name ? "active" : ""}`}
-              onClick={() => nav(name)}
+              onClick={() => nav(name,true)}
             >
               <span className="aaa-icon-slot">
                 <Icon size={21} />
               </span>
-              <span className="aaa-sidebar-label">{name}</span>
+              <span className="aaa-sidebar-label">{navigationLabel(name)}</span>
               <small
                 className={`aaa-badge aaa-sidebar-label aaa-badge-${badge.toLowerCase()}`}
               >
@@ -431,24 +571,70 @@ function Workspace() {
             </button>
           ))}
         </nav>
+        <button type="button" className="aaa-sidebar-nav-divider aaa-companion-pull" role="separator"
+          aria-label="Resize navigation and subpages" aria-orientation="horizontal"
+          aria-valuemin={12} aria-valuemax={86}
+          aria-valuenow={mobileSidebarMode==="subpages"?12:mobileSidebarMode==="pages"?86:mobileNavPercent}
+          title="Drag to reveal pages and subpages, or tap to switch layout"
+          onPointerDown={e=>{
+            if(e.button!==0 && e.pointerType!=="touch")return;
+            const aside=e.currentTarget.closest<HTMLElement>(".aaa-sidebar");
+            const navigation=aside?.querySelector<HTMLElement>('nav[aria-label="Main navigation"]');
+            const panelPx=aside?.getBoundingClientRect().height||window.innerHeight;
+            mobileSidebarDrag.current={y:e.clientY,navPx:navigation?.getBoundingClientRect().height||56,panelPx,moved:false};
+            mobileSidebarDidDrag.current=false;
+            e.currentTarget.setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={e=>{
+            const start=mobileSidebarDrag.current;
+            if(!start)return;
+            if(Math.abs(e.clientY-start.y)>6)start.moved=true;
+            if(!start.moved)return;
+            const percent=Math.max(12,Math.min(86,Math.round((start.navPx+e.clientY-start.y)/start.panelPx*100)));
+            setMobileNavPercent(percent);
+            setMobileSidebarMode(modeForMobileSidebarDivider(percent));
+          }}
+          onPointerUp={()=>{
+            if(mobileSidebarDrag.current?.moved)mobileSidebarDidDrag.current=true;
+            mobileSidebarDrag.current=null;
+          }}
+          onPointerCancel={()=>{mobileSidebarDrag.current=null;}}
+          onKeyDown={e=>{
+            if(e.key==="Home"){e.preventDefault();setMobileSidebarMode("subpages");}
+            else if(e.key==="End"){e.preventDefault();setMobileSidebarMode("pages");}
+            else if(e.key==="ArrowDown"||e.key==="ArrowUp"){
+              e.preventDefault();
+              const next=Math.max(12,Math.min(86,mobileNavPercent+(e.key==="ArrowDown"?8:-8)));
+              setMobileNavPercent(next);setMobileSidebarMode(modeForMobileSidebarDivider(next));
+            }
+          }}
+          onClick={()=>{
+            if(mobileSidebarDidDrag.current){mobileSidebarDidDrag.current=false;return;}
+            setMobileSidebarMode(mode=>mode==="subpages"?"split":"subpages");
+          }}>
+          <span className="aaa-companion-pull-track"/>
+          <span className="aaa-companion-pull-pill">{mobileSidebarMode==="subpages"?<ChevronDown size={14}/>:<ChevronDown size={14} style={{transform:"rotate(180deg)"}}/>}</span>
+          <span className="aaa-companion-pull-track"/>
+        </button>
         <div className="aaa-context">
           <div className="aaa-context-heading">
             <button
               className="aaa-icon-slot"
-              title={calendarSection ? "Manage calendars" : contextualTitle}
+              title={collapsed?(calendarSection ? "Manage calendars" : contextualTitle):undefined}
               aria-label={
                 calendarSection ? "Manage calendars" : contextualTitle
               }
               onClick={() => {
                 if (calendarSection) manage();
-                else if(engineEnabled&&section==="Databases")setNewDatabaseOpen(open=>!open);
+                else if((engineEnabled||isDemo)&&section==="Databases")setNewDatabaseOpen(open=>!open);
+                else if(section==="Library"||section==="Goals")setNewWidgetPageIntent(x=>x+1);
               }}
             >
-              {calendarSection||engineEnabled&&section==="Databases" ? <Plus size={19} /> : <Layers3 size={18} />}
+              {calendarSection||(engineEnabled||isDemo)&&section==="Databases"||section==="Library"||section==="Goals" ? <Plus size={19} /> : <Layers3 size={18} />}
             </button>
             <strong className="aaa-sidebar-label">{contextualTitle}</strong>
           </div>
-          {engineEnabled&&section==="Databases"&&newDatabaseOpen&&
+          {(engineEnabled||isDemo)&&section==="Databases"&&newDatabaseOpen&&
            <form className="aaa-context-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
             <input value={newDatabaseName} autoFocus maxLength={80}
               placeholder="New database name…" aria-label="New database name"
@@ -465,23 +651,28 @@ function Workspace() {
             {calendarSection ? (
               calendarControls
             ) : section === "Settings" ? (
-              settingsSections.map(({name,icon:Icon})=><button key={name} className={`aaa-context-row ${settingsSection===name?'active':''}`} title={name} aria-pressed={settingsSection===name} onClick={()=>{setSettingsSection(name);setMobileOpen(false)}}><span className="aaa-icon-slot"><Icon size={18}/></span><span className="aaa-sidebar-label">{name}</span></button>)
+              settingsSections.map(({name,icon:Icon})=><button key={name} className={`aaa-context-row ${settingsSection===name?'active':''}`} title={collapsed?name:undefined} aria-pressed={settingsSection===name} onClick={()=>{setSettingsSection(name);setMobileOpen(false)}}><span className="aaa-icon-slot"><Icon size={18}/></span><span className="aaa-sidebar-label">{name}</span></button>)
             ) : (
               contextual.map((c) => (
                 <button
                   key={c.id}
                   className={"aaa-context-row " + (
-                    (section==="Databases"&&(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id))||
-                    (section==="Workspaces"&&contextId===c.id)?"active":""
+                    (section==="Databases"&&(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id))||
+                    ((section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
-                  title={c.title}
-                  aria-pressed={section === "Databases"?(engineEnabled?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
-                  onClick={() => contextClick(c.id)}
+                  title={collapsed?c.title:undefined}
+                  aria-pressed={section === "Databases"?(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
+                  onClick={() => {
+                    contextClick(c.id);
+                    // Let expandable workspace group headings reveal their children.
+                    // Calendar toggles stay open so several calendars can be changed.
+                    if(!(section==="Workspaces"&&c.id==="writing"))setMobileOpen(false);
+                  }}
                 >
                   <span className="aaa-icon-slot">
                     {c.id==="writing"?(writingExpanded?<ChevronDown size={18}/>:<ChevronRight size={18}/>)
                      :c.id==="writing-events"?<CalendarDays size={17}/>
-                     :section==="Databases"?<Database size={17}/>:<BookOpen size={18}/>}
+                     :section==="Databases"||c.id==="databases"?<Database size={17}/>:c.id==="widgets"?<LayoutGrid size={17}/>:<BookOpen size={18}/>}
                   </span>
                   <span className="aaa-sidebar-label">{c.title}</span>
                 </button>
@@ -513,6 +704,7 @@ function Workspace() {
           onSignOut={() => void signOut()}
         />
       </aside>
+      <ThemedTooltips mobileMode={preferences.mobileTooltipMode}/>
       {mobileCalendars && (
         <div className="aaa-mobile-calendars">
           <div className="aaa-options">
@@ -546,6 +738,8 @@ function Workspace() {
           onCompanion={setCompanion}
           companionTarget={companionTarget}
           companionProfileKey={userId+":"+settings.account.activeProfileId}
+          widgetConfiguration={widgetConfiguration}
+          onCloseWidgetConfiguration={()=>setWidgetConfiguration(null)}
         >
           {!calendarSection && (
             <>
@@ -554,7 +748,34 @@ function Workspace() {
                 {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
 
               </div>
-              {section === "Settings" ? (
+              {section === "Developing IT" && contextId === "databases" && isDemo ? (
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()} onBuildWidget={id=>void buildWidgetFromDatabase(id)}/>
+              ) : section === "Developing IT" && contextId === "databases" && engineEnabled ? (
+                <section className="aaa-widget-database-development">
+                  <div className="aaa-widget-database-heading"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / DATABASES</span><h1>Database workshop</h1><p>Develop database properties, relationships, and source views here. Your widgets reference these same records.</p></div>
+                  <div className="aaa-widget-hero-actions"><select aria-label="Database to develop" value={stagingDatabaseId} onChange={e=>setStagingDatabaseId(e.target.value)}>{stagingDatabases.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select>
+                    <button className="aaa-widget-secondary" disabled={!stagingDatabaseId} onClick={()=>void buildWidgetFromDatabase(stagingDatabaseId)}><LayoutGrid size={16}/> Build widget</button>
+                    <button className="aaa-widget-secondary" onClick={()=>setNewDatabaseOpen(open=>!open)}><Plus size={16}/> New database</button></div></div>
+                  {newDatabaseOpen&&<form className="aaa-widget-create-row aaa-widget-database-create" onSubmit={e=>{e.preventDefault();void createStagingDatabase()}}>
+                    <input autoFocus aria-label="New database name" placeholder="Database name…" maxLength={80} value={newDatabaseName} onChange={e=>setNewDatabaseName(e.target.value)}/>
+                    <button type="submit" disabled={!newDatabaseName.trim()||creatingDatabase}>{creatingDatabase?"Creating…":"Create database"}</button>
+                    <button type="button" onClick={()=>setNewDatabaseOpen(false)} aria-label="Cancel"><X size={15}/></button>
+                  </form>}
+                  <DatabaseLabErrorBoundary><StagingDatabaseLab key={"development-"+stagingDatabaseName} surface="database" databaseName={stagingDatabaseName}
+                    onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/></DatabaseLabErrorBoundary>
+                </section>
+              ) : (section==="Library"||section==="Developing IT"||section==="Goals") && !widgetEngineEnabled ? (
+                <div className="aaa-settings-panel aaa-demo-notice" role="note"><h2>Widget system is waiting for the database connection</h2><p>The database engine must be enabled for this environment. Existing planning and database records remain untouched.</p></div>
+              ) : (section==="Library"||section==="Goals"||section==="Developing IT") ? (
+                <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle} headerPosition={preferences.widgetHeaderPosition}
+                  cornerDoubleClick={preferences.widgetCornerDoubleClick} bottomDoubleClick={preferences.widgetBottomDoubleClick}
+                  activePageId={contextId} newPageIntent={newWidgetPageIntent}
+                  onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
+                  onConfigure={setWidgetConfiguration}
+                  onOpenConfigure={()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode)}
+                  onOpenRecord={openThought} onPlanningContext={setPlanningContext}
+                  onSchedule={task=>setCommand({id:Date.now(),type:"new",task})}/>
+              ) : section === "Settings" ? (
                 <SettingsWorkspace
                   section={settingsSection} onSection={setSettingsSection}
                   settings={settings!}
@@ -565,6 +786,11 @@ function Workspace() {
                   demoIsolation={isDemo}
                   agendaPreference={agendaPreference} onAgendaPreference={setAgendaPreference}
                   companion={preferences.companion} onCompanion={setCompanion}
+                  widgetStyle={preferences.widgetStyle} onWidgetStyle={widgetStyle=>setPreferences(()=>({widgetStyle}))}
+                  widgetHeaderPosition={preferences.widgetHeaderPosition} onWidgetHeaderPosition={widgetHeaderPosition=>setPreferences(()=>({widgetHeaderPosition}))}
+                  widgetCornerDoubleClick={preferences.widgetCornerDoubleClick} onWidgetCornerDoubleClick={widgetCornerDoubleClick=>setPreferences(()=>({widgetCornerDoubleClick}))}
+                  widgetBottomDoubleClick={preferences.widgetBottomDoubleClick} onWidgetBottomDoubleClick={widgetBottomDoubleClick=>setPreferences(()=>({widgetBottomDoubleClick}))}
+                  mobileTooltipMode={preferences.mobileTooltipMode} onMobileTooltipMode={setMobileTooltipMode}
                   displayName={displayName} email={email} onProfile={openProfile}
                   value={appearance}
                   onChange={setAppearance}
@@ -576,8 +802,11 @@ function Workspace() {
                   onDateFormat={setEventDateFormat}
                   onBack={() => nav("Calendar")}
                 />
+              ) : section === "Databases" && isDemo ? (
+                <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()} onBuildWidget={id=>void buildWidgetFromDatabase(id)}/>
               ) : section === "Databases" && engineEnabled ? (
                 <DatabaseLabErrorBoundary>
+                  <div className="aaa-widget-db-build-toolbar"><span>Build a reusable view from this database without leaving its source.</span><button className="aaa-widget-secondary" disabled={!stagingDatabaseId} onClick={()=>void buildWidgetFromDatabase(stagingDatabaseId)}><LayoutGrid size={16}/> Build widget</button></div>
                   <StagingDatabaseLab key={"database-"+stagingDatabaseName} surface="database"
                     databaseName={stagingDatabaseName}
                     onDatabasesChange={()=>void refreshStagingDatabases().catch(e=>setNotice(String(e)))} onContextRecord={onCompanionRecord}/>
@@ -623,14 +852,14 @@ function Workspace() {
                   }}
                   onOpenDocument={openThought}
                 />
-              ) : (section === "Goals" || section === "Workspaces") && isDemo ? (
+              ) : section === "Workspaces" && isDemo ? (
                 <div className="aaa-settings-panel aaa-demo-notice" role="note">
                   <h2>{section} isn’t available in Demo Mode</h2>
                   <p className="calendar-muted">
-                    The existing {section === "Goals" ? "goals, projects and tasks" : "writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix)"} rely on your real account’s database. They are unchanged and keep working in the live app.
+                    The existing writing Workspaces (Events, Characters, Perspectives, Scenes and the Matrix) rely on your real account’s database. They are unchanged and keep working in the live app.
                   </p>
                 </div>
-              ) : section === "Goals" || section === "Workspaces" ? (
+              ) : section === "Workspaces" ? (
                 <PlanningWorkspace
                   key={section}
                   section={section}

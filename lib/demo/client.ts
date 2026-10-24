@@ -3,6 +3,7 @@
 // query shapes those screens use. It never performs a network request.
 // The new database engine does NOT use this: it talks to its own persistence adapter interface.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {demoPageSectionIndex,demoPageSectionTitles} from "./page-sections";
 
 export type Row = Record<string, unknown>;
 export type Tables = Record<string, Row[]>;
@@ -22,6 +23,16 @@ const primaryKeys: Record<string, string[]> = {
   planning_records: ["thought_id"],
   account_preferences: ["user_id"],
   test_profiles: ["id"],
+  aaa_widget_definitions:["id"],
+  aaa_library_pages:["id"],
+  aaa_page_sections:["id"],
+  aaa_page_widgets:["id"],
+  db_databases:["id"],
+  db_views:["id"],
+  db_properties:["id"],
+  db_records:["record_id"],
+  db_relations:["source_record_id","property_id","target_record_id"],
+  db_perspectives:["record_id"],
 };
 const clone = <T>(value: T): T => (value === undefined ? value : JSON.parse(JSON.stringify(value)));
 const ok = (data: unknown, status = 200): Result => ({ data, error: null, count: null, status, statusText: "OK" });
@@ -36,7 +47,41 @@ export class DemoDatabase {
   private load(): Tables {
     try {
       const saved = JSON.parse(this.storage?.getItem(DEMO_STORAGE_KEY) || "null");
-      if (saved?.version === 1 && saved.tables && typeof saved.tables === "object") return saved.tables;
+      if (saved?.version === 1 && saved.tables && typeof saved.tables === "object") {
+        const tables=saved.tables as Tables;
+        // Existing developer-demo browsers can receive the new widget fixtures without
+        // losing any prior calendars, Thoughts, profile settings or personal edits.
+        if(!("aaa_widget_definitions" in tables)){
+          const seeded=this.seed();
+          for(const [name,rows] of Object.entries(seeded)){
+            if((name.startsWith("aaa_")||name.startsWith("db_"))&&!(name in tables))tables[name]=rows;
+          }
+          const recordIds=new Set((seeded.db_records??[]).map(row=>row.record_id));
+          const present=new Set((tables.user_items??[]).map(row=>row.id));
+          tables.user_items=[...(tables.user_items??[]),...(seeded.user_items??[]).filter(row=>recordIds.has(row.id)&&!present.has(row.id))];
+          this.persist(tables);
+        }
+        // Migrate previously visited developer previews without changing any stored records.
+        // The section IDs must reference this browser's existing page IDs, not fresh fixture IDs.
+        if(!("aaa_page_sections" in tables)){
+          const sections:Row[]=[];
+          for(const page of tables.aaa_library_pages??[]){
+            const pageId=String(page.id),title=String(page.title??"");
+            const pageSections=demoPageSectionTitles(title).map((name,index)=>{
+              const section={id:crypto.randomUUID(),user_id:DEMO_USER_ID,page_id:pageId,title:name,position:index};
+              sections.push(section);return section;
+            });
+            (tables.aaa_page_widgets??[]).filter(widget=>widget.page_id===pageId).sort((a,b)=>Number(a.position)-Number(b.position))
+              .forEach((widget,index)=>{
+                const old=widget.config&&typeof widget.config==="object"&&!Array.isArray(widget.config)?widget.config as Row:{};
+                widget.config={...old,sectionId:pageSections[Math.min(demoPageSectionIndex(title,index),pageSections.length-1)].id};
+              });
+          }
+          tables.aaa_page_sections=sections;
+          this.persist(tables);
+        }
+        return tables;
+      }
     } catch {}
     const tables = this.seed();
     this.persist(tables);
@@ -62,6 +107,12 @@ export class DemoDatabase {
 function withDefaults(table: string, input: Row): Row {
   const now = new Date().toISOString();
   const row: Row = { ...clone(input) };
+  if(table==="aaa_widget_definitions")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,name:"Untitled widget",database_id:null,view_id:null,config:{},created_at:now,...row};
+  if(table==="aaa_library_pages")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,area:"library",title:"Untitled page",position:0,created_at:now,...row};
+  if(table==="aaa_page_sections")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,position:0,created_at:now,...row};
+  if(table==="aaa_page_widgets")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,definition_id:null,kind:"database",title:null,config:{},width:6,height:2,position:0,...row};
+  if(table==="db_databases")return {id:crypto.randomUUID(),user_id:DEMO_USER_ID,icon:"database",created_at:now,archived_at:null,...row};
+  if(table==="db_records")return {record_id:crypto.randomUUID(),user_id:DEMO_USER_ID,values_json:{},version:1,position:0,archived_at:null,...row};
   if (table === "user_items")
     return { id: crypto.randomUUID(), user_id: DEMO_USER_ID, thought_id: null, content: {}, created_at: now, updated_at: now, ...row };
   if (table === "thought_details")
@@ -196,6 +247,53 @@ function rpc(db: DemoDatabase, name: string, args: Row): Result {
     details.push(withDefaults("thought_details", { thought_id: id }));
   };
   try {
+    if(name==="db_create_record"){
+      const databaseId=String(args.p_database_id),id=String(args.p_id),title=String(args.p_name||"Untitled");
+      if(!db.rows("db_databases").some(d=>d.id===databaseId))return failure("Database does not exist.");
+      const siblings=db.rows("db_records").filter(r=>r.database_id===databaseId),sequence_no=1+Math.max(0,...siblings.map(r=>Number(r.sequence_no)||0));
+      if(items.some(r=>r.id===id))return failure("Record already exists.");
+      items.push(withDefaults("user_items",{id,item_type:"thought",title,content:{blocks:[]}}));
+      db.rows("db_records").push(withDefaults("db_records",{record_id:id,database_id:databaseId,sequence_no,position:siblings.length}));
+      db.save();return ok(id);
+    }
+    if(name==="db_set_value"){
+      const record=db.rows("db_records").find(r=>r.record_id===args.p_record_id);
+      if(!record||record.version!==args.p_version)return failure("Record changed elsewhere. Reload before saving.");
+      record.values_json={...record.values_json as Row,[String(args.p_property_id)]:args.p_value};
+      record.version=Number(record.version)+1;
+      db.save();return ok(record.version);
+    }
+    if(name==="db_create_database"){
+      const title=String(args.p_name||"").trim(),id=String(args.p_id||crypto.randomUUID());
+      if(!title||db.rows("db_databases").some(d=>String(d.name).toLowerCase()===title.toLowerCase()))return failure("Database name already exists or is empty.");
+      db.rows("db_databases").push(withDefaults("db_databases",{id,name:title,dataset:args.p_dataset??"acceptance"}));
+      db.rows("db_views").push({id:crypto.randomUUID(),user_id:DEMO_USER_ID,database_id:id,name:"All records",layout:"table",config:{},position:0});
+      db.rows("user_items").push(withDefaults("user_items",{id,item_type:"thought",title,content:{blocks:[]}}));
+      db.save();return ok(id);
+    }
+    if(name==="db_delete_database"){
+      const id=String(args.p_database_id),source=db.rows("db_databases").find(row=>row.id===id);
+      if(!source)return failure("Source database unavailable.");
+      if(args.p_confirm_name!==source.name)return failure("Type the exact database name to confirm deletion.");
+      if(source.dataset&&source.dataset!=="acceptance")return failure("Permanent deletion is available only for beta/acceptance databases.");
+      const rows=db.rows("db_records").filter(row=>row.database_id===id),recordIds=new Set(rows.map(row=>row.record_id));
+      const external=db.rows("db_perspectives").some(row=>(recordIds.has(row.event_id)||recordIds.has(row.character_id))&&!recordIds.has(row.record_id));
+      if(external)return failure("Delete or detach external character perspectives referencing these records first.");
+      if(db.rows("db_properties").some(row=>row.database_id!==id&&(row.config as Row)?.target_database_id===id))
+        return failure("Remove relation properties in other databases that depend on this source first.");
+      const definitions=db.rows("aaa_widget_definitions").filter(row=>row.database_id===id),definitionIds=new Set(definitions.map(row=>row.id));
+      db.tables.aaa_page_widgets=db.rows("aaa_page_widgets").filter(row=>!definitionIds.has(row.definition_id)&&(row.config as Row)?.databaseOverride!==id);
+      db.tables.aaa_widget_definitions=db.rows("aaa_widget_definitions").filter(row=>!definitionIds.has(row.id));
+      db.tables.db_perspectives=db.rows("db_perspectives").filter(row=>!recordIds.has(row.record_id));
+      const propIds=new Set(db.rows("db_properties").filter(row=>row.database_id===id).map(row=>row.id));
+      db.tables.db_relations=db.rows("db_relations").filter(row=>!recordIds.has(row.source_record_id)&&!recordIds.has(row.target_record_id)&&!propIds.has(row.property_id));
+      for(const table of ["db_records","db_properties","db_views","db_databases","db_sequence_counters"]){
+        const key=table==="db_databases"?"id":"database_id";
+        db.tables[table]=db.rows(table).filter(row=>row[key]!==id);
+      }
+      db.tables.user_items=db.rows("user_items").filter(row=>row.id!==id&&!recordIds.has(row.id));
+      db.save();return ok(null);
+    }
     if (name === "create_thought") {
       createThought(String(args.p_id), String(args.p_title ?? ""), args.p_content ?? {});
       db.save();

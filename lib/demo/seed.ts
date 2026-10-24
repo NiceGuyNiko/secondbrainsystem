@@ -1,6 +1,7 @@
 // Fictional sample data for Demo Mode. Dates are relative to the day the demo data is created,
 // so the calendar and The Agenda always have something to show around "today".
 import { DEMO_EMAIL, DEMO_USER_ID, type Row, type Tables } from "./client";
+import {widgetDemoFixtures} from "./widget-fixtures";
 
 const localDate = (base: Date, offset: number) => {
   const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + offset);
@@ -9,6 +10,7 @@ const localDate = (base: Date, offset: number) => {
 const block = (text: string, type = "paragraph", checked?: boolean) => ({ id: crypto.randomUUID(), type, text, ...(checked === undefined ? {} : { checked }) });
 
 export function demoSeed(now = new Date()): Tables {
+  const {user_items:widgetItems,...widgetTables}=widgetDemoFixtures(now);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const created = now.toISOString();
   let n = 0;
@@ -45,7 +47,7 @@ export function demoSeed(now = new Date()): Tables {
   const thoughts = [welcome, outline, notes, research];
 
   return {
-    profiles: [{ id: DEMO_USER_ID, username: DEMO_EMAIL, display_name: "Demo" }],
+    profiles: [{ id: DEMO_USER_ID, username: DEMO_EMAIL, display_name: "Niko" }],
     user_items: [
       {
         id: crypto.randomUUID(), user_id: DEMO_USER_ID, item_type: "resource", title: "__calendar_categories__", thought_id: null, created_at: created, updated_at: created,
@@ -62,6 +64,7 @@ export function demoSeed(now = new Date()): Tables {
       event(3, "Book fair", "00:00", "23:59", "Personal", { allDay: true }),
       event(4, "Yoga", "17:30", "18:30", "Health"),
       ...thoughts.map((t) => t.item),
+      ...widgetItems,
     ],
     thought_details: thoughts.map((t) => t.detail),
     thought_memberships: [
@@ -70,5 +73,6 @@ export function demoSeed(now = new Date()): Tables {
     ],
     thought_connections: [{ id: crypto.randomUUID(), user_id: DEMO_USER_ID, source_id: notes.detail.thought_id, target_id: outline.detail.thought_id, type: "supports" }],
     planning_records: [],
+    ...widgetTables,
   };
 }

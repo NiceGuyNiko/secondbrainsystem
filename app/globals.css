@@ -1405,3 +1405,2615 @@ body{font-family:var(--ui-font)}button:focus-visible,input:focus-visible,select:
 input[type="range"]{
   accent-color:var(--accent);
 }
+
+/* Developing IT / Library: reusable database widget system */
+.aaa-widget-studio{padding:26px 26px 50px;min-width:0;color:var(--text)}
+.aaa-widget-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:24px}
+.aaa-widget-eyebrow{font-size:10px;letter-spacing:.13em;color:var(--accent-text);font-weight:800}
+.aaa-widget-hero h1,.aaa-widget-database-heading h1{font-size:29px;font-weight:750;letter-spacing:-.035em;margin:7px 0}
+.aaa-widget-hero p,.aaa-widget-database-heading p{color:var(--muted);line-height:1.55;font-size:13px;max-width:590px}
+.aaa-widget-hero-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.aaa-widget-primary,.aaa-widget-secondary,.aaa-widget-empty button,.aaa-widget-error button{border-radius:9px;padding:10px 14px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:700;white-space:nowrap}
+.aaa-widget-primary{background:var(--accent);color:var(--accent-contrast,#171511);border:1px solid var(--accent)}
+.aaa-widget-secondary,.aaa-widget-empty button,.aaa-widget-error button{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.aaa-widget-mode{display:flex;padding:3px;gap:3px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border)}
+.aaa-widget-mode button{padding:7px 12px;border-radius:7px;font-size:12px;color:var(--muted)}
+.aaa-widget-mode button.active{background:var(--surface);color:var(--accent-text);box-shadow:0 1px 5px #0002}
+.aaa-widget-canvas{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;align-items:start}
+.aaa-widget-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;min-width:0;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 5px 19px #0000000e}
+.aaa-widget-card.aaa-widget-arranging{border-style:dashed;border-color:color-mix(in srgb,var(--accent) 55%,var(--border));cursor:default}
+.aaa-widget-color-gold{border-top:3px solid #c9a053}.aaa-widget-color-blue{border-top:3px solid #5d8dc5}.aaa-widget-color-green{border-top:3px solid #55a584}
+.aaa-widget-card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:10px}
+.aaa-widget-card-head>div:first-child{display:flex;align-items:center;gap:9px;min-width:0}
+.aaa-widget-card-head strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aaa-widget-card-head small{color:var(--muted);font-size:10px;white-space:nowrap}
+.aaa-widget-card-actions{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.aaa-widget-card-actions button,.aaa-widget-definition button{color:var(--muted);padding:6px;border-radius:6px}
+.aaa-widget-card-actions button:hover,.aaa-widget-definition button:hover{color:var(--accent-text);background:var(--ui-hover)}
+.aaa-widget-card-actions button:disabled{opacity:.25}
+.aaa-widget-card-actions .aaa-widget-danger-action:hover{color:#f48b86;background:#b3443623}
+.aaa-widget-card-body{padding:12px 15px;min-width:0;flex:1;overflow:auto}
+.aaa-widget-card-body .aaa-planning{padding:0}.aaa-widget-card-body .aaa-planning h1{font-size:22px}
+.aaa-widget-density-compact .aaa-widget-card-body{padding:6px 10px}.aaa-widget-density-compact .aaa-widget-table td{padding:5px 8px}
+.aaa-widget-empty{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap;text-align:center;min-height:105px;color:var(--muted);padding:20px;font-size:12px}
+.aaa-widget-large{border:1px dashed var(--border);border-radius:12px;min-height:250px;flex-direction:column;grid-column:1/-1}
+.aaa-widget-empty strong{color:var(--text);display:block;font-size:15px}.aaa-widget-empty p{max-width:420px}
+.aaa-widget-empty-slot{grid-column:span 6;border:1px dashed var(--accent);border-radius:12px;color:var(--muted);display:flex;gap:10px;align-items:center;justify-content:center;min-height:130px;font-size:12px}
+.aaa-widget-empty-slot:hover{background:var(--accent-soft);color:var(--accent-text)}
+.aaa-widget-table-scroll{width:100%;max-width:100%;overflow:auto}.aaa-widget-table{border-collapse:collapse;width:100%;text-align:left;font-size:12px}
+.aaa-widget-table th{font-size:10px;letter-spacing:.05em;color:var(--muted);font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border);padding:10px}
+.aaa-widget-table td{padding:11px 10px;border-bottom:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px;color:var(--muted)}
+.aaa-widget-table td:first-child{color:var(--text);font-weight:650}.aaa-widget-table td button:hover{color:var(--accent-text)}
+.aaa-widget-records{display:grid;gap:9px}.aaa-widget-records-cards{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.aaa-widget-records-list{gap:0}
+.aaa-widget-record{position:relative;text-align:left;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:12px 13px;display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0}
+.aaa-widget-record:hover{border-color:var(--accent)}.aaa-widget-record strong{font-size:12px;color:var(--text)}.aaa-widget-record>span:not(.aaa-widget-sequence){display:flex;flex-wrap:wrap;gap:7px}.aaa-widget-record small{font-size:10px;color:var(--muted)}
+.aaa-widget-record>svg{position:absolute;right:10px;top:13px;color:var(--muted)}.aaa-widget-records-list .aaa-widget-record{border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent}
+.aaa-widget-records-timeline{padding-left:16px;border-left:2px solid var(--accent)}.aaa-widget-records-timeline .aaa-widget-record{margin-left:4px}
+.aaa-widget-sequence{font-size:10px;color:var(--accent-text);font-weight:750}
+.aaa-widget-runtime-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;font-size:11px;color:var(--muted)}
+.aaa-widget-runtime-tools label{border:1px solid var(--border);padding:6px 9px;border-radius:7px;display:flex;gap:6px;align-items:center}
+.aaa-widget-runtime-tools input{outline:0;background:transparent;min-width:0;font-size:11px}.aaa-widget-runtime-tools button{color:var(--accent-text)}
+.aaa-widget-new-record,.aaa-widget-create-row{display:flex;align-items:center;gap:9px;padding:12px 0}
+.aaa-widget-new-record input,.aaa-widget-create-row input,.aaa-widget-config input:not([type=checkbox]),.aaa-widget-config select,.aaa-widget-database-heading select{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:7px;padding:8px;min-width:0;font-size:12px}
+.aaa-widget-new-record input,.aaa-widget-create-row input{flex:1}.aaa-widget-new-record button,.aaa-widget-create-row button{display:flex;align-items:center;gap:5px;color:var(--accent-text);font-size:12px;font-weight:650}
+.aaa-widget-detail{border-top:1px solid var(--accent);padding:13px 4px;margin-top:14px;display:flex;flex-direction:column;gap:9px}
+.aaa-widget-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.aaa-widget-detail-head strong{font-size:13px}.aaa-widget-detail p{font-size:11px;color:var(--muted)}
+.aaa-widget-detail .aaa-widget-field{max-width:430px}
+.aaa-widget-add-picker{border:1px solid var(--accent);background:var(--surface);border-radius:11px;padding:14px;max-width:550px;margin-bottom:18px;box-shadow:0 10px 25px #0002}
+.aaa-widget-add-picker>div{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.aaa-widget-add-picker>button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-bottom:1px solid var(--border);font-size:12px}
+.aaa-widget-add-picker>button small{margin-left:auto;color:var(--muted)}.aaa-widget-add-picker>button:hover{background:var(--ui-hover)}.aaa-widget-add-picker p{font-size:12px;color:var(--muted)}
+.aaa-widget-definitions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:17px}
+.aaa-widget-definition{border:1px solid var(--border);border-radius:12px;background:var(--surface);min-width:0;overflow:hidden}
+.aaa-widget-definition>header{display:flex;justify-content:space-between;align-items:center;padding:15px;border-bottom:1px solid var(--border)}
+.aaa-widget-definition>header>div{display:flex;align-items:center;gap:11px}.aaa-widget-definition header strong,.aaa-widget-definition header small{display:block}.aaa-widget-definition header strong{font-size:13px}.aaa-widget-definition header small{font-size:10px;color:var(--muted);margin-top:4px}
+.aaa-widget-definition-icon{width:33px;height:33px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-text);border-radius:9px}
+.aaa-widget-definition-preview{max-height:240px;overflow:auto;padding:8px 13px}.aaa-widget-definition>footer{display:flex;justify-content:space-between;padding:8px 12px;border-top:1px solid var(--border)}.aaa-widget-definition>footer button{display:flex;align-items:center;gap:6px;font-size:12px}
+.aaa-widget-alert{border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-bottom:13px;display:flex;justify-content:space-between;gap:12px;font-size:12px}
+.aaa-widget-alert button{color:var(--accent-text)}.aaa-widget-error h2{font-size:19px}.aaa-widget-error p{font-size:13px;color:var(--muted);margin:12px 0}
+.aaa-widget-database-development{min-width:0}.aaa-widget-database-heading{display:flex;justify-content:space-between;gap:16px;align-items:center;padding:28px 26px 16px}.aaa-widget-database-heading select{min-width:180px}
+.aaa-widget-database-create{max-width:570px;margin:0 26px 15px}
+/* Configure is a contextual Companion tool, not a separate sidebar. */
+.aaa-widget-config{overflow-y:auto;flex:1;min-height:0;padding:14px 15px 32px;display:flex;flex-direction:column;gap:15px;scrollbar-width:thin}
+.aaa-widget-config-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.aaa-widget-config-head span,.aaa-widget-config-head button{display:flex;align-items:center;gap:7px}
+.aaa-widget-config-head span{font-size:15px;font-weight:750}.aaa-widget-config-head button{color:var(--accent-text);font-size:11px}
+.aaa-widget-config-sub{font-size:11px;color:var(--muted);line-height:1.5}.aaa-widget-config-group{display:flex;flex-direction:column;gap:11px;border-top:1px solid var(--border);padding-top:13px}
+.aaa-widget-config-group>strong{font-size:12px;letter-spacing:.01em}.aaa-widget-config-group>p{font-size:11px;color:var(--muted)}
+.aaa-widget-field{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--muted);min-width:0}.aaa-widget-field input,.aaa-widget-field select{width:100%;color:var(--text)}
+.aaa-widget-config-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}.aaa-widget-inline{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted)}
+.aaa-widget-inline select{max-width:195px}.aaa-widget-rule{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.aaa-widget-rule select,.aaa-widget-rule input{flex:1;min-width:90px;max-width:100%;font-size:11px!important}.aaa-widget-rule button{color:var(--muted);padding:4px}
+.aaa-widget-add-rule{display:inline-flex;align-items:center;gap:6px;color:var(--accent-text);font-size:11px;font-weight:650;align-self:flex-start}
+.aaa-widget-property-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:195px;overflow:auto}.aaa-widget-property-options label{display:flex;align-items:center;gap:7px;font-size:11px;min-width:0}
+.aaa-widget-config input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px}.aaa-widget-switch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}
+.aaa-widget-switch input{appearance:none;width:31px!important;height:18px!important;border-radius:10px;background:var(--border);position:relative;cursor:pointer;flex-shrink:0}
+.aaa-widget-switch input:before{content:"";position:absolute;left:3px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--surface)}
+.aaa-widget-switch input:checked{background:var(--accent)}.aaa-widget-switch input:checked:before{left:16px;background:#1c1b18}
+.aaa-widget-save-master{display:flex;justify-content:center;align-items:center;gap:7px;padding:10px;border:1px solid var(--accent);border-radius:8px;color:var(--accent-text);font-size:12px;font-weight:700}
+/* Optional Templates Lab-inspired widget presentation. All colours inherit Appearance tokens. */
+.aaa-widget-lab-kicker{display:none}
+.aaa-widget-studio-lab{--studio-glow:color-mix(in srgb,var(--accent-bright) 14%,transparent);--studio-tint:color-mix(in srgb,var(--accent) 9%,var(--surface));}
+.aaa-widget-studio-lab .aaa-widget-hero{position:relative;overflow:hidden;align-items:center;min-height:145px;padding:25px 27px;border:1px solid var(--border);border-radius:17px;background:radial-gradient(ellipse 74% 100% at 96% 0%,var(--studio-glow),transparent 73%),linear-gradient(135deg,var(--surface),var(--surface-2));box-shadow:0 12px 36px #00000012;margin-bottom:16px}
+.aaa-widget-studio-lab .aaa-widget-hero:before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--accent-bright)}
+.aaa-widget-studio-lab .aaa-widget-hero h1{font-size:32px;font-weight:800;line-height:1.13;letter-spacing:-.04em;max-width:550px}
+.aaa-widget-studio-lab .aaa-widget-eyebrow{letter-spacing:.17em;font-size:10px;color:var(--accent-bright)}
+.aaa-widget-studio-lab .aaa-widget-primary{background:var(--accent);border-color:var(--accent);box-shadow:0 4px 18px var(--studio-glow)}
+.aaa-widget-studio-lab .aaa-widget-secondary{background:var(--surface-2)}
+.aaa-widget-studio-lab .aaa-widget-mode{background:var(--canvas);border-radius:11px}
+.aaa-widget-studio-lab .aaa-widget-mode button.active{background:var(--studio-tint);color:var(--text);border:1px solid var(--border)}
+.aaa-widget-lab-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+.aaa-widget-lab-stats>div{display:flex;flex-direction:column;gap:6px;background:linear-gradient(145deg,var(--studio-tint),var(--surface));padding:16px 18px;border:1px solid var(--border);border-radius:13px;min-width:0}
+.aaa-widget-lab-stats small{font-size:9px;letter-spacing:.14em;font-weight:800;color:var(--muted)}
+.aaa-widget-lab-stats strong{font-size:29px;font-weight:800;line-height:1.1;letter-spacing:-.05em;color:var(--text)}
+.aaa-widget-lab-stats span{font-size:11px;color:var(--muted)}
+.aaa-widget-studio-lab .aaa-widget-card{border-radius:15px;background:linear-gradient(175deg,var(--studio-tint),var(--surface) 28%);border-color:color-mix(in srgb,var(--accent-bright) 12%,var(--border));box-shadow:0 9px 28px #00000018}
+.aaa-widget-studio-lab .aaa-widget-card-head{padding:15px 18px;background:linear-gradient(100deg,var(--studio-tint),transparent);border-bottom:1px solid var(--border)}
+.aaa-widget-studio-lab .aaa-widget-card-head>div:first-child{display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center}
+.aaa-widget-studio-lab .aaa-widget-card-head>div:first-child>svg{grid-row:1/4}
+.aaa-widget-studio-lab .aaa-widget-card-head .aaa-widget-drag-handle{grid-row:1/4}
+.aaa-widget-studio-lab .aaa-widget-card-head .aaa-widget-lab-kicker{display:block;grid-column:2;font-size:9px;letter-spacing:.13em;color:var(--accent-bright);font-weight:750}
+.aaa-widget-studio-lab .aaa-widget-card-head strong{grid-column:2;font-size:15px;font-weight:800}
+.aaa-widget-studio-lab .aaa-widget-card-head small{grid-column:2}
+.aaa-widget-studio-lab .aaa-widget-card-body{padding:17px}
+.aaa-widget-studio-lab .aaa-widget-record{background:linear-gradient(130deg,var(--surface-2),var(--studio-tint));border-radius:11px;box-shadow:0 2px 12px #00000009;transition:border-color .16s ease,transform .16s ease}
+.aaa-widget-studio-lab .aaa-widget-record:hover{transform:translateY(-2px);border-color:var(--accent-bright)}
+.aaa-widget-studio-lab .aaa-widget-record strong{font-size:13px}
+.aaa-widget-studio-lab .aaa-widget-definition{position:relative;border-radius:15px;background:linear-gradient(155deg,var(--studio-tint),var(--surface) 38%);box-shadow:0 8px 26px #00000016}
+.aaa-widget-studio-lab .aaa-widget-definition>header{padding:19px 17px}
+.aaa-widget-studio-lab .aaa-widget-definition-icon{width:42px;height:42px;border:1px solid var(--border);background:var(--studio-tint);color:var(--accent-bright)}
+.aaa-widget-studio-lab .aaa-widget-definition header strong{font-size:15px}
+.aaa-widget-studio-lab .aaa-widget-definition-preview{min-height:145px}
+.aaa-widget-studio-lab .aaa-widget-empty-slot{background:linear-gradient(140deg,var(--studio-tint),transparent);border-color:var(--accent-bright)}
+.aaa-widget-studio-lab .aaa-widget-add-picker{background:var(--surface);box-shadow:0 14px 42px #0003}
+.aaa-widget-style-settings{max-width:770px}
+.aaa-widget-style-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:13px 0 18px}
+.aaa-widget-style-options button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2);text-align:left;min-width:0}
+.aaa-widget-style-options button.active{border-color:var(--accent-bright);box-shadow:inset 0 0 0 1px var(--accent)}
+.aaa-widget-style-options strong{font-size:13px}.aaa-widget-style-options small{font-size:11px;color:var(--muted);line-height:1.5}
+.aaa-widget-style-thumbnail{width:100%;height:100px;display:grid;grid-template-columns:1fr 1fr;gap:9px;border-radius:9px;padding:12px;overflow:hidden;background:var(--canvas);border:1px solid var(--border)}
+.aaa-widget-style-thumbnail i{background:var(--surface);border:1px solid var(--border);border-radius:7px}
+.aaa-widget-style-thumbnail i:first-child{grid-column:1/-1;height:20px}
+.aaa-widget-style-thumbnail-studio{background:radial-gradient(circle at 80% 0%,color-mix(in srgb,var(--accent-bright) 22%,transparent),transparent 68%),var(--canvas)}
+.aaa-widget-style-thumbnail-studio i{background:linear-gradient(130deg,color-mix(in srgb,var(--accent) 15%,var(--surface)),var(--surface));border-color:var(--accent)}
+.aaa-demo-database-studio{padding:27px 26px 45px;min-width:0;color:var(--text)}
+.aaa-demo-database-studio>.aaa-widget-hero{padding:24px;border:1px solid var(--border);border-radius:16px;background:radial-gradient(ellipse at 96% 0%,color-mix(in srgb,var(--accent-bright) 13%,transparent),transparent 75%),var(--surface)}
+.aaa-demo-db-stats{display:flex;align-items:center;gap:24px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 17px;margin-bottom:16px}
+.aaa-demo-db-stats span{font-size:23px;font-weight:800}.aaa-demo-db-stats small{font-size:11px;color:var(--muted);margin-left:6px;font-weight:500}
+.aaa-demo-db-stats button{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent-text)}
+.aaa-demo-db-layout{display:grid;grid-template-columns:minmax(190px,260px) minmax(0,1fr);gap:16px;align-items:start}
+.aaa-demo-db-list{display:flex;flex-direction:column;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:9px;max-height:75vh;overflow:auto}
+.aaa-demo-db-list button{display:flex;gap:10px;align-items:center;text-align:left;padding:11px;border-radius:9px;color:var(--muted)}
+.aaa-demo-db-list button span{display:flex;flex-direction:column;gap:2px;font-size:12px;font-weight:700;color:var(--text)}.aaa-demo-db-list button small{font-size:10px;font-weight:400;color:var(--muted)}
+.aaa-demo-db-list button.selected{background:var(--accent-soft);color:var(--accent-text)}.aaa-demo-db-list button:hover{background:var(--ui-hover)}
+.aaa-demo-db-detail{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:21px;min-width:0}
+.aaa-demo-db-detail>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.aaa-demo-db-detail>header small{font-size:10px;letter-spacing:.13em;font-weight:750;color:var(--accent-text)}.aaa-demo-db-detail h2{font-size:23px;font-weight:800;margin:6px 0}
+.aaa-demo-db-detail p{font-size:12px;color:var(--muted);line-height:1.6}.aaa-demo-db-detail>header svg{color:var(--accent-bright)}
+.aaa-demo-db-field-heading{display:flex;justify-content:space-between;align-items:center;margin:18px 0 9px}.aaa-demo-db-field-heading h3{font-size:14px;font-weight:750}.aaa-demo-db-field-heading small{color:var(--muted)}
+.aaa-demo-db-field-heading button{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--accent-text)}
+.aaa-demo-db-fields{display:flex;flex-direction:column;gap:6px}.aaa-demo-db-fields>div{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:8px;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px}
+.aaa-demo-db-fields input,.aaa-demo-db-fields select,.aaa-demo-database-studio .aaa-widget-create-row select{background:var(--surface);padding:8px;color:var(--text);border:1px solid var(--border);border-radius:6px;min-width:0;font-size:12px}
+.aaa-demo-db-note{margin-top:19px;padding:12px;border:1px dashed var(--border);border-radius:9px}
+@media(max-width:980px){.aaa-widget-card{grid-column:span 12!important}.aaa-widget-hero{flex-direction:column}.aaa-widget-hero-actions{justify-content:flex-start}.aaa-widget-studio{padding:18px 12px 35px}}
+@media(max-width:640px){.aaa-widget-lab-stats{grid-template-columns:1fr}.aaa-widget-style-options{grid-template-columns:1fr}.aaa-widget-studio-lab .aaa-widget-hero{padding:20px 17px}.aaa-demo-db-layout{grid-template-columns:1fr}.aaa-demo-db-fields>div{grid-template-columns:1fr}.aaa-demo-database-studio{padding:17px 12px 35px}}
+/* Embedded pages, named sections and predictable widget height units. */
+.aaa-widget-page-tabs{display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:thin;padding:11px 12px;margin:-4px 0 20px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2);min-width:0}
+.aaa-widget-page-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:35px;padding:8px 13px;white-space:nowrap;font-size:12px;font-weight:650;color:var(--muted);background:var(--surface);border:1px solid var(--border);border-radius:8px;flex-shrink:0}
+.aaa-widget-page-tabs button.active{color:var(--accent-text);border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 20%,transparent)}
+.aaa-widget-page-tabs button:hover{color:var(--text);border-color:var(--accent-bright)}
+.aaa-widget-page-tabs .aaa-widget-page-add{border-style:dashed;color:var(--text)}
+.aaa-widget-sections{display:flex;flex-direction:column;gap:26px;min-width:0}
+.aaa-widget-section-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:0 2px;font-size:11px;color:var(--muted)}
+.aaa-widget-page-section{min-width:0}
+.aaa-widget-section-header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px;padding:0 2px}
+.aaa-widget-section-header small{font-size:9px;font-weight:800;letter-spacing:.13em;color:var(--accent-text)}
+.aaa-widget-section-header h2{font-size:18px;line-height:1.2;letter-spacing:-.025em;font-weight:750;margin:4px 0}
+.aaa-widget-section-header p{font-size:11px;color:var(--muted)}
+.aaa-widget-section-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}
+.aaa-widget-section-actions>button:not(.aaa-widget-secondary),.aaa-widget-section-rename button{padding:7px;color:var(--muted);border:1px solid var(--border);border-radius:7px;background:var(--surface)}
+.aaa-widget-section-actions>button:disabled{opacity:.3;cursor:default}
+.aaa-widget-section-actions>button:hover:not(:disabled){color:var(--accent-text)}
+.aaa-widget-section-rename{display:flex;align-items:center;gap:5px;margin:5px 0}
+.aaa-widget-section-rename input{color:var(--text);background:var(--surface);border:1px solid var(--accent);border-radius:7px;padding:7px;min-width:150px;font-size:14px}
+.aaa-widget-canvas{grid-auto-rows:140px;grid-auto-flow:row dense;align-items:stretch;min-height:40px}
+.aaa-widget-card{height:100%;min-height:0}
+.aaa-widget-card-body{min-height:0;overflow:auto}
+.aaa-widget-drag-handle{cursor:grab;touch-action:none;display:grid;place-items:center;color:var(--accent-text);border:1px dashed var(--border);border-radius:6px;width:28px;height:31px;flex-shrink:0}
+.aaa-widget-drag-handle:active{cursor:grabbing}
+.aaa-widget-drop-zone{outline:2px dashed color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:6px;border-radius:10px}
+.aaa-widget-resize-edge,.aaa-widget-resize-corner{position:absolute;z-index:3;border:0;touch-action:none;padding:0;background:transparent}
+.aaa-widget-resize-right{right:0;top:42px;bottom:20px;width:8px;cursor:ew-resize}
+.aaa-widget-resize-bottom{bottom:0;left:22px;right:22px;height:8px;cursor:ns-resize}
+.aaa-widget-resize-right:hover,.aaa-widget-resize-bottom:hover{background:color-mix(in srgb,var(--accent) 38%,transparent)}
+.aaa-widget-resize-corner{right:0;bottom:0;width:21px;height:21px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 48%,var(--accent) 49%,var(--accent) 58%,transparent 59%,transparent 70%,var(--accent) 71%,var(--accent) 80%,transparent 81%);clip-path:polygon(100% 0,100% 100%,0 100%)}
+.aaa-widget-dialog-backdrop{position:fixed;inset:0;z-index:10000;background:#0009;display:flex;justify-content:center;align-items:center;padding:20px;backdrop-filter:blur(4px)}
+.aaa-widget-dialog{width:min(520px,100%);max-height:min(90vh,750px);overflow:auto;box-shadow:0 20px 80px #0008;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:17px;padding:26px;display:flex;flex-direction:column;gap:16px}
+.aaa-widget-dialog h2{font-size:21px;line-height:1.3;font-weight:800;letter-spacing:-.02em}
+.aaa-widget-dialog p{font-size:13px;line-height:1.6;color:var(--muted)}
+.aaa-widget-dialog p strong{color:var(--text)}
+.aaa-widget-dialog label{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
+.aaa-widget-dialog label input,.aaa-widget-dialog label select{border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:8px;padding:11px;font-size:13px}
+.aaa-widget-dialog-icon{background:#db484528;color:#f48b86;border-radius:12px;width:46px;height:46px;display:grid;place-items:center}
+.aaa-widget-dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.aaa-widget-dialog-actions button{padding:10px 14px;border-radius:8px;font-size:12px;font-weight:700;border:1px solid var(--border)}
+.aaa-widget-danger-button{background:#b83f39!important;color:#fff!important;border-color:#b83f39!important}
+.aaa-widget-danger-button:disabled{opacity:.4;cursor:not-allowed}
+.aaa-widget-copy-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.aaa-widget-copy-modes button{border:1px solid var(--border);border-radius:11px;background:var(--surface-2);padding:15px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left}
+.aaa-widget-copy-modes button.active{border-color:var(--accent);background:var(--accent-soft)}
+.aaa-widget-copy-modes button strong{font-size:13px}
+.aaa-widget-copy-modes button small{font-size:11px;line-height:1.55;color:var(--muted)}
+.aaa-widget-sync-notice{border:1px solid color-mix(in srgb,var(--accent) 50%,var(--border));background:var(--accent-soft);border-radius:9px;padding:12px;color:var(--text)!important;font-size:12px!important;line-height:1.6}
+.db-chrono-address{font-size:11px;font-variant-numeric:tabular-nums;font-weight:800;color:var(--accent-text);white-space:nowrap}
+.aaa-demo-db-computed{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:14px;border:1px dashed var(--accent);border-radius:9px;background:var(--accent-soft)}
+.aaa-demo-db-computed strong{font-size:13px}.aaa-demo-db-computed span{font-size:11px;color:var(--accent-text);font-weight:750}
+.aaa-demo-db-computed small{flex-basis:100%;color:var(--muted);font-size:11px;line-height:1.6}
+
+/* Band/lane widget layout: each section may have independent rows, split
+   into resizeable columns with vertical stacks in any column. */
+.aaa-widget-canvas{display:flex;flex-direction:column;gap:14px;grid-auto-rows:unset;grid-auto-flow:unset;align-items:stretch}
+.aaa-widget-layout-band{display:flex;align-items:stretch;gap:14px;min-width:0;width:100%;transition:height .14s ease}
+.aaa-widget-layout-lane-shell{position:relative;min-width:0;display:flex;flex-direction:column;transition:flex-grow .16s ease}
+.aaa-widget-layout-lane{display:flex;flex-direction:column;flex:1;min-height:0;gap:14px}
+.aaa-widget-layout-item{display:flex;min-height:0;flex-direction:column;min-width:0;position:relative;transition:flex-grow .16s ease}
+.aaa-widget-layout-item>.aaa-widget-card{flex:1;min-width:0;height:auto;transition:opacity .12s ease,outline .12s ease,box-shadow .12s ease}
+.aaa-widget-layout-spacer{min-width:0;pointer-events:none}
+.aaa-widget-lane-divider{position:absolute;top:0;bottom:0;right:-12px;width:10px;z-index:6;cursor:ew-resize;border:0;border-radius:5px;background:transparent;touch-action:none}
+.aaa-widget-lane-divider::before{content:"";position:absolute;top:8px;bottom:8px;left:4px;width:2px;border-radius:99px;background:color-mix(in srgb,var(--accent-bright) 55%,var(--border));opacity:.58}
+.aaa-widget-lane-divider:hover::before,.aaa-widget-lane-divider:active::before{opacity:1;width:3px;left:3px;background:var(--accent-bright)}
+.aaa-widget-stack-divider{height:14px;position:relative;margin:-7px 12px -7px;flex:0 0 14px;z-index:6;cursor:ns-resize;background:transparent;touch-action:none}
+.aaa-widget-stack-divider::before{content:"";height:2px;position:absolute;left:0;right:0;top:6px;border-radius:99px;background:color-mix(in srgb,var(--accent-bright) 55%,var(--border));opacity:.6}
+.aaa-widget-stack-divider:hover::before,.aaa-widget-stack-divider:active::before{opacity:1;height:3px;background:var(--accent-bright)}
+.aaa-widget-dragging{opacity:.28;outline:2px dashed var(--accent-bright)}
+.aaa-widget-target-left{box-shadow:inset 5px 0 0 var(--accent-bright)!important}
+.aaa-widget-target-right{box-shadow:inset -5px 0 0 var(--accent-bright)!important}
+.aaa-widget-target-above{box-shadow:inset 0 5px 0 var(--accent-bright)!important}
+.aaa-widget-target-below{box-shadow:inset 0 -5px 0 var(--accent-bright)!important}
+.aaa-widget-empty-slot{align-self:stretch;width:100%;min-height:150px}
+.aaa-widget-delete-core-toggle{display:flex!important;align-items:flex-start;gap:9px;padding:13px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);cursor:pointer}
+.aaa-widget-delete-core-toggle input{accent-color:var(--accent-bright);width:16px;height:16px;margin:2px 0 0;flex-shrink:0}
+.aaa-widget-core-warning{border:1px solid #d66a65;border-radius:9px;background:color-mix(in srgb,#a72f2a 11%,var(--surface));padding:13px;display:flex;flex-direction:column;gap:12px}
+.aaa-widget-core-warning p{margin:0;color:var(--text);line-height:1.55}
+.aaa-widget-core-warning label{display:flex;flex-direction:column;gap:6px}
+.aaa-widget-core-warning input{min-height:38px;width:100%;border:1px solid #d66a65;border-radius:7px;background:var(--surface);color:var(--text);padding:8px 10px}
+.aaa-widget-danger-copy{color:#e59b93}
+@media(max-width:680px){.aaa-widget-layout-band{flex-direction:column}.aaa-widget-layout-lane-shell{flex:auto!important}.aaa-widget-layout-spacer,.aaa-widget-lane-divider{display:none}.aaa-widget-layout-item>.aaa-widget-card{min-height:170px!important}}
+.aaa-widget-config-source-actions{display:flex;flex-wrap:wrap;gap:7px}
+.aaa-widget-config-source-actions button{display:flex;align-items:center;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:11px;background:var(--surface-2)}
+.aaa-widget-config-source-actions button:hover{border-color:var(--accent-bright);color:var(--accent-text)}
+.aaa-widget-config-new-source{flex-wrap:wrap}.aaa-widget-config-new-source input{flex:1;min-width:150px}
+.aaa-widget-secondary-context-title{font-size:10px;font-weight:850;letter-spacing:.08em;color:var(--accent-text);display:flex;align-items:center;gap:8px;padding:8px}
+.aaa-widget-secondary-context-close{margin-left:auto;padding:6px;color:var(--muted)}
+.aaa-widget-db-editor{display:flex;flex-direction:column;gap:13px;padding:13px;min-width:0;color:var(--text)}
+.aaa-widget-db-editor>header{display:flex;align-items:start;justify-content:space-between;gap:8px;padding:4px 0 10px;border-bottom:1px solid var(--border)}
+.aaa-widget-db-editor>header>div{display:flex;flex-direction:column;gap:5px}
+.aaa-widget-db-editor>header span{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:.1em;color:var(--accent-text);font-weight:750}
+.aaa-widget-db-editor>header strong{font-size:18px}.aaa-widget-db-editor>header small{font-size:10px;color:var(--muted)}
+.aaa-widget-db-editor>header button{padding:6px;color:var(--muted)}
+.aaa-widget-db-editor>p{font-size:11px;line-height:1.6;color:var(--muted);margin:0}
+.aaa-widget-db-editor-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px}
+.aaa-widget-db-editor-heading button{display:flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:7px;padding:6px;color:var(--accent-text)}
+.aaa-widget-db-editor-fields{display:flex;flex-direction:column;gap:8px}
+.aaa-widget-db-editor-fields>div{display:flex;gap:7px;padding:7px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px}
+.aaa-widget-db-editor-fields input{min-width:0;flex:1}.aaa-widget-db-editor-fields select{max-width:110px;min-width:88px}
+.aaa-widget-db-editor-fields input,.aaa-widget-db-editor-fields select,.aaa-widget-db-editor-create input,.aaa-widget-db-editor-create select{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;padding:8px}
+.aaa-widget-db-editor-create{display:flex;flex-wrap:wrap;gap:7px}.aaa-widget-db-editor-create input{flex:1;min-width:130px}.aaa-widget-db-editor-create button{display:flex;align-items:center;gap:3px;padding:6px;border:1px solid var(--border);border-radius:6px}
+.aaa-widget-db-build-actions,.aaa-widget-db-build-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.aaa-widget-db-build-toolbar{justify-content:space-between;padding:12px 18px;border:1px solid var(--border);border-radius:10px;margin:12px 0;background:var(--surface-2);color:var(--muted);font-size:12px}
+.aaa-widget-card-resize{display:flex;justify-content:space-between;align-items:center;gap:8px;min-width:0;padding:8px 13px;border-top:1px solid var(--border);background:var(--surface-2)}
+.aaa-widget-card-resize label{display:flex;align-items:center;gap:7px;min-width:0;font-size:10px;color:var(--muted)}
+.aaa-widget-card-resize select{max-width:135px;min-width:75px;border:1px solid var(--border);border-radius:6px;padding:5px 7px;background:var(--surface);color:var(--text);font-size:11px}
+.aaa-widget-height-stepper{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.aaa-widget-height-stepper button{border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--accent-text);padding:5px}
+.aaa-widget-height-stepper button:disabled{opacity:.3}
+.aaa-widget-height-stepper span{font-size:10px;color:var(--muted);min-width:37px;text-align:center}
+.aaa-widget-section-empty{grid-column:1/-1;grid-row:span 1;border:1px dashed var(--border);border-radius:11px;display:grid;place-items:center;color:var(--muted);font-size:12px;padding:18px}
+.aaa-widget-studio-lab .aaa-widget-page-tabs{background:linear-gradient(125deg,var(--studio-tint),var(--surface-2))}
+.aaa-widget-studio-lab .aaa-widget-section-header h2{font-size:21px;font-weight:800}
+@media(max-width:640px){.aaa-widget-page-tabs{padding:8px;gap:6px}.aaa-widget-page-tabs button{min-height:33px;padding:7px 9px;font-size:11px}.aaa-widget-section-header{align-items:flex-start;flex-direction:column}.aaa-widget-section-actions{flex-wrap:wrap}.aaa-widget-section-toolbar{align-items:flex-start;flex-direction:column}.aaa-widget-card-resize{flex-wrap:wrap}.aaa-widget-copy-modes{grid-template-columns:1fr}}
+
+/* Stable drag insertion guides. A hover never rearranges or resizes the layout. */
+.aaa-widget-layout-band{transition:none}
+.aaa-widget-layout-lane-shell{transition:none}
+.aaa-widget-layout-item{flex:0 0 auto!important;transition:none}
+.aaa-widget-layout-item>.aaa-widget-card{height:100%!important;flex:0 0 auto!important;transition:opacity .12s ease}
+.aaa-widget-dragging{opacity:.46;outline:1px dashed var(--accent-bright)}
+.aaa-widget-card[class*="aaa-widget-target-"]{box-shadow:none!important}
+.aaa-widget-card[class*="aaa-widget-target-"]::after{content:"";position:absolute;z-index:10;pointer-events:none;border-radius:99px;background:var(--accent-bright);box-shadow:0 0 8px color-mix(in srgb,var(--accent-bright) 45%,transparent)}
+.aaa-widget-card.aaa-widget-target-left::after{left:2px;top:7px;bottom:7px;width:3px}
+.aaa-widget-card.aaa-widget-target-right::after{right:2px;top:7px;bottom:7px;width:3px}
+.aaa-widget-card.aaa-widget-target-above::after{left:7px;right:7px;top:2px;height:3px}
+.aaa-widget-card.aaa-widget-target-below::after{left:7px;right:7px;bottom:2px;height:3px}
+.aaa-widget-canvas{position:relative}
+.aaa-widget-canvas.aaa-widget-section-end-highlight::after{content:"";position:relative;display:block;height:3px;width:100%;background:var(--accent-bright);border-radius:99px;box-shadow:0 0 8px var(--accent-soft)}
+.aaa-widget-title-group,.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group{display:flex;align-items:center;gap:9px;min-width:0}
+.aaa-widget-title-stack{display:flex;flex-direction:column;align-items:flex-start;min-width:0;gap:2px}
+.aaa-widget-title-button{max-width:100%;font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;cursor:pointer}
+.aaa-widget-title-button:hover,.aaa-widget-source-button:hover{color:var(--accent-text);text-decoration:underline}
+.aaa-widget-source-button{max-width:100%;font-size:10px;color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aaa-widget-title-stack>.aaa-widget-lab-kicker{display:block!important;grid-column:auto!important}
+.aaa-widget-height-caption{font-size:10px;color:var(--subtle);white-space:nowrap}
+.aaa-widget-dialog:has(.aaa-widget-delete-core-toggle){width:min(475px,100%)}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle{flex-direction:row!important;align-items:center;gap:10px;padding:11px 12px}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle span{display:inline;line-height:1.3;font-size:12px}
+.aaa-widget-dialog .aaa-widget-delete-core-toggle input{margin:0;flex:0 0 16px}
+
+/* Database workshop: the sidebar owns database navigation; center is all source content. */
+.aaa-demo-db-workshop-v2 .aaa-demo-db-detail{width:100%;min-width:0}
+.aaa-demo-db-workshop-v2 .aaa-demo-db-detail>header{align-items:flex-start;gap:14px;flex-wrap:wrap}
+.aaa-demo-db-view-tabs{display:flex;gap:8px;border-bottom:1px solid var(--border);margin:22px 0 0}
+.aaa-demo-db-view-tabs button{display:flex;align-items:center;gap:8px;padding:11px 15px;border-bottom:2px solid transparent;color:var(--muted);font-size:12px;font-weight:700}
+.aaa-demo-db-view-tabs button.active{border-bottom-color:var(--accent-bright);color:var(--accent-text)}
+.aaa-demo-db-view-tabs button span{padding:2px 6px;border-radius:99px;background:var(--surface-2);font-size:10px}
+.aaa-demo-db-record-view,.aaa-demo-db-property-view{padding-top:20px}
+.aaa-demo-db-view-heading{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+.aaa-demo-db-view-heading h3{font-size:15px;font-weight:800;color:var(--text)}
+.aaa-demo-db-view-heading p{font-size:11px;margin-top:3px}
+.aaa-demo-db-view-heading>button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:7px;padding:9px 12px;background:var(--surface-2);font-size:11px;font-weight:700;color:var(--text)}
+.aaa-demo-db-table-wrap{overflow:auto;max-width:100%;border:1px solid var(--border);border-radius:9px}
+.aaa-demo-db-record-table{border-collapse:collapse;min-width:650px;width:100%;font-size:12px;text-align:left}
+.aaa-demo-db-record-table th{background:var(--surface-2);position:sticky;top:0;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:800}
+.aaa-demo-db-record-table th,.aaa-demo-db-record-table td{padding:11px 13px;white-space:nowrap;border-bottom:1px solid var(--border);max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.aaa-demo-db-record-table tbody tr:last-child td{border-bottom:0}
+.aaa-demo-db-record-table tr.selected{background:var(--accent-soft)}
+.aaa-demo-db-record-table tbody tr:hover{background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.aaa-demo-db-record-name{font-weight:750;color:var(--text);max-width:230px;overflow:hidden;text-overflow:ellipsis;display:block;text-align:left}
+.aaa-demo-db-record-name:hover{text-decoration:underline;color:var(--accent-text)}
+.aaa-demo-db-empty-value{color:var(--subtle)}
+.aaa-demo-db-record-page{margin-top:20px;border:1px solid var(--accent);border-radius:13px;background:var(--surface-2);overflow:hidden}
+.aaa-demo-db-record-page>header{padding:18px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)}
+.aaa-demo-db-record-page>header small{font-size:10px;color:var(--accent-text);letter-spacing:.1em;font-weight:800}
+.aaa-demo-db-record-page>header input{display:block;width:100%;max-width:500px;background:transparent;color:var(--text);font-size:22px;font-weight:800;outline:none;margin:7px 0}
+.aaa-demo-db-record-page>header>button{color:var(--muted);padding:5px}
+.aaa-demo-db-record-properties{padding:10px 20px 18px;display:flex;flex-direction:column}
+.aaa-demo-db-record-property{display:grid;grid-template-columns:minmax(115px,32%) minmax(0,1fr);align-items:center;gap:15px;padding:11px 0;border-bottom:1px solid var(--border)}
+.aaa-demo-db-record-property:last-child{border-bottom:0}
+.aaa-demo-db-record-property>div:first-child{display:flex;flex-direction:column;gap:2px}
+.aaa-demo-db-record-property strong{font-size:12px;color:var(--text)}
+.aaa-demo-db-record-property small{color:var(--muted);font-size:10px}
+.aaa-demo-db-record-property input:not([type=checkbox]),.aaa-demo-db-record-property select,.aaa-demo-db-record-property textarea{width:100%;min-width:0;max-width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:12px}
+.aaa-demo-db-record-property input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
+.aaa-demo-db-relation-editor{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+.aaa-demo-db-property-list{display:flex;flex-direction:column;gap:10px}
+.aaa-demo-db-property-row{display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.aaa-demo-db-property-primary{display:grid;grid-template-columns:minmax(0,1fr) minmax(125px,33%);gap:12px}
+.aaa-demo-db-property-row label{font-size:10px;color:var(--muted);font-weight:750;display:flex;flex-direction:column;gap:5px}
+.aaa-demo-db-property-row input,.aaa-demo-db-property-row select{width:100%;min-width:0;border:1px solid var(--border);border-radius:7px;padding:9px;background:var(--surface);color:var(--text);font-size:12px}
+.aaa-demo-db-property-extra{padding-top:10px;border-top:1px solid var(--border)}
+.aaa-demo-db-property-extra small{color:var(--subtle);font-size:10px;font-weight:400}
+.aaa-demo-db-blank{padding:26px 15px;color:var(--muted);font-size:12px;border:1px dashed var(--border);border-radius:10px;display:flex;align-items:center;gap:10px}
+.aaa-demo-db-new-property{flex-wrap:wrap}
+@media(max-width:680px){.aaa-demo-db-record-property{grid-template-columns:1fr;gap:7px}.aaa-demo-db-property-primary{grid-template-columns:1fr}}
+
+/* Fluid widget layout: compact insertion guides and the paper-sketch handles. */
+.aaa-widget-drag-handle svg{pointer-events:none}
+.aaa-widget-drag-handle{width:29px;height:27px;cursor:grab}
+.aaa-widget-resize-corner{
+  background:var(--accent-bright,var(--accent))!important;
+  clip-path:polygon(100% 0,100% 100%,0 100%);
+  width:20px;height:20px;opacity:.85;
+}
+.aaa-widget-resize-corner:hover{opacity:1}
+.aaa-widget-layout-band{position:relative}
+.aaa-widget-layout-band.aaa-widget-band-new-row::after{
+  content:"";position:absolute;pointer-events:none;
+  left:0;right:0;bottom:-8px;height:3px;border-radius:5px;
+  background:var(--accent-bright,var(--accent));
+  box-shadow:0 0 7px var(--accent-soft);
+  z-index:12;
+}
+.aaa-widget-card.aaa-widget-target-new-row::after{display:none}
+.aaa-widget-gap-setting{border-top:1px solid var(--border);padding:18px 0 10px;margin-top:18px}
+.aaa-widget-gap-setting h3{margin:0 0 8px;font-size:13px}
+
+/* Full-width row drop target occupies the comfortable space between bands;
+   it is mounted only during a drag, so ordinary editing is unaffected. */
+.aaa-widget-band-row-drop{
+  position:absolute;left:0;right:0;bottom:-19px;height:34px;z-index:14;
+  background:transparent;pointer-events:auto;
+}
+
+/* Mobile Companion: one truly viewport-centered canvas, independent of desktop column width.
+   The later desktop rule previously reset position:relative after mobile fixed styling. */
+.aaa-companion-mobile-second{display:none!important}
+@media (max-width:767px){
+  .aaa-hybrid-companion,
+  .aaa-hybrid-companion.aaa-hybrid-overlay,
+  .aaa-hybrid-companion.aaa-hybrid-pinned{
+    position:fixed!important;
+    inset:0!important;
+    left:0!important;right:0!important;top:0!important;bottom:0!important;
+    width:100vw!important;width:100dvw!important;
+    max-width:100vw!important;max-width:100dvw!important;
+    min-width:0!important;
+    height:100vh!important;height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;transform:none!important;
+    flex:0 0 auto!important;
+    box-sizing:border-box;
+    overflow:hidden;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    border:0;
+    z-index:110;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header{box-sizing:border-box;min-width:0;width:100%;gap:6px}
+  .aaa-hybrid-companion .aaa-companion-header-tabs{min-width:0;max-width:100%;flex:1 1 auto;overflow-x:auto;overscroll-behavior-x:contain}
+  .aaa-hybrid-companion .aaa-companion-header-actions{flex:0 0 auto;margin-left:0;gap:5px}
+  .aaa-hybrid-companion .aaa-companion-pin-action{display:none!important}
+  .aaa-hybrid-companion .aaa-companion-mobile-second{display:grid!important;width:34px;height:34px;min-width:34px}
+  .aaa-hybrid-companion .aaa-companion-mobile-second[aria-expanded="true"]{color:var(--accent-text);border-color:var(--accent)}
+  .aaa-hybrid-companion .aaa-hybrid-sections{width:100%;min-width:0;max-width:100%;overflow:hidden}
+  .aaa-hybrid-companion .aaa-hybrid-slot,
+  .aaa-hybrid-companion .aaa-hybrid-slot-body{width:100%;min-width:0}
+  .aaa-hybrid-companion .aaa-widget-config{width:100%;min-width:0;max-width:100%;box-sizing:border-box;overflow-x:hidden;overflow-y:auto}
+  .aaa-hybrid-companion .aaa-widget-config-pair{grid-template-columns:minmax(0,1fr)}
+  .aaa-hybrid-companion .aaa-widget-config-pair>*,.aaa-hybrid-companion .aaa-widget-field{min-width:0;max-width:100%}
+}
+
+/* Canonical number/date/checkbox presentation options. Values are never
+   converted in storage; only their visual display changes. */
+.aaa-property-progress{display:inline-flex;align-items:center;gap:8px;max-width:100%;min-width:108px;vertical-align:middle}
+.aaa-property-progress-track{display:block;width:72px;max-width:45%;height:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
+.aaa-property-progress-track>span{display:block;height:100%;border-radius:100px;background:var(--accent);transition:width .12s ease}
+.aaa-property-progress-label{color:var(--text);font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.aaa-demo-db-value-editor{display:flex;flex-direction:column;align-items:stretch;gap:5px;width:100%;min-width:0}
+.aaa-demo-db-value-editor>small{color:var(--muted);font-size:10px;line-height:1.4}
+.aaa-demo-db-property-row .aaa-demo-db-display-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:10px;padding-top:10px}
+.aaa-demo-db-display-settings>small{grid-column:1/-1;color:var(--muted)}
+.aaa-widget-db-property-format{display:flex;flex-direction:column;gap:5px;font-size:11px;color:var(--muted);grid-column:1/-1}
+.aaa-widget-db-property-format select{min-width:0;width:100%;color:var(--text)}
+
+
+/* Mobile navigation and Companion interaction corrections, Oct 2026.
+   The page title belongs in the fixed mobile header; the main navigation
+   remains unpersonalized and the desktop wordmark retains its profile subtitle. */
+@media (max-width:767px){
+  .aaa-shell{
+    position:relative;
+    height:100dvh;
+    padding-top:56px;
+    overflow:hidden;
+  }
+  .aaa-mobile-header{
+    position:fixed!important;
+    top:0;left:0;right:0;
+    height:56px;min-height:56px;
+    width:100%;
+    z-index:96;
+    display:grid!important;
+    grid-template-columns:44px minmax(0,1fr) 44px;
+    align-items:center;
+    gap:8px;
+    padding:0 12px;
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-mobile-header .aaa-mobile-companion-launcher{
+    width:40px;height:40px;min-width:40px;padding:5px;
+    display:grid;place-items:center;border-radius:9px;
+    color:var(--text);
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher{justify-self:start}
+  .aaa-mobile-header .aaa-mobile-companion-launcher{justify-self:end}
+  .aaa-mobile-header .aaa-mobile-current-page{
+    display:block;min-width:0;max-width:100%;
+    text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    font-size:14px;font-weight:750;letter-spacing:-.2px;
+  }
+  .aaa-mobile-header .aaa-mobile-companion-launcher[aria-expanded="true"]{
+    background:var(--accent-soft);color:var(--accent-text);
+  }
+  /* The global mobile header owns the Companion launcher on every page. */
+  .aaa-page-toolbar .aaa-companion-toolbar-button,
+  .aaa-calendar-content .pr11-calendar-toolbar .aaa-companion-toolbar-button{
+    display:none!important;
+  }
+  /* Mobile Safari: the drawer handle is an independent drag surface. Content
+     below it must be a real native momentum scroller, not an overflow-hidden
+     flex child that bubbles the gesture to page pull-to-refresh. */
+  .aaa-hybrid-companion,
+  .aaa-hybrid-companion .aaa-hybrid-sections{
+    overscroll-behavior-y:none;
+    min-height:0;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary{
+    min-height:0!important;
+    overflow:hidden;
+    flex-shrink:0;
+    overscroll-behavior:contain;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary>.aaa-hybrid-slot-body{
+    display:block!important;
+    min-height:0;
+    height:100%;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-widget-db-editor{
+    display:flex;
+    height:auto;max-height:none;
+    min-height:min-content;
+    overflow:visible!important;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-context,
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-thoughts{
+    height:auto;min-height:100%;
+    overflow:visible;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-agenda{
+    min-height:260px;
+    overscroll-behavior-y:contain;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-secondary .aaa-companion-timeline{
+    overscroll-behavior-y:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+}
+/* Inline record details: expand within each individual card, never in a single
+   shared detail pane appended to the bottom of the widget. */
+.aaa-widget-record-shell{
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  min-width:0;
+  max-width:100%;
+  align-self:start;
+}
+.aaa-widget-record-shell>.aaa-widget-record{
+  width:100%;
+  min-width:0;
+  flex-shrink:0;
+}
+.aaa-widget-record-shell.is-expanded>.aaa-widget-record{
+  border-radius:9px 9px 0 0;
+  border-bottom-color:var(--accent);
+}
+.aaa-widget-record-shell .aaa-widget-record[aria-expanded="true"]>svg{
+  transform:rotate(90deg);
+}
+.aaa-widget-inline-detail{
+  border:1px solid var(--accent);
+  border-top:0;
+  border-radius:0 0 9px 9px;
+  padding:13px;
+  margin:0;
+  background:var(--surface);
+  width:100%;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.aaa-widget-inline-detail .aaa-widget-field{
+  max-width:100%;
+  min-width:0;
+}
+.aaa-widget-inline-detail input,
+.aaa-widget-inline-detail select{
+  max-width:100%;
+  min-width:0;
+}
+.aaa-widget-records-list .aaa-widget-record-shell.is-expanded{
+  background:var(--surface-2);
+  border-radius:9px;
+}
+.aaa-widget-records-timeline .aaa-widget-inline-detail{
+  margin-left:4px;
+  width:calc(100% - 4px);
+}
+.aaa-widget-inline-table-row>td{
+  padding:0 10px 12px!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  max-width:none!important;
+}
+.aaa-widget-inline-table-row .aaa-widget-inline-detail{
+  border:1px solid var(--accent);
+  border-radius:9px;
+  margin-top:5px;
+}
+
+/* Mobile chrome alignment: both states share the same 56px header and
+   the same right-side 40px control target. */
+@media (max-width:767px){
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header){
+    position:relative!important;
+    top:0!important;
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    padding:0 12px!important;
+    display:flex!important;
+    align-items:center!important;
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-tabs{
+    height:100%;
+    align-self:stretch;
+    align-items:stretch;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-actions{
+    height:40px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0;
+  }
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header) .aaa-companion-header-actions>button:last-child{
+    width:40px!important;
+    height:40px!important;
+    min-width:40px!important;
+    flex:0 0 40px;
+    display:grid!important;
+    place-items:center;
+    border-radius:9px;
+    margin:0!important;
+    padding:0!important;
+  }
+  /* The old 58px top padding was reserved for a different mobile header.
+     It displaced the Companion tabs below the app header. */
+  .aaa-hybrid-companion .aaa-hybrid-header:not(.aaa-companion-secondary-header){
+    padding-top:0!important;
+  }
+  /* Brand icon is a compact glyph, not a framed/oversized clickable tile. */
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-sidebar-open .aaa-brand>.aaa-icon-slot{
+    appearance:none;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    outline-offset:2px;
+    padding:0!important;
+    overflow:visible;
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher>*{
+    display:block;
+    width:30px!important;
+    height:30px!important;
+    max-width:30px;
+    max-height:30px;
+    margin:auto;
+  }
+  .aaa-sidebar-open .aaa-brand>.aaa-icon-slot{
+    width:52px!important;
+    min-width:52px;
+    max-width:52px;
+    height:48px!important;
+    min-height:48px;
+    flex:0 0 52px;
+    display:grid;
+    place-items:center;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-logo{
+    width:34px!important;
+    height:34px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow:visible;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-brand-mark{
+    width:30px!important;
+    height:30px!important;
+    max-width:30px;
+    max-height:30px;
+  }
+}
+
+/* Mobile sidebar uses the same top chrome geometry as the Companion.
+   Both navigation and contextual subpages must remain reachable on short
+   iPhone viewports without scrolling the browser document. */
+@media (max-width:767px){
+  .aaa-sidebar.aaa-sidebar-open{
+    position:fixed!important;
+    inset:0!important;
+    top:0!important;
+    bottom:0!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    padding:0 0 env(safe-area-inset-bottom,0px)!important;
+    margin:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+    overscroll-behavior:contain;
+  }
+  .aaa-sidebar-open .aaa-brand{
+    height:56px!important;
+    min-height:56px!important;
+    max-height:56px!important;
+    flex:0 0 56px!important;
+    padding:0 12px!important;
+    align-items:center!important;
+    border-bottom:1px solid var(--border);
+    box-sizing:border-box;
+  }
+  .aaa-sidebar-open .aaa-brand>.aaa-icon-slot{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px!important;
+    min-height:40px!important;
+    flex:0 0 40px!important;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-logo{
+    width:30px!important;
+    height:30px!important;
+    display:grid;
+    place-items:center;
+  }
+  .aaa-sidebar-open .aaa-brand .aaa-brand-mark{
+    width:30px!important;
+    height:30px!important;
+  }
+  .aaa-sidebar-open .aaa-collapse-control{
+    width:40px!important;
+    height:40px!important;
+    flex:0 0 40px!important;
+    display:grid!important;
+    place-items:center;
+    margin-left:auto;
+    border-radius:9px;
+  }
+  .aaa-sidebar-open nav[aria-label="Main navigation"]{
+    display:block;
+    flex:0 1 auto!important;
+    min-height:0!important;
+    max-height:48dvh;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-sidebar-open .aaa-nav-row{
+    flex-shrink:0;
+    min-height:46px;
+  }
+  .aaa-sidebar-open .aaa-context{
+    flex:1 1 0!important;
+    min-height:0!important;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .aaa-sidebar-open .aaa-context-scroll{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-sidebar-open .aaa-profile{
+    flex:0 0 auto;
+  }
+}
+
+
+/* Sidebar V-next: logo clarity, desktop expand/collapse affordance, and
+   a two-level iPhone navigation surface with an optional draggable split. */
+.aaa-mobile-close-control,
+.aaa-mobile-current-section-control,
+.aaa-sidebar-nav-divider,
+.aaa-brand-expand-indicator{
+  display:none;
+}
+@media (min-width:768px){
+  .aaa-desktop-collapse-control{
+    display:grid;
+    place-items:center;
+    width:34px;
+    height:34px;
+    color:var(--muted);
+    border-radius:8px;
+  }
+  .aaa-desktop-collapse-control:hover{
+    color:var(--accent-text);
+    background:var(--ui-hover);
+  }
+  .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    position:relative;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon .aaa-brand-mark,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon .aaa-brand-mark{
+    visibility:hidden;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    display:block;
+    position:absolute;
+    left:50%;
+    top:50%;
+    transform:translate(-50%,-50%);
+    color:var(--accent-text);
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:var(--accent-soft)!important;
+    border:1px solid var(--accent)!important;
+  }
+}
+@media (max-width:767px){
+  /* The nav opener carries no theme-tinted square. Keep the ring and glyph
+     geometry, which have their own --ui-logo-border / --ui-logo-glyph colors. */
+  .aaa-mobile-header .aaa-mobile-brand-launcher,
+  .aaa-sidebar-open .aaa-brand-toggle{
+    background:transparent!important;
+    background-image:none!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    border-radius:0!important;
+  }
+  .aaa-mobile-header .aaa-mobile-brand-launcher .aaa-brand-mark,
+  .aaa-sidebar-open .aaa-sidebar-brand-icon,
+  .aaa-sidebar-open .aaa-sidebar-brand-icon .aaa-brand-mark{
+    background:transparent!important;
+    background-image:none!important;
+    border:0!important;
+    box-shadow:none!important;
+    filter:none!important;
+    border-radius:0!important;
+    outline:none;
+    overflow:visible;
+  }
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    display:grid;
+    place-items:center;
+    width:30px!important;
+    height:30px!important;
+  }
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-brand-mark{
+    width:30px!important;
+    height:30px!important;
+  }
+  .aaa-sidebar-open .aaa-desktop-collapse-control{display:none!important}
+  .aaa-sidebar-open .aaa-mobile-close-control{
+    display:grid!important;
+    place-items:center;
+    flex:0 0 40px;
+    height:40px;
+    width:40px;
+    min-width:40px;
+    padding:0;
+    margin-left:auto;
+    color:var(--text);
+    background:transparent;
+    border:0;
+    border-radius:9px;
+  }
+  .aaa-sidebar-open .aaa-mobile-close-control:active{background:var(--ui-hover)}
+  .aaa-sidebar-open .aaa-brand .aaa-wordmark{
+    flex:1;min-width:0;
+    display:flex!important;
+    flex-direction:column;
+    justify-content:center;
+    gap:2px;
+  }
+  .aaa-sidebar-open .aaa-wordmark strong{
+    font-size:14px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .aaa-sidebar-open .aaa-wordmark small{
+    font-size:10px;
+  }
+  .aaa-sidebar-open nav[aria-label="Main navigation"]{
+    min-height:0!important;
+    max-height:none!important;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+  .aaa-sidebar-open .aaa-mobile-current-section-control{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    box-sizing:border-box;
+    position:sticky;
+    top:0;
+    z-index:3;
+    height:56px;
+    min-height:56px;
+    width:100%;
+    padding:7px 14px;
+    color:var(--text);
+    background:var(--ui-sidebar);
+    border-bottom:1px solid var(--border);
+    text-align:left;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-icon{
+    flex:0 0 32px;
+    width:32px;height:32px;
+    display:grid;place-items:center;
+    color:var(--accent-text);
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface-2);
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text{
+    min-width:0;flex:1;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text strong{
+    font-size:14px;font-weight:750;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-text small{
+    font-size:10px;
+    line-height:1.15;
+    color:var(--muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-arrow{
+    flex:0 0 auto;
+    color:var(--muted);
+    transform:rotate(-90deg);
+    transition:transform .15s ease;
+  }
+  .aaa-sidebar-open .aaa-mobile-section-arrow.is-open{
+    transform:rotate(0);
+    color:var(--accent-text);
+  }
+  .aaa-sidebar-open .aaa-sidebar-nav-divider{
+    display:flex!important;
+    position:relative;
+    z-index:4;
+    flex:0 0 18px!important;
+    height:18px;
+    min-height:18px;
+    width:100%;
+    padding:0;
+    touch-action:none;
+    user-select:none;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages nav[aria-label="Main navigation"]{
+    flex:0 0 56px!important;
+    height:56px!important;
+    max-height:56px!important;
+    overflow:hidden!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages nav[aria-label="Main navigation"]>.aaa-nav-row{
+    display:none!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-pages nav[aria-label="Main navigation"]{
+    flex:1 1 0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-pages .aaa-context{
+    display:none!important;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-split nav[aria-label="Main navigation"]{
+    flex:0 0 var(--aaa-mobile-nav-percent,40%)!important;
+    height:auto!important;
+    max-height:calc(100dvh - 235px)!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch;
+  }
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-subpages .aaa-context,
+  .aaa-sidebar-open.aaa-sidebar-nav-mode-split .aaa-context{
+    display:flex!important;
+    flex:1 1 0!important;
+    min-height:0!important;
+  }
+  .aaa-sidebar-open .aaa-context-heading{
+    min-height:44px;
+    height:44px;
+  }
+  .aaa-sidebar-open .aaa-context-scroll{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;
+    touch-action:pan-y;
+  }
+}
+
+/* Preserve the Companion's theme, typography and border for tooltips sitewide.
+   Only long contextual explanations wrap instead of overflowing the tooltip. */
+.aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+  min-height:34px;
+  height:auto;
+  max-width:min(220px,calc(100vw - 16px));
+  white-space:normal;
+  overflow-wrap:anywhere;
+  line-height:1.3;
+}
+
+/* Arrange Mode V2: persistent, discoverable dividers. The visible stroke is
+   3-4px wide but every hit target is 14-18px. Use Mode renders none of these
+   controls, and the drag target never mutates layout until drop. */
+.aaa-widget-canvas .aaa-widget-layout-band{
+  overflow:visible;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider{
+  right:-14px;
+  width:14px;
+  top:0;bottom:0;
+  z-index:17;
+  display:block;
+  background:transparent;
+  cursor:ew-resize;
+  touch-action:none;
+  padding:0;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider::before{
+  content:"";
+  display:block;
+  position:absolute;
+  top:4px;bottom:4px;left:5px;
+  width:4px;
+  border-radius:99px;
+  opacity:1;
+  background:color-mix(in srgb,var(--accent-bright) 73%,var(--border));
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 14%,transparent);
+  transition:background .12s,width .12s,left .12s;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider:hover::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:focus-visible::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:active::before{
+  left:4px;width:6px;
+  background:var(--accent-bright);
+}
+.aaa-widget-layout-item{
+  overflow:visible;
+}
+.aaa-widget-height-divider{
+  position:absolute;
+  z-index:15;
+  display:block;
+  /* Reserve the corner so the solid triangular resize handle stays clickable. */
+  left:6px;right:27px;bottom:-9px;
+  height:18px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  padding:0;
+  cursor:ns-resize;
+  touch-action:none;
+}
+.aaa-widget-height-divider::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:7px;
+  height:4px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent-bright) 72%,var(--border));
+  opacity:1;
+}
+.aaa-widget-height-divider:hover::before,
+.aaa-widget-height-divider:focus-visible::before,
+.aaa-widget-height-divider:active::before{
+  height:5px;
+  top:6px;
+  background:var(--accent-bright);
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop{
+  position:absolute;
+  left:0;right:0;
+  bottom:-16px;
+  width:100%;
+  height:13px;
+  z-index:19;
+  display:block;
+  cursor:copy;
+  background:transparent;
+  pointer-events:auto;
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop::before{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:5px;
+  height:3px;
+  border-radius:99px;
+  background:color-mix(in srgb,var(--accent-bright) 55%,var(--border));
+  opacity:.84;
+  transition:height .12s,background .12s;
+}
+.aaa-widget-layout-band .aaa-widget-band-row-drop:hover::before,
+.aaa-widget-layout-band.aaa-widget-band-new-row .aaa-widget-band-row-drop::before{
+  background:var(--accent-bright);
+  opacity:1;
+  height:5px;top:4px;
+}
+.aaa-widget-layout-band.aaa-widget-band-new-row::after{
+  display:none!important;
+}
+@media(max-width:680px){
+  /* Mobile widget stacks still show height and row insertion dividers,
+     while adjacent desktop-only column dividers are hidden. */
+  .aaa-widget-canvas .aaa-widget-lane-divider{display:none}
+}
+/* A double click on the solid corner expands the view to a 100%-width band.
+   Keep its tooltip and focus outline discoverable in Arrange Mode. */
+.aaa-widget-resize-corner:focus-visible,
+.aaa-widget-height-divider:focus-visible,
+.aaa-widget-lane-divider:focus-visible{
+  outline:2px solid var(--accent-bright);
+  outline-offset:2px;
+}
+/* Collapsed sidebar: the emblem and expand glyph occupy identical square
+   targets and are treated with logo colors, never generic hover fills. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand-toggle{
+    display:grid!important;
+    place-items:center;
+    width:54px!important;
+    height:48px;
+    min-width:54px;
+    padding:0;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:28px!important;height:28px!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    display:grid;place-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark{
+    width:21px!important;height:21px!important;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    width:21px;height:21px;
+    color:var(--ui-logo-glyph,var(--accent-text))!important;
+    stroke:var(--ui-logo-glyph,var(--accent-text));
+    stroke-width:2.25;
+    filter:drop-shadow(0 0 1px var(--ui-logo-border,var(--accent)));
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+  }
+}
+/* Tooltips: desktop labels are placed to the right of their glyph and never
+   forced to wrap; long labels (Databases, Configure...) keep their full text. */
+@media(hover:hover) and (pointer:fine){
+  .aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+    height:34px;
+    max-width:min(360px,calc(100vw - 16px))!important;
+    white-space:nowrap!important;
+    overflow-wrap:normal;
+    word-break:normal;
+    padding:7px 12px;
+  }
+}
+/* Prevent Safari selection/callouts only for icon controls that have been
+   identified as eligible touch-help targets. Leave other page text selectable. */
+@media(hover:none), (pointer:coarse){
+  button[data-aaa-touch-help]{
+    -webkit-user-select:none!important;
+    user-select:none!important;
+    -webkit-touch-callout:none;
+  }
+  .aaa-companion-tab-tooltip.aaa-app-theme-tooltip{
+    -webkit-user-select:none;
+    user-select:none;
+  }
+}
+/* Compact Agenda blocks are readable even at 24-35px tall. The full start
+   and end remain available through the accessible name and block details. */
+.aaa-companion-block.aaa-companion-block-compact{
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  justify-content:flex-start;
+  padding:2px 6px;
+  gap:0;
+  min-height:0;
+}
+.aaa-companion-block.aaa-companion-block-compact strong{
+  display:block;
+  width:100%;
+  min-width:0;
+  font-size:11px;
+  font-weight:750;
+  line-height:1.12;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  overflow:hidden;
+}
+
+/* Keep the two mobile navigation emblems at the Companion's 21px glyph size
+   within the same generous 40px touch target. */
+@media(max-width:767px){
+  .aaa-mobile-header .aaa-mobile-brand-launcher .aaa-brand-mark,
+  .aaa-sidebar-open .aaa-brand-toggle .aaa-brand-mark{
+    width:21px!important;
+    height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
+  }
+}
+
+/* Arrange V3: dividers need an unmistakable visible stroke against both
+   dark and light themes. They exist only in Arrange Mode. */
+.aaa-widget-sections-arranging .aaa-widget-page-section+.aaa-widget-page-section{
+  border-top:4px solid color-mix(in srgb,var(--accent-bright) 90%,white 10%);
+  margin-top:22px;
+  padding-top:22px;
+}
+.aaa-widget-sections-arranging .aaa-widget-page-section+.aaa-widget-page-section::before{
+  content:"Section divider";
+  display:block;
+  width:max-content;
+  margin:-32px auto 13px;
+  padding:2px 9px;
+  position:relative;
+  background:var(--bg);
+  font-size:10px;
+  color:var(--accent-text);
+  font-weight:750;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider{
+  background:transparent!important;
+  z-index:24;
+  width:16px;
+  right:-15px;
+}
+.aaa-widget-canvas .aaa-widget-lane-divider::before{
+  width:5px!important;
+  left:5px!important;
+  border:1px solid var(--accent-bright);
+  opacity:1!important;
+  background:var(--accent-bright)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-bright) 24%,transparent),
+    0 0 10px color-mix(in srgb,var(--accent-bright) 45%,transparent);
+}
+.aaa-widget-canvas .aaa-widget-lane-divider:hover::before,
+.aaa-widget-canvas .aaa-widget-lane-divider:focus-visible::before{
+  width:7px!important;left:4px!important;
+  background:var(--accent-text)!important;
+}
+.aaa-widget-canvas .aaa-widget-height-divider::before,
+.aaa-widget-layout-band .aaa-widget-band-row-drop::before{
+  background:var(--accent-bright)!important;
+  height:4px;
+  opacity:1!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent-bright) 24%,transparent);
+}
+/* Mixed-width nested layout: in 33/33/33, the first column remains independent
+   while the right two form a group with a 67%-wide spanning drop target. */
+.aaa-widget-span-cluster{
+  display:flex;
+  flex-direction:column;
+  flex-shrink:1;
+  min-width:0;
+  gap:14px;
+  position:relative;
+}
+.aaa-widget-span-cluster-columns{
+  display:flex;
+  align-items:stretch;
+  min-width:0;
+  width:100%;
+  gap:14px;
+}
+.aaa-widget-span-cluster>.aaa-widget-layout-item{
+  flex:0 0 auto;
+  width:100%;
+  align-self:stretch;
+}
+.aaa-widget-span-insertion{
+  position:relative;
+  flex:0 0 15px;
+  height:15px;
+  display:block;
+  width:100%;
+  border:0;
+  margin:-7px 0 -7px;
+  padding:0;
+  background:transparent;
+  cursor:copy;
+  z-index:20;
+  touch-action:none;
+}
+.aaa-widget-span-insertion::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;
+  top:5px;
+  height:5px;
+  background:var(--accent-bright);
+  border-radius:99px;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent-bright) 25%,transparent);
+  opacity:.93;
+}
+.aaa-widget-span-insertion:hover::after,
+.aaa-widget-span-insertion.is-target::after{
+  top:4px;
+  height:7px;
+  background:var(--accent-text);
+}
+.aaa-widget-canvas .aaa-widget-band-row-drop{
+  height:16px;
+  bottom:-17px;
+}
+.aaa-widget-canvas .aaa-widget-band-row-drop::before{
+  height:5px;
+  top:4px;
+}
+/* The folded state leaves the complete original widget dimensions in storage.
+   Only its arrangement preview shrinks to one title/control strip. */
+.aaa-widget-card.aaa-widget-folded{
+  min-height:0!important;
+  overflow:visible;
+}
+.aaa-widget-folded .aaa-widget-card-head{
+  min-height:52px;
+  height:100%;
+  border:0;
+  padding:6px 12px;
+}
+.aaa-widget-folded .aaa-widget-title-button{
+  font-size:13px;
+}
+.aaa-widget-card-actions button[aria-pressed="true"]{
+  color:var(--accent-text);
+  background:var(--accent-soft);
+}
+.aaa-widget-sections-arranging .aaa-widget-section-toolbar{position:relative}
+.aaa-widget-style-options{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.aaa-widget-style-thumbnail-blend{
+  background:var(--bg)!important;
+  border:1px dashed var(--accent-bright);
+}
+.aaa-widget-style-thumbnail-blend i{
+  background:color-mix(in srgb,var(--accent) 42%,transparent);
+}
+.aaa-widget-style-blend .aaa-widget-card{
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-head{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-resize{
+  background:transparent!important;
+  border-color:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-body{
+  background:transparent!important;
+}
+.aaa-widget-style-blend .aaa-widget-table,
+.aaa-widget-style-blend .aaa-widget-table-scroll,
+.aaa-widget-style-blend .aaa-widget-records,
+.aaa-widget-style-blend .aaa-widget-record-shell{
+  background:transparent;
+}
+.aaa-widget-style-blend .aaa-widget-card.aaa-widget-arranging{
+  border:1px dashed color-mix(in srgb,var(--accent) 55%,transparent)!important;
+}
+/* The page owner may put chrome beneath content. The body and optional
+   section footer are unchanged, and the corner handle remains at the corner. */
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-body{order:1;}
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-resize{order:2;}
+.aaa-widget-card.aaa-widget-header-bottom .aaa-widget-card-head{
+  order:3;
+  border-top:1px solid var(--border);
+  border-bottom:0;
+  background:transparent;
+}
+.aaa-widget-card.aaa-widget-header-bottom.aaa-widget-folded .aaa-widget-card-head{
+  order:0;
+  border:0;
+}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-card-head{
+  border:0!important;
+  box-shadow:none!important;
+  background:transparent!important;
+  padding:8px 10px!important;
+  min-height:0;
+}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-card-actions{display:none!important;}
+.aaa-widget-card.aaa-widget-chrome-locked .aaa-widget-title-stack{
+  background:transparent!important;
+}
+/* Persistent page title and companion launcher stay reachable while content
+   beneath the toolbar scrolls. Mobile uses the separately fixed top bar. */
+.aaa-working-surface>.aaa-page-toolbar{
+  position:sticky;
+  top:0;
+  z-index:27;
+  background:var(--bg);
+  box-shadow:0 1px 0 var(--border);
+}
+@media(max-width:767px){
+  .aaa-page-toolbar{top:0;}
+  .aaa-widget-style-options{grid-template-columns:1fr;}
+  .aaa-widget-span-cluster{width:100%;flex:auto!important;}
+  .aaa-widget-span-cluster-columns{flex-direction:column;}
+  .aaa-widget-span-cluster-columns>.aaa-widget-layout-lane-shell{flex:auto!important;}
+}
+/* Header controls have the same 40x40 hit box and 21x21 glyph as the Companion
+   launcher, using the emblem's palette for the collapsed Expand affordance. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand{
+    box-sizing:border-box;
+    min-height:68px;
+    height:68px;
+    max-height:68px;
+    padding:0 14px;
+    gap:8px;
+    align-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle,
+  .aaa-collapsed .aaa-sidebar .aaa-brand-toggle{
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+    height:40px!important;
+    flex:0 0 40px;
+    padding:0!important;
+    margin:0;
+    display:grid!important;
+    place-items:center;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:21px!important;height:21px!important;
+    display:grid!important;place-items:center;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark,
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-expand-indicator{
+    width:21px!important;height:21px!important;
+  }
+  .aaa-sidebar .aaa-desktop-collapse-control{
+    display:grid!important;
+    place-items:center;
+    flex:0 0 40px;
+    width:40px!important;
+    height:40px!important;
+    min-width:40px;
+    margin-left:auto;
+  }
+  .aaa-sidebar .aaa-desktop-collapse-control svg{
+    width:21px;height:21px;
+  }
+  .aaa-collapsed .aaa-sidebar .aaa-brand{padding:0 14px!important;}
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-sidebar-brand-icon,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-sidebar-brand-icon{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+  }
+  .aaa-collapsed .aaa-brand-toggle:hover .aaa-brand-expand-indicator,
+  .aaa-collapsed .aaa-brand-toggle:focus-visible .aaa-brand-expand-indicator{
+    color:var(--ui-logo-glyph,var(--accent-text))!important;
+    stroke:var(--ui-logo-glyph,var(--accent-text))!important;
+    filter:drop-shadow(0 0 1px var(--ui-logo-border,var(--accent)))!important;
+  }
+}
+
+/* Final sizing override: older .aaa-logo rules use !important, so the
+   logo glyph and collapsed expand glyph must each explicitly override them. */
+@media(min-width:768px){
+  .aaa-sidebar .aaa-brand-toggle .aaa-sidebar-brand-icon{
+    width:21px!important;
+    height:21px!important;
+    min-width:21px!important;
+    max-width:21px!important;
+  }
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-mark,
+  .aaa-sidebar .aaa-brand-toggle .aaa-brand-expand-indicator{
+    width:21px!important;
+    height:21px!important;
+    max-width:21px!important;
+    max-height:21px!important;
+  }
+}
+
+
+/* Arrange Mode V4 — permanent, distinguishable insertion guides.
+   Purple follows the same theme accent used for the scrollbar and corner.
+   Targets stay visually discoverable BEFORE hovering, and never appear in
+   Use Mode (the buttons are not mounted there). */
+.aaa-widget-sections-arranging .aaa-widget-canvas{
+  gap:24px;
+  padding-bottom:10px;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-band{
+  position:relative;
+  padding-bottom:8px;
+  overflow:visible;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane{
+  gap:14px;
+  align-items:stretch;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop{
+  appearance:none;
+  outline-offset:1px;
+  border:0;
+  border-radius:6px;
+  background:transparent!important;
+  box-shadow:none;
+  display:block;
+  padding:0;
+  z-index:25;
+  cursor:copy;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop{
+  position:relative;
+  flex:0 0 18px;
+  width:calc(100% - 20px);
+  margin:-6px 10px 0;
+  height:18px;
+  min-height:18px;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-20px;
+  width:100%;
+  height:24px;
+  z-index:26;
+}
+.aaa-widget-sections-arranging .aaa-widget-divider-stroke{
+  display:block;
+  position:absolute;
+  height:4px;
+  top:7px;
+  left:2px;
+  right:2px;
+  background:var(--accent)!important;
+  border-radius:99px;
+  opacity:1;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent);
+  transition:height .12s ease,opacity .12s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop>.aaa-widget-divider-stroke{
+  height:5px;
+  top:10px;
+  left:0;
+  right:0;
+  background:var(--accent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-guide-label{
+  position:absolute;
+  z-index:1;
+  left:50%;
+  top:0px;
+  transform:translateX(-50%);
+  display:block;
+  color:var(--accent-text);
+  background:var(--bg);
+  padding:1px 8px;
+  font-size:10px;
+  line-height:16px;
+  white-space:nowrap;
+  letter-spacing:.02em;
+  font-weight:700;
+  border-radius:8px;
+  pointer-events:none;
+  opacity:.85;
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop>.aaa-widget-guide-label{
+  top:4px;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop:hover .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop.is-target .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop:hover .aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-band-new-row .aaa-widget-band-row-drop .aaa-widget-divider-stroke{
+  height:7px;
+  background:var(--accent)!important;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 35%,transparent),
+    0 0 12px color-mix(in srgb,var(--accent) 60%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop:hover .aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-lane-stack-drop.is-target .aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop:hover .aaa-widget-guide-label{
+  opacity:1;
+  color:var(--text);
+}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop::before{
+  display:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider::before{
+  background:var(--accent)!important;
+  border-color:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before{
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-insertion::after{
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)!important;
+}
+/* Resize bars and insertion bars are distinct: height bars adjust the card,
+   short bars add to a column, long bars create a new full-width row. */
+.aaa-widget-sections-arranging .aaa-widget-height-divider{
+  z-index:22;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before{
+  height:4px;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before{
+  height:6px;
+}
+/* Arrange cards reserve footer space OUTSIDE the saved Use Mode content
+   height, so the page preview isn't clipped simply because controls appear. */
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-head,
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-resize{
+  flex-shrink:0;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-body{
+  min-height:0;
+  scrollbar-color:var(--accent) transparent;
+}
+.aaa-widget-style-blend .aaa-widget-card.aaa-widget-arranging .aaa-widget-card-body{
+  outline:1px solid color-mix(in srgb,var(--accent) 18%,transparent);
+  outline-offset:-1px;
+  border-radius:7px;
+}
+/* Corner double click sets intrinsic height, without changing the width.
+   The existing fixed height remains saved and is restored on the next
+   double click, or replaced if the user manually drags to resize. */
+.aaa-widget-layout-fit{
+  height:auto!important;
+  min-height:160px;
+  align-self:flex-start;
+  width:100%;
+}
+.aaa-widget-layout-fit>.aaa-widget-card{
+  height:auto!important;
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  min-height:160px!important;
+}
+.aaa-widget-layout-fit>.aaa-widget-card>.aaa-widget-card-body{
+  flex:0 0 auto!important;
+  overflow:visible!important;
+  min-height:max-content!important;
+  max-height:none!important;
+  height:auto!important;
+}
+.aaa-widget-layout-fit>.aaa-widget-card>.aaa-widget-card-body .aaa-widget-table-scroll{
+  overflow-x:auto;
+  overflow-y:visible;
+  max-height:none!important;
+}
+.aaa-widget-layout-fit .aaa-widget-card-resize{
+  min-height:34px;
+}
+.aaa-widget-layout-fit .aaa-widget-records{
+  max-height:none!important;
+  overflow:visible!important;
+}
+@media(max-width:680px){
+  .aaa-widget-sections-arranging .aaa-widget-band-row-drop{bottom:-18px;}
+  .aaa-widget-sections-arranging .aaa-widget-lane-stack-drop{width:calc(100% - 16px);margin-left:8px;margin-right:8px;}
+}
+
+
+/* Navigation and widget control alignment: October 2026 preview corrections.
+   The collapsed rail exposes the emblem as the sole Expand control. The
+   separate Collapse icon must disappear after collapsing, including when
+   earlier desktop rules use display:grid!important. */
+@media(min-width:768px){
+  .aaa-collapsed .aaa-sidebar .aaa-desktop-collapse-control,
+  .aaa-collapsed .aaa-sidebar .aaa-collapse-control.aaa-desktop-collapse-control{
+    display:none!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+  .aaa-collapsed .aaa-sidebar .aaa-brand-toggle{
+    margin-inline:auto!important;
+  }
+}
+/* The six-dot drag grip is now part of the right-side action group, directly
+   beside Lock. It must never indent the title in Arrange Mode. */
+.aaa-widget-card-actions>.aaa-widget-drag-handle{
+  width:28px!important;
+  height:28px!important;
+  min-width:28px;
+  min-height:28px;
+  max-width:28px;
+  flex:0 0 28px;
+  padding:4px;
+  margin:0 2px;
+  border:1px dashed var(--border);
+  border-radius:6px;
+  display:grid!important;
+  place-items:center;
+  grid-row:auto!important;
+  cursor:grab;
+  color:var(--accent-text);
+  background:transparent;
+}
+.aaa-widget-card-actions>.aaa-widget-drag-handle:hover,
+.aaa-widget-card-actions>.aaa-widget-drag-handle:focus-visible{
+  background:var(--accent-soft);
+  border-color:var(--accent);
+}
+.aaa-widget-card-actions>.aaa-widget-drag-handle:active{cursor:grabbing}
+.aaa-widget-card-actions>.aaa-widget-drag-handle svg{pointer-events:none}
+.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group{
+  display:flex!important;
+  align-items:center!important;
+}
+.aaa-widget-studio-lab .aaa-widget-card-head>.aaa-widget-title-group>.aaa-widget-title-stack{
+  grid-column:auto;
+  min-width:0;
+}
+/* The Section adder now shares the persistent page-tab row beside +Page.
+   Keep the brief Arrange/Use hint in a constant-height strip so switching
+   modes does not shift the beginning of the section list. */
+.aaa-widget-page-tabs>.aaa-widget-section-add{
+  border-style:dashed;
+  color:var(--text);
+}
+.aaa-widget-page-tabs>.aaa-widget-section-add:hover{
+  border-color:var(--accent);
+  color:var(--accent-text);
+}
+.aaa-widget-section-toolbar{
+  min-height:22px;
+  height:auto;
+  display:flex;
+  align-items:center;
+  margin-bottom:0;
+  white-space:normal;
+}
+.aaa-widget-double-click-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:14px;
+  margin:12px 0;
+}
+.aaa-widget-double-click-grid label{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  color:var(--muted);
+  font-size:12px;
+}
+.aaa-widget-double-click-grid select{
+  min-width:0;
+  width:100%;
+  min-height:38px;
+  background:var(--surface-2);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 10px;
+}
+@media(max-width:760px){
+  .aaa-widget-double-click-grid{grid-template-columns:1fr;}
+}
+
+
+/* Compound-column height matching: stacking guides are placement overlays.
+   They must not add 18px + a flex gap to the measured widget height, or the
+   bottom of a right-side 67% span drifts away from the left column. */
+.aaa-widget-sections-arranging .aaa-widget-layout-lane{
+  position:relative;
+  flex:0 0 auto!important;
+  min-height:0;
+  padding:0;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane>.aaa-widget-lane-stack-drop{
+  position:absolute!important;
+  display:block!important;
+  flex:none!important;
+  left:10px!important;
+  right:10px!important;
+  width:auto!important;
+  height:18px!important;
+  min-height:18px!important;
+  bottom:-22px!important;
+  margin:0!important;
+  transform:none!important;
+  z-index:29;
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-lane>.aaa-widget-lane-stack-drop .aaa-widget-divider-stroke{
+  top:7px;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster-columns{
+  position:relative;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster{
+  gap:14px;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-insertion{
+  min-height:14px;
+  height:14px;
+  flex-basis:14px;
+  margin:-7px 0 -7px;
+}
+
+
+/* Arrange layout V5: actual left, right and internal column insertion guides.
+   These are ABSOLUTELY positioned on the full-width band: dropping a fourth
+   column redistributes its children, not the canvas or band footprint. */
+.aaa-widget-sections-arranging .aaa-widget-layout-band{
+  position:relative;
+  isolation:isolate;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop{
+  position:absolute!important;
+  top:3px;
+  bottom:32px;
+  width:17px;
+  min-height:35px;
+  padding:0;
+  z-index:28;
+  cursor:copy;
+  touch-action:none;
+  background:transparent!important;
+  border:0;
+  border-radius:8px;
+  appearance:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.aaa-widget-outer-left{left:-13px}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.aaa-widget-outer-right{right:-13px}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  width:3px;
+  left:7px;
+  border-radius:20px;
+  background:var(--accent)!important;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 28%,transparent);
+  opacity:.72;
+  transition:opacity .13s ease,width .13s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.is-target::before,
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:focus-visible::before{
+  width:6px;
+  left:5px;
+  opacity:1;
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::after{
+  content:"+";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  padding:1px 3px;
+  line-height:14px;
+  font-size:13px;
+  border-radius:4px;
+  color:var(--accent-text);
+  background:var(--bg);
+  pointer-events:none;
+  font-weight:750;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider::before{
+  background:var(--accent)!important;
+  border-color:var(--accent)!important;
+  opacity:.72!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider:hover::before{
+  opacity:1!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-insert-edge]{
+  cursor:ew-resize;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-insert-edge]::after{
+  content:"+";
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  font-size:12px;
+  font-weight:750;
+  padding:1px 3px;
+  line-height:14px;
+  color:var(--accent-text);
+  background:var(--bg);
+  border-radius:4px;
+  pointer-events:none;
+}
+/* The old solid purple underline belonged to an ambiguous height control.
+   The widget's dotted lower border now acts as the drag-to-resize edge.
+   Separate purple Stack and New row insertion guides remain visible. */
+.aaa-widget-sections-arranging .aaa-widget-height-divider{
+  background:transparent!important;
+  border:0;
+  box-shadow:none!important;
+  left:4px;
+  right:23px;
+  bottom:-8px;
+  height:16px;
+  z-index:22;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:focus-visible::before{
+  content:"";
+  top:6px!important;
+  left:0!important;
+  right:0!important;
+  width:auto!important;
+  height:0!important;
+  border-top:1px dotted color-mix(in srgb,var(--accent) 55%,var(--border));
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-height-divider:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-height-divider:focus-visible::before{
+  border-top-width:2px;
+  border-top-color:var(--accent);
+}
+/* Triangle fits completely inside the rounded card border; it no longer
+   protrudes from or gets cropped at the bottom-right boundary. */
+.aaa-widget-card.aaa-widget-arranging>.aaa-widget-resize-corner{
+  position:absolute;
+  right:3px!important;
+  bottom:3px!important;
+  width:15px!important;
+  height:15px!important;
+  border-radius:0 0 5px 0!important;
+  clip-path:polygon(100% 0,100% 100%,0 100%)!important;
+  background:var(--accent)!important;
+  cursor:ns-resize;
+  z-index:31;
+}
+.aaa-widget-card.aaa-widget-arranging{
+  border-radius:13px;
+}
+/* Per-widget container queries react to ACTUAL widget width (25%, 33%, etc)
+   rather than the user's total browser width. */
+.aaa-widget-card{
+  container-type:inline-size;
+  width:100%;
+}
+.aaa-widget-card-head{
+  position:relative;
+  min-width:0;
+}
+.aaa-widget-title-group,
+.aaa-widget-title-stack{
+  min-width:0;
+  overflow:hidden;
+}
+.aaa-widget-title-button{
+  display:block;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.aaa-widget-more-toggle{
+  display:none!important;
+}
+@container (max-width:390px){
+  .aaa-widget-card-head{
+    padding:9px 10px!important;
+    min-height:48px;
+    gap:4px;
+  }
+  .aaa-widget-card-head>.aaa-widget-title-group{
+    flex:0 1 45%;
+    max-width:calc(50% - 12px);
+    min-width:0;
+    overflow:hidden;
+    margin-right:auto;
+  }
+  .aaa-widget-card-head .aaa-widget-title-stack{
+    width:100%;
+  }
+  .aaa-widget-card-head .aaa-widget-title-button{
+    font-size:12px;
+    max-width:100%;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    overflow:hidden;
+  }
+  .aaa-widget-card-actions{
+    min-width:34px;
+    flex:0 0 34px;
+    justify-content:flex-end;
+  }
+  .aaa-widget-card-actions>button:not(.aaa-widget-more-toggle){
+    display:none!important;
+  }
+  .aaa-widget-card-actions>.aaa-widget-drag-handle{
+    position:absolute!important;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    z-index:3;
+    display:grid!important;
+    place-items:center;
+    background:transparent;
+    margin:0!important;
+    width:27px!important;
+    height:27px!important;
+    min-width:27px!important;
+  }
+  .aaa-widget-card-actions>.aaa-widget-more-toggle{
+    display:grid!important;
+    place-items:center;
+    width:27px!important;
+    min-width:27px;
+    height:27px;
+    flex:0 0 27px;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open{
+    position:absolute;
+    top:calc(100% - 2px);
+    right:7px;
+    z-index:45;
+    display:flex!important;
+    justify-content:flex-end;
+    align-items:center;
+    gap:3px;
+    flex:0 1 auto;
+    flex-wrap:wrap;
+    width:max-content;
+    max-width:min(310px,90vw);
+    min-width:150px;
+    padding:7px;
+    border:1px solid var(--accent);
+    border-radius:9px;
+    background:var(--surface);
+    box-shadow:0 10px 30px #0005;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>button:not(.aaa-widget-more-toggle){
+    display:grid!important;
+    place-items:center;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
+    display:none!important;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-more-toggle{
+    display:grid!important;
+  }
+  .aaa-widget-card-actions.aaa-widget-actions-open .aaa-widget-more-toggle{
+    color:var(--accent-text);
+  }
+  .aaa-widget-height-caption{
+    overflow:hidden;
+    max-width:100%;
+    text-overflow:ellipsis;
+  }
+}
+@media(hover:none), (pointer:coarse){
+  .aaa-widget-card-actions>.aaa-widget-drag-handle{
+    touch-action:none!important;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+}
+
+/* Compact overflow menu is a transient overlay, not cropped by its widget.
+   The title and drag grip stay in their normal positions until expanded. */
+.aaa-widget-card.aaa-widget-actions-expanded,
+.aaa-widget-card.aaa-widget-arranging:has(.aaa-widget-actions-open){
+  overflow:visible!important;
+  z-index:43;
+}
+@container (max-width:390px){
+  .aaa-widget-card.aaa-widget-arranging:has(.aaa-widget-actions-open) .aaa-widget-card-head{
+    z-index:43;
+  }
+}
+
+/* The six-dot movement grip belongs visually to the widget's header center,
+   rather than being pushed around by the changing number of action icons.
+   Titles use ellipsis before crossing into the handle's 29px square. */
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-head{
+  position:relative;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-title-group{
+  flex:0 1 43%;
+  max-width:calc(50% - 20px);
+  min-width:0;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-actions>.aaa-widget-drag-handle{
+  position:absolute!important;
+  left:50%;
+  top:50%;
+  right:auto;
+  transform:translate(-50%,-50%);
+  margin:0!important;
+  z-index:3;
+  display:grid!important;
+  place-items:center;
+  width:28px!important;
+  height:28px!important;
+}
+.aaa-widget-card.aaa-widget-arranging .aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
+  display:none!important;
+}
+
+
+/* Arrange V6: shared Stack lines exist whenever the BOTTOM of two adjacent
+   columns aligns. They are separate from short single-lane Stack guides
+   and from the full-width New row guide. All three remain visible at rest. */
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop{
+  position:absolute!important;
+  display:block!important;
+  min-width:0;
+  height:23px;
+  padding:0;
+  margin:0;
+  border:0;
+  border-radius:6px;
+  background:transparent!important;
+  appearance:none;
+  cursor:copy;
+  z-index:36;
+  touch-action:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop>.aaa-widget-divider-stroke{
+  position:absolute;
+  left:0;
+  right:0;
+  top:9px;
+  width:auto;
+  height:4px;
+  border-radius:999px;
+  background:var(--accent)!important;
+  opacity:.88;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent);
+  transition:height .13s ease,opacity .13s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop>.aaa-widget-guide-label{
+  position:absolute;
+  left:50%;
+  top:3px;
+  transform:translateX(-50%);
+  padding:2px 9px;
+  line-height:15px;
+  font-size:10px;
+  font-weight:760;
+  letter-spacing:.025em;
+  color:var(--accent-text);
+  background:var(--bg);
+  border-radius:7px;
+  white-space:nowrap;
+  pointer-events:none;
+  z-index:1;
+}
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop:hover>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop.is-target>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop:focus-visible>.aaa-widget-divider-stroke{
+  height:7px;
+  top:7px;
+  opacity:1;
+  box-shadow:0 0 10px color-mix(in srgb,var(--accent) 60%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-aligned-span-drop.is-target>.aaa-widget-guide-label{
+  color:var(--text);
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster{
+  min-width:0;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster>.aaa-widget-span-insertion{
+  position:relative;
+  min-height:20px;
+  height:20px;
+  flex-basis:20px;
+  width:100%;
+  margin:-5px 0 -7px;
+  z-index:25;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster>.aaa-widget-span-insertion .aaa-widget-guide-label{
+  top:-1px;
+  left:50%;
+  background:var(--bg);
+  padding:2px 8px;
+  font-size:10px;
+  border-radius:6px;
+  line-height:15px;
+  pointer-events:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster>.aaa-widget-span-insertion::after{
+  top:6px;
+  height:4px;
+  background:var(--accent)!important;
+  opacity:.85;
+}
+
+
+/* Arrange Mode V7: one continuous Combine bar per aligned visual row.
+   Each choice uses its nearest-center hit zone; only the selected pair
+   receives a highlighted segment, including its shared middle column. */
+.aaa-widget-sections-arranging .aaa-widget-combine-bar{
+  position:absolute;
+  left:0;right:0;
+  height:27px;
+  z-index:34;
+  background:transparent;
+  border:0;
+  pointer-events:auto;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-track{
+  position:absolute;
+  left:0;right:0;
+  top:11px;
+  height:4px;
+  background:var(--accent);
+  border-radius:999px;
+  opacity:.82;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent);
+  pointer-events:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-highlight{
+  position:absolute;
+  top:9px;
+  height:8px;
+  z-index:1;
+  border-radius:999px;
+  background:var(--accent);
+  box-shadow:0 0 12px color-mix(in srgb,var(--accent) 75%,transparent),
+    0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent);
+  pointer-events:none;
+  transition:left .11s ease,width .11s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-choice{
+  position:absolute;
+  top:0;
+  height:27px;
+  border:0;
+  padding:0;
+  margin:0;
+  background:transparent!important;
+  color:var(--accent-text);
+  z-index:2;
+  cursor:copy;
+  appearance:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-choice:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:1px;
+  border-radius:6px;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-label{
+  position:absolute;
+  top:4px;
+  transform:translateX(-50%);
+  white-space:nowrap;
+  padding:2px 8px;
+  font-size:10px;
+  line-height:14px;
+  background:var(--bg);
+  border-radius:8px;
+  color:var(--accent-text);
+  pointer-events:none;
+  font-weight:760;
+  z-index:3;
+}
+.aaa-widget-sections-arranging .aaa-widget-combine-choice:hover .aaa-widget-combine-label,
+.aaa-widget-sections-arranging .aaa-widget-combine-choice.is-target .aaa-widget-combine-label{
+  color:var(--text);
+  box-shadow:0 0 0 1px var(--accent);
+}
+/* Insertion targets above the FIRST row: shorter stacks for each current
+   visual column, plus one full-width New row above guide. These appear only
+   in Arrange Mode and don't change any saved widget dimension. */
+.aaa-widget-sections-arranging .aaa-widget-top-insertion{
+  display:flex;
+  flex-direction:column;
+  width:100%;
+  position:relative;
+  gap:8px;
+  padding:0 0 8px;
+  margin-bottom:0;
+}
+.aaa-widget-sections-arranging .aaa-widget-top-new-row,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack{
+  display:block;
+  position:relative;
+  min-width:0;
+  height:18px;
+  min-height:18px;
+  border:0;
+  padding:0;
+  background:transparent!important;
+  appearance:none;
+  cursor:copy;
+  color:var(--accent-text);
+  border-radius:5px;
+}
+.aaa-widget-sections-arranging .aaa-widget-top-stack-options{
+  display:flex;
+  align-items:stretch;
+  gap:14px;
+  width:100%;
+  min-width:0;
+}
+.aaa-widget-sections-arranging .aaa-widget-top-new-row>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack>.aaa-widget-divider-stroke{
+  position:absolute;
+  display:block;
+  left:2px;right:2px;
+  top:8px;
+  height:4px;
+  border-radius:99px;
+  background:var(--accent)!important;
+  opacity:.78;
+  pointer-events:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-top-new-row:hover>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack:hover>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack:focus-visible>.aaa-widget-divider-stroke,
+.aaa-widget-sections-arranging .aaa-widget-top-new-row:focus-visible>.aaa-widget-divider-stroke{
+  opacity:1;
+  height:6px;
+  top:7px;
+  box-shadow:0 0 11px color-mix(in srgb,var(--accent) 65%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-top-new-row>.aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack>.aaa-widget-guide-label{
+  position:absolute;
+  top:1px;
+  left:50%;
+  transform:translateX(-50%);
+  color:var(--accent-text);
+  border-radius:5px;
+  font-size:10px;
+  font-weight:720;
+  line-height:14px;
+  white-space:nowrap;
+  padding:1px 7px;
+  background:var(--bg);
+  pointer-events:none;
+  z-index:2;
+}
+@media(max-width:780px){
+  .aaa-widget-sections-arranging .aaa-widget-top-stack-options{
+    flex-direction:column;
+    gap:5px;
+  }
+  .aaa-widget-sections-arranging .aaa-widget-combine-label{
+    font-size:9px;padding:2px 4px;
+  }
+}
+
+/* Nested span guides float below the group's border instead of growing the
+   measured visual column; this keeps subsequent Combine lines aligned. */
+.aaa-widget-sections-arranging .aaa-widget-span-cluster{
+  position:relative;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster>.aaa-widget-span-insertion{
+  position:absolute!important;
+  left:0!important;right:0!important;
+  bottom:-25px!important;
+  width:100%;
+  height:20px!important;
+  min-height:20px!important;
+  flex:none!important;
+  margin:0!important;
+  z-index:28;
+}
+
+
+/* Arrange V8 — marked-up stacked edge lanes.
+   Keep the original full-height structural divider for width resizing, but
+   also expose a shorter add-widget guide along EACH widget's own left/right
+   edge. This creates separate targets for upper and lower merged rows rather
+   than one ambiguous full-height target. None changes layout width at rest. */
+.aaa-widget-sections-arranging .aaa-widget-layout-item{
+  position:relative;
+  isolation:isolate;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop{
+  appearance:none!important;
+  display:block!important;
+  position:absolute!important;
+  top:7px!important;
+  bottom:7px!important;
+  height:auto!important;
+  min-height:25px!important;
+  width:14px!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  z-index:39;
+  cursor:copy;
+  touch-action:manipulation;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop.aaa-widget-local-left{
+  left:1px!important;
+  right:auto!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop.aaa-widget-local-right{
+  right:1px!important;
+  left:auto!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::before{
+  content:"";
+  display:block;
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:6px;
+  width:2px;
+  border-radius:99px;
+  background:var(--accent)!important;
+  opacity:.45;
+  box-shadow:none!important;
+  transition:width .12s ease,opacity .12s ease,box-shadow .12s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::after{
+  content:"+";
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  display:grid;
+  place-items:center;
+  height:12px;
+  width:12px;
+  font-size:10px;
+  line-height:12px;
+  font-weight:650;
+  border:0;
+  border-radius:3px;
+  color:var(--accent-text);
+  background:var(--bg);
+  opacity:.55;
+  pointer-events:none;
+  transition:opacity .12s ease,color .12s ease;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop.is-target::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::before{
+  width:4px;
+  left:5px;
+  opacity:1;
+  box-shadow:0 0 9px color-mix(in srgb,var(--accent) 55%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::after,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop.is-target::after,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::after{
+  opacity:1;
+  color:var(--text);
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+
+/* One placement chooser replaces a forest of overlapping combination bars.
+   It is shared by column, stack, range, and full-width insertion guides. */
+.aaa-widget-placement-backdrop{
+  position:fixed;inset:0;z-index:10020;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px;background:#0009;backdrop-filter:blur(3px);
+}
+.aaa-widget-placement-dialog{
+  width:min(540px,100%);max-height:min(90vh,850px);overflow:auto;
+  color:var(--text);background:var(--surface);
+  border:1px solid var(--border);border-radius:15px;
+  box-shadow:0 24px 75px #0006;padding:20px;
+}
+.aaa-widget-placement-dialog>header,
+.aaa-widget-placement-dialog>footer{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+.aaa-widget-placement-dialog>header{margin-bottom:12px}
+.aaa-widget-placement-dialog>header small{color:var(--accent);font-size:10px;letter-spacing:.11em;font-weight:750}
+.aaa-widget-placement-dialog h3{font-size:19px;font-weight:720;margin:4px 0}
+.aaa-widget-placement-dialog p{font-size:12px;line-height:1.5;color:var(--muted)}
+.aaa-widget-placement-dialog button{cursor:pointer}
+.aaa-widget-placement-dialog>header>button{
+  display:grid;place-items:center;width:30px;height:30px;
+  border:1px solid var(--border);border-radius:8px;flex-shrink:0;
+}
+.aaa-widget-placement-field{
+  display:flex;flex-direction:column;gap:9px;padding:14px 0;
+  border-top:1px solid var(--border);
+}
+.aaa-widget-placement-field>strong,
+.aaa-widget-placement-field>label>strong{font-size:12px}
+.aaa-widget-placement-grid{display:grid;gap:5px}
+.aaa-widget-placement-grid>span{
+  display:grid;place-items:center;height:43px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--bg);color:var(--muted);font-size:12px;
+}
+.aaa-widget-placement-grid>span.selected{
+  background:color-mix(in srgb,var(--accent) 22%,var(--surface));
+  border-color:var(--accent);color:var(--text);
+}
+.aaa-widget-placement-ranges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.aaa-widget-placement-ranges>button{
+  border:1px solid var(--border);border-radius:7px;
+  padding:8px 5px;font-size:12px;background:var(--bg);
+}
+.aaa-widget-placement-ranges>button.selected{
+  border-color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 19%,var(--surface));
+}
+.aaa-widget-placement-ranges>button:disabled{
+  opacity:.35;cursor:not-allowed;
+}
+.aaa-widget-placement-options{display:flex;flex-direction:column;gap:9px}
+.aaa-widget-placement-options label{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}
+.aaa-widget-placement-options input{accent-color:var(--accent)}
+.aaa-widget-placement-field select{
+  width:100%;padding:9px 10px;background:var(--bg);
+  color:var(--text);border:1px solid var(--border);border-radius:8px;
+}
+.aaa-widget-placement-dialog>footer{justify-content:flex-end;margin-top:8px}
+.aaa-widget-placement-dialog>footer button{
+  display:flex;align-items:center;gap:6px;border:1px solid var(--border);
+  border-radius:8px;padding:9px 13px;font-size:12px;
+}
+.aaa-widget-placement-dialog>footer .aaa-widget-primary{border-color:var(--accent)}
+/* Structural dividers remain discoverable and resizable, but do not shout.
+   Their plus markers deliberately follow the tiny unframed glyph language
+   of the current Vercel preview, not the big circular mockup buttons. */
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::before{
+  width:2px!important;
+  left:7px!important;
+  opacity:.45!important;
+  box-shadow:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider::before{
+  width:2px!important;
+  left:7px!important;
+  opacity:.55!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::after,
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-insert-edge]::after{
+  font-size:10px!important;
+  font-weight:650!important;
+  line-height:12px!important;
+  padding:0 2px!important;
+  border-radius:3px!important;
+  opacity:.58!important;
+  box-shadow:none!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop.is-target::before,
+.aaa-widget-sections-arranging .aaa-widget-lane-divider:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-lane-divider:focus-visible::before{
+  width:4px!important;
+  left:6px!important;
+  opacity:1!important;
+  background:var(--accent)!important;
+  box-shadow:0 0 8px color-mix(in srgb,var(--accent) 55%,transparent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop:hover::after,
+.aaa-widget-sections-arranging .aaa-widget-lane-divider:hover::after{
+  opacity:1!important;
+}
+/* New-row and single/combined Stack bars stay separate and keep the familiar
+   purple stroke and centered text. The inside edge guides use a lighter idle
+   treatment so they don't obscure titles, cards, or widget footer controls. */
+
+/* Narrow-widget More actions remain IN THE SAME HEADER ROW. No purple-framed
+   flyout below the card; the title yields space and the centered six-dot
+   handle hides only while these actions are expanded. */
+@container (max-width:390px){
+  .aaa-widget-card-head>.aaa-widget-card-actions.aaa-widget-actions-open{
+    position:absolute!important;
+    top:0!important;
+    bottom:0!important;
+    right:6px!important;
+    height:100%!important;
+    width:auto!important;
+    max-width:calc(100% - 10px)!important;
+    min-width:0!important;
+    flex:0 1 auto!important;
+    flex-wrap:nowrap!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    gap:1px!important;
+    padding:0!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:var(--surface)!important;
+    box-shadow:none!important;
+    z-index:47;
+  }
+  .aaa-widget-card-head>.aaa-widget-card-actions.aaa-widget-actions-open>button:not(.aaa-widget-more-toggle){
+    display:grid!important;
+    place-items:center;
+    height:26px!important;
+    width:26px!important;
+    min-width:24px!important;
+    padding:0!important;
+    border:0;
+    border-radius:5px;
+  }
+  .aaa-widget-card-head>.aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
+    display:none!important;
+  }
+}

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { activeProfile, defaultPreferences, defaultSettings, effectiveFeatures, migrateThemeModes, type EffectiveFeatures, type ProfilePreferences, type Settings } from "./model";
 import { browserSettingsStore, tableSettingsStore } from "./store";
 import {makeStagingSlate,stagingSlateKey} from "./staging";
+import {demoWidgetPreviewKey,makeDemoWidgetPreview} from "./demo-preview";
 
 const storage = () => {
   try {
@@ -53,6 +54,18 @@ export function useSettings(email: string, userId: string) {
             } catch (e) {
               if (live) setError(`Slate could not be saved (${message(e)}). Your existing settings were kept.`);
             }
+          }
+        }
+        if(environment.ok&&environment.data==="demo"){
+          const local=storage();
+          if(!local?.getItem(demoWidgetPreviewKey)){
+            const seeded=makeDemoWidgetPreview(loaded);
+            try{
+              await store.save(seeded);
+              local?.setItem(demoWidgetPreviewKey,"1");
+              loaded=seeded;
+              persisted=true;
+            }catch(e){if(live)setError(`Developer preview settings could not be saved (${message(e)}).`)}
           }
         }
         if (!live) return;

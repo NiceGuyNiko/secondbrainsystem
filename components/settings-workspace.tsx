@@ -1,12 +1,15 @@
 "use client";
 import type { ComponentProps } from "react";
-import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight, PanelRight } from "lucide-react";
+import { SlidersHorizontal, Palette, Clock3, Bell, UserRound, Shield, Code2, ChevronRight, PanelRight, LayoutGrid } from "lucide-react";
 import AppearanceSettings from "./appearance-settings";
 import CompanionSettings from "./companion-settings";
 import type {CompanionPreferences} from "@/lib/companion-config";
 import type {CalendarDateFormat} from "@/lib/calendar-date-format";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
+import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
+import type {MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
+import type {WidgetDoubleClickAction} from "@/lib/widget-layout";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
 import { activeProfile } from "@/lib/settings/model";
 import { networkGuard } from "@/lib/demo/network-guard";
@@ -16,6 +19,7 @@ export const settingsSections = [
   {name:"Appearance",icon:Palette,description:"Themes, colours and how your workspace feels."},
   {name:"Calendar & Time",icon:Clock3,description:"Dates and calendar time preferences."},
   {name:"The Companion",icon:PanelRight,description:"Play-test tool layouts, Context, Agenda and Thoughts."},
+  {name:"Widgets",icon:LayoutGrid,description:"Choose how Library, Goals and reusable widgets look."},
   {name:"Notifications",icon:Bell,description:"Reminder and update preferences."},
   {name:"Account",icon:UserRound,description:"Your identity and account profile."},
   {name:"Privacy & Data",icon:Shield,description:"Account data and future export controls."},
@@ -30,10 +34,16 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   demoIsolation:boolean;
   agendaPreference:AgendaPreference; onAgendaPreference:(v:AgendaPreference)=>void;
   companion:CompanionPreferences; onCompanion:(p:Partial<CompanionPreferences>)=>void;
+  widgetStyle:"classic"|"studio"|"blend"; onWidgetStyle:(v:"classic"|"studio"|"blend")=>void;
+  widgetHeaderPosition:"top"|"bottom"; onWidgetHeaderPosition:(v:"top"|"bottom")=>void;
+  widgetCornerDoubleClick:WidgetDoubleClickAction; onWidgetCornerDoubleClick:(v:WidgetDoubleClickAction)=>void;
+  widgetBottomDoubleClick:WidgetDoubleClickAction; onWidgetBottomDoubleClick:(v:WidgetDoubleClickAction)=>void;
+  mobileTooltipMode:MobileTooltipMode; onMobileTooltipMode:(v:MobileTooltipMode)=>void;
   dateFormat:CalendarDateFormat; onDateFormat:(format:CalendarDateFormat)=>void;
   displayName:string; email:string; onProfile:()=>void;
 };
 export default function SettingsWorkspace(p:Props) {
+  const [fillGaps,setFillGaps]=useWidgetGapFill();
   const info=settingsSections.find(s=>s.name===p.section)!;
   if(p.section==="Appearance")return <AppearanceSettings {...p}/>;
   return <section className="aaa-settings aaa-settings-page">
@@ -42,9 +52,71 @@ export default function SettingsWorkspace(p:Props) {
     <p className="calendar-muted">{info.description}</p>
     {p.section==="General"&&<>
       <p className="aaa-preference-summary">{p.startDay} start · {p.clock} · Agenda: {p.agendaPreference} · Developer Mode {p.effective.developerMode?"on":"off"}</p>
+      <section className="aaa-settings-panel aaa-mobile-tooltip-settings" aria-labelledby="mobile-tooltip-heading">
+        <h2 id="mobile-tooltip-heading">Tooltips & help</h2>
+        <p className="calendar-muted">Choose how help labels appear on eligible icon-only controls when using a phone. Ordinary taps and page navigation continue to work normally.</p>
+        <label htmlFor="aaa-mobile-tooltip-mode">Mobile tooltips
+          <select id="aaa-mobile-tooltip-mode" value={p.mobileTooltipMode}
+            onChange={e=>p.onMobileTooltipMode(e.target.value as MobileTooltipMode)}>
+            <option value="hold">Press and hold (default)</option>
+            <option value="tap">Single tap</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+        <p className="calendar-muted">{p.mobileTooltipMode==="hold"
+          ?"Hold an eligible icon briefly for its tooltip. A normal tap performs the button's usual action without showing help."
+          :p.mobileTooltipMode==="tap"
+          ?"Tapping an eligible icon can show its tooltip while the button still works. Tap anywhere else to dismiss it and perform that action."
+          :"Mobile help tooltips are hidden; accessible labels remain available to screen readers."}</p>
+        <p className="calendar-muted">A tooltip closes on the next tap elsewhere without blocking that tap. On a PC, tooltips always appear on hover, regardless of this preference. Your choice is saved to your current profile.</p>
+      </section>
       <div className="aaa-settings-cards">{settingsSections.slice(1).map(({name,icon:Icon,description})=><button key={name} onClick={()=>p.onSection(name)}><span className="aaa-card-icon"><Icon size={22}/></span><span><strong>{name}</strong><small>{description}</small></span><ChevronRight size={17}/></button>)}</div>
     </>}
     {p.section==="The Companion"&&<CompanionSettings options={p.companion} onChange={p.onCompanion} preference={p.agendaPreference} onPreference={p.onAgendaPreference}/>}
+    {p.section==="Widgets"&&<section className="aaa-settings-card aaa-widget-style-settings" aria-labelledby="widget-style-heading">
+      <header><h2 id="widget-style-heading">Widget design</h2><p>Change the presentation of widgets in Library, Goals and Developing IT. Your data, saved views, page layouts and theme stay the same.</p></header>
+      <div className="aaa-widget-style-options" role="group" aria-label="Widget design style">
+        {(["classic","studio","blend"] as const).map(style=><button key={style} type="button" aria-pressed={p.widgetStyle===style} className={p.widgetStyle===style?"active":""} onClick={()=>p.onWidgetStyle(style)}>
+          <span className={"aaa-widget-style-thumbnail aaa-widget-style-thumbnail-"+style} aria-hidden="true"><i/><i/><i/></span>
+          <strong>{style==="classic"?"Classic":style==="studio"?"Studio":"Blend"}</strong>
+          <small>{style==="classic"?"Clean, practical cards with distinct surfaces.":style==="studio"?"Layered dashboards with richer accent treatments.":"Widget content stays visible, while its background and border blend into your page."}</small>
+        </button>)}
+      </div>
+      <p className="calendar-muted">Both styles inherit your selected Appearance theme. This choice is saved to your current test profile.</p>
+      <div className="aaa-widget-gap-setting">
+        <h3>Widget control placement</h3>
+        <Switch label="Put widget title and controls at the bottom" checked={p.widgetHeaderPosition==="bottom"}
+          onChange={value=>p.onWidgetHeaderPosition(value?"bottom":"top")}
+          description="Move the title, Configure, duplicate and other widget controls below the widget contents. Individual widget lock buttons can hide the control strip in Use Mode while keeping whichever title and labels you enabled."/>
+        <h3>Double-click actions</h3>
+        <p className="calendar-muted">Choose what a double-click does in Arrange Mode. These choices apply to widgets in Library and Goals and are saved to your current profile. Dragging still resizes normally.</p>
+        <div className="aaa-widget-double-click-grid">
+          <label htmlFor="aaa-widget-corner-double-click">Corner triangle
+            <select id="aaa-widget-corner-double-click" value={p.widgetCornerDoubleClick}
+              onChange={e=>p.onWidgetCornerDoubleClick(e.target.value as WidgetDoubleClickAction)}>
+              <option value="fit-content">Fit content height (default)</option>
+              <option value="match-height">Match neighboring height</option>
+              <option value="full-width">Move to full-width row</option>
+              <option value="none">Do nothing</option>
+            </select>
+          </label>
+          <label htmlFor="aaa-widget-bottom-double-click">Bottom height divider
+            <select id="aaa-widget-bottom-double-click" value={p.widgetBottomDoubleClick}
+              onChange={e=>p.onWidgetBottomDoubleClick(e.target.value as WidgetDoubleClickAction)}>
+              <option value="match-height">Match neighboring height (default)</option>
+              <option value="fit-content">Fit content height</option>
+              <option value="full-width">Move to full-width row</option>
+              <option value="none">Do nothing</option>
+            </select>
+          </label>
+        </div>
+        <p className="calendar-muted">Fit content height reveals the whole record view without changing its width. Match neighboring height adjusts the clicked widget. Full-width row changes its placement. You can always use the separate full-width button.</p>
+        <h3>Fluid layout</h3>
+        <Switch label="Automatically fill available space" checked={fillGaps} onChange={setFillGaps}
+          description="On by default. When you add, remove or resize columns, the remaining widgets fill gaps. Turn this off to preserve unoccupied width when moving widgets."/>
+        <p className="calendar-muted">Individual widget heights remain independent. This preference applies to Library and Goals canvases in this browser.</p>
+      </div>
+    </section>}
     {p.section==="Calendar & Time"&&<div className="aaa-settings-panel">
       <h2>Calendar preferences</h2>
       <p className="calendar-muted">Changes apply immediately and are saved to your current profile.</p>

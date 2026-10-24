@@ -15,7 +15,8 @@
     "db:env": "tsx scripts/db.ts env",
     "db:migrate": "tsx scripts/db.ts migrate",
     "db:reset": "tsx scripts/db.ts reset",
-    "db:verify": "node --env-file=.env.local --import tsx scripts/db-verify.ts"
+    "db:verify": "node --env-file=.env.local --import tsx scripts/db-verify.ts",
+    "db:contract": "node scripts/check-schema-contract.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",
