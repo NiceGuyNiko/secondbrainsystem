@@ -2433,7 +2433,8 @@ input[type="range"]{
   position:absolute;
   z-index:15;
   display:block;
-  left:6px;right:6px;bottom:-9px;
+  /* Reserve the corner so the solid triangular resize handle stays clickable. */
+  left:6px;right:27px;bottom:-9px;
   height:18px;
   border:0;
   border-radius:6px;
