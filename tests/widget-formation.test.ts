@@ -52,6 +52,18 @@ test("width lock at 75 percent remains exact when an unlocked neighbor holds 25 
   assert.deepEqual(resizeWidgetLane(frozen,[section],"a",-2),frozen);
   assert.deepEqual(resizeWidgetLane(frozen,[section],"b",1),frozen);
 });
+test("a new neighbor takes the remaining 25 percent beside a pre-locked 75 percent card",()=>{
+  const wide={...make("wide",0),width:9,config:{...make("wide",0).config,layoutWidth:9,sizeLocked:true}};
+  const narrow=make("narrow",1);
+  const result=placeWidget([wide,narrow],[section],"narrow",at("wide","right"));
+  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[9,3]);
+  assert.equal(result.find(w=>w.id==="wide")?.config.sizeLocked,true);
+});
+test("separated boundaries remain independent even after re-enabling magnetism",()=>{
+  const free=resizeWidgetLane(two(),[section],"a",-2,true,prefs({magneticSnapping:false}));
+  const restored=resizeWidgetLane(free,[section],"a",1,true,prefs({magneticSnapping:true}));
+  assert.deepEqual(bands(restored)[0].lanes.map(l=>l.width),[5,6]);
+});
 test("a third physical occupant cannot compress a fully allocated 75/25 locked row",()=>{
   const wide=resizeWidgetLane(two(),[section],"a",3);
   const locked=wide.map(w=>w.id==="a"?{...w,config:{...w.config,sizeLocked:true}}:w);
@@ -96,6 +108,13 @@ test("Column Rise keeps lane membership, Left-to-Right Reflow fills across lanes
   const reflow=resizeWidgetHeight(arranged,[section],"a",240,prefs({fillFreedSpace:"left-to-right"}));
   assert.deepEqual(bands(column)[0].lanes.map(l=>l.widgets.map(w=>w.id)),[["a","c"],["b","d"]]);
   assert.deepEqual(bands(reflow)[0].lanes.map(l=>l.widgets.map(w=>w.id)),[["a","b","c"],["d"]]);
+});
+test("locking a row takes precedence over left-to-right automatic reflow",()=>{
+  let arranged=placeWidget([...two(),make("c",2)],[section],"c",at("a","below"));
+  arranged=placeWidget([...arranged,make("d",3)],[section],"d",at("b","below"));
+  const locked=setWidgetRowLock(arranged,"a",true);
+  const resized=resizeWidgetHeight(locked,[section],"a",240,prefs({fillFreedSpace:"left-to-right"}));
+  assert.deepEqual(bands(resized)[0].lanes.map(l=>l.widgets.map(w=>w.id)),[["a","c"],["b","d"]]);
 });
 test("size lock blocks height changes and save/reload preserves placement metadata",()=>{
   const fixed=two().map(w=>w.id==="a"?{...w,config:{...w.config,sizeLocked:true,rowPinned:true}}:w);

@@ -870,9 +870,12 @@ export default function WidgetStudio(p:Props){
         .find(b=>b.id===widgetBandIdentity(instance))?.lanes.some(l=>l.widgets.some(w=>w.config.rowLocked===true)):false,
       rowOccupancy:instance?widgetRowOccupancy(instanceList,widgetBandIdentity(instance)):undefined,
       magneticConnections:instance?(formation.magneticSnapping
-        ?widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
-          .find(b=>b.id===widgetBandIdentity(instance))?.lanes.length===1?"No adjacent widget":
-          "Adjacent columns share a magnetic boundary":"Snapping disabled"):undefined,
+        ?(()=>{
+          const band=widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
+            .find(b=>b.id===widgetBandIdentity(instance));
+          return band&&band.lanes.length>1&&Math.abs(12-band.lanes.reduce((n,l)=>n+l.width,0))<.005
+            ?"Adjacent columns share a magnetic boundary":"No magnetic connection";
+        })():"Snapping disabled"):undefined,
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),

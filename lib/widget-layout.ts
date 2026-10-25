@@ -529,10 +529,11 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
           shareNewColumn(destinationBand,newLane,target.newColumnShare);
         else if(lockedLanes.length){
           // Only unlocked neighbors donate space; a 75% size lock stays 75%.
-          const available=12-lockedWidth-MIN_WIDTH;
+          const newWidth=freeLanes.length===0?12-lockedWidth:MIN_WIDTH;
+          const available=12-lockedWidth-newWidth;
           const unlockedTotal=freeLanes.reduce((sum,lane)=>sum+lane.width,0)||1;
           freeLanes.forEach(lane=>{lane.width=available*lane.width/unlockedTotal});
-          newLane.width=MIN_WIDTH;
+          newLane.width=newWidth;
         }else rebalance(destinationBand);
       }else if(!canInsertWidgetColumn(destinationBand)){
         // Preserve the existing four-column cap behavior: a fifth card may
@@ -647,7 +648,10 @@ export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly W
   const index=band.lanes.indexOf(lane);
   const rowLocked=widgetBandLocked(band.lanes.flatMap(l=>l.widgets));
   const neighbor=band.lanes[index+1]??band.lanes[index-1];
-  const mustShare=rowLocked||formation.magneticSnapping;
+  const occupied=band.lanes.reduce((total,current)=>total+current.width,0);
+  // Magnetized boundaries synchronize only while physically touching.
+  // An intentionally freed gap must not suddenly consume a neighbor's width.
+  const mustShare=rowLocked||(formation.magneticSnapping&&Math.abs(12-occupied)<.005);
   if(mustShare&&neighbor&&!neighbor.widgets.some(widgetSizeLocked)){
     const adjusted=Math.max(MIN_WIDTH-lane.width,Math.min(neighbor.width-MIN_WIDTH,delta));
     lane.width+=adjusted;neighbor.width-=adjusted;
