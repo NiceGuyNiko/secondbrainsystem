@@ -102,6 +102,8 @@ function Workspace() {
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
   const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
   const [widgetInspection,setWidgetInspection]=useState<CompanionInspection|null>(null);
+  const [widgetPreviewMount,setWidgetPreviewMount]=useState<HTMLDivElement|null>(null);
+  const onWidgetPreviewMount=useCallback((node:HTMLDivElement|null)=>setWidgetPreviewMount(old=>old===node?old:node),[]);
   const [libraryEditIntent,setLibraryEditIntent]=useState(0);
   useEffect(()=>setWidgetInspection(null),[section,contextId]);
   const [widgetPages,setWidgetPages]=useState<{library:ContextItem[];goals:ContextItem[]}>({library:[],goals:[]});
@@ -747,6 +749,7 @@ function Workspace() {
           widgetConfiguration={widgetConfiguration}
           onCloseWidgetConfiguration={()=>setWidgetConfiguration(null)}
           widgetInspection={widgetInspection}
+          onWidgetPreviewMount={onWidgetPreviewMount}
           onActivateDeveloper={()=>{
             if(section==="Library"||section==="Goals")setLibraryEditIntent(value=>value+1);
           }}
@@ -783,6 +786,7 @@ function Workspace() {
                   cornerDoubleClick={preferences.widgetCornerDoubleClick} bottomDoubleClick={preferences.widgetBottomDoubleClick}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
                   developerActive={preferences.companion.primary==="developer"}
+                  previewMount={widgetPreviewMount}
                   editIntent={libraryEditIntent} onEditModeChange={editing=>{
                     if(!editing&&preferences.companion.primary==="developer")setCompanion({primary:"view"});
                   }} onInspect={setWidgetInspection}

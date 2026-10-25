@@ -42,6 +42,7 @@ type Props={
   configuration?:WidgetConfigureTarget|null;
   onConfigureClose?:()=>void;
   inspection?:CompanionInspection|null;
+  onPreviewMount?:(element:HTMLDivElement|null)=>void;
   onActivateDeveloper?:()=>void;
 };
 export default function Companion(p:Props){
@@ -50,6 +51,8 @@ export default function Companion(p:Props){
   useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary);},[p.options.primary,p.options.secondary]);
   const [fixed,setFixed]=useState<CompanionTool|null>(null);
   const [drawerHeight,setDrawerHeight]=useState(p.options.layout==="split"?100-p.options.splitPercent:0);
+  const [viewWidgetHeight,setViewWidgetHeight]=useState<number|null>(null);
+  const onViewWidgetHeight=useCallback((height:number)=>setViewWidgetHeight(old=>old===height?old:height),[]);
   const [databaseEditorId,setDatabaseEditorId]=useState<string|null>(null);
   const drawerHeightRef=useRef(drawerHeight);
   useEffect(()=>{
@@ -165,7 +168,6 @@ export default function Companion(p:Props){
       if(p.mode==="closed")p.onMode(p.preference==="column"?"pinned":"overlay");
       p.onActivateDeveloper?.();
     }
-    if(slot==="top"&&p.configuration&&tool!=="developer")p.onConfigureClose?.();
     if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
     let nextBottom=slot==="bottom"?tool:bottom;
@@ -223,13 +225,13 @@ export default function Companion(p:Props){
   const tabList=(slot:CompanionSlot,value:CompanionTool)=>
     <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
       className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
-      {slot==="top"&&p.configuration&&top!=="developer"&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
+      {slot==="top"&&p.configuration&&top!=="developer"&&top!=="view"&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
         <Settings2 size={20}/>{p.options.tabDisplay!=="icons"&&<span>CONFIGURE</span>}
       </button>}
-      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration&&top!=="developer"?false:value===t.key}
+      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration&&top!=="developer"&&top!=="view"?false:value===t.key}
         aria-label={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={(!p.configuration||top==="developer")&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
+        className={(!p.configuration||top==="developer"||top==="view")&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
         onMouseEnter={e=>showTabTooltip(e,t.title)}
         onMouseLeave={()=>setTabTooltip(null)}
         onFocus={e=>showTabTooltip(e,t.title)}
@@ -254,7 +256,9 @@ export default function Companion(p:Props){
       inspection={p.inspection??null} configuration={slot==="top"?p.configuration:null}
       onConfigureClose={p.onConfigureClose} onEditDatabase={editDatabaseInContext}
       onDragState={setDragCollapsed}/>;
-    if(tool==="view")return <CompanionViewPanel target={p.target} inspection={p.inspection??null}/>;
+    if(tool==="view")return <CompanionViewPanel target={p.target} inspection={p.inspection??null}
+      configuration={p.configuration} onPreviewMount={p.onPreviewMount}
+      onPreviewHeight={onViewWidgetHeight}/>;
     if(tool==="agenda")return <CompanionAgendaView
       date={panes[slot].agenda.date} today={p.today} now={p.now}
       timeZone={p.timeZone} jump={p.options.jump}
@@ -321,7 +325,7 @@ export default function Companion(p:Props){
       </header>
       <div className="aaa-hybrid-sections">
         <div className="aaa-hybrid-slot aaa-hybrid-primary">
-          <div className="aaa-hybrid-slot-body">{p.configuration&&top!=="developer"?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()} onEditDatabase={editDatabaseInContext}/>:body("top",top)}</div>
+          <div className="aaa-hybrid-slot-body">{p.configuration&&top!=="developer"&&top!=="view"?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()} onEditDatabase={editDatabaseInContext}/>:body("top",top)}</div>
         </div>
         <button type="button" className={"aaa-companion-pull"+(drawerHeight>0?" is-open":"")}
           role="separator" aria-label={drawerHeight>0?"Drag down to hide second tool":"Drag up to reveal second tool"}
@@ -365,7 +369,8 @@ export default function Companion(p:Props){
             {drawerHeight>0?<ChevronDown size={14}/>:<ChevronUp size={14}/>}
           </span><span className="aaa-companion-pull-track"/>
         </button>
-        {drawerHeight>0&&<div id="aaa-companion-second-pane" className="aaa-hybrid-slot aaa-hybrid-secondary" style={{flex:"0 0 "+drawerHeight+"%"}}>
+        {drawerHeight>0&&<div id="aaa-companion-second-pane" className="aaa-hybrid-slot aaa-hybrid-secondary"
+          style={{flex:"0 0 "+drawerHeight+"%",maxHeight:bottom==="view"&&viewWidgetHeight!==null?viewWidgetHeight+66:undefined}}>
           {secondaryHeader()}
           <div className="aaa-hybrid-slot-body">{databaseEditorId&&p.configuration?<WidgetDatabaseEditorPanel target={p.configuration} databaseId={databaseEditorId} onClose={()=>{
             setDatabaseEditorId(null);if(p.options.layout==="single"){drawerHeightRef.current=0;setDrawerHeight(0)}

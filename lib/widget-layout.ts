@@ -3,7 +3,7 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end"|"split-span-left"|"split-span-right"|"lower-adjacent-left"|"lower-adjacent-right";
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end"|"split-span-left"|"split-span-right"|"lower-adjacent-left"|"lower-adjacent-right"|"reorder";
 export type WidgetDropTarget={
   sectionId:string;targetId:string|null;edge:WidgetDropEdge;
   spanStartLane?:number;spanLaneCount?:number;
@@ -118,6 +118,31 @@ export function widgetLayoutBands(items:readonly PageWidget[]):WidgetLayoutBand[
  * the existing full-width band; the canvas itself never widens. */
 export function canInsertWidgetColumn(band:WidgetLayoutBand):boolean{
   return band.lanes.length>0&&band.lanes.length<MAX_WIDGET_COLUMNS;
+}
+
+/** Move an occupied column between its peers, shifting every intervening
+ * column one position instead of making an extra column. The width of each
+ * visible slot stays put while its widget changes. Merged spans are left
+ * intact and require a separate explicit rearrangement operation. */
+export function reorderWidgetColumn(
+  items:readonly PageWidget[],sections:readonly WidgetPageSection[],movingId:string,overId:string
+):PageWidget[]{
+  if(movingId===overId)return [...items];
+  const group=new Map<string,WidgetLayoutBand[]>();
+  for(const sectionId of new Set(["",...sections.map(s=>s.id),...items.map(widgetSectionId)]))
+    group.set(sectionId,mutableBands(items.filter(w=>widgetSectionId(w)===sectionId)));
+  for(const bands of group.values())for(const band of bands){
+    const source=band.lanes.findIndex(l=>l.widgets.some(w=>w.id===movingId));
+    const destination=band.lanes.findIndex(l=>l.widgets.some(w=>w.id===overId));
+    if(source<0||destination<0)continue;
+    if(source===destination||band.spans?.length)return [...items];
+    const widths=band.lanes.map(l=>l.width);
+    const [moving]=band.lanes.splice(source,1);
+    band.lanes.splice(destination,0,moving);
+    band.lanes.forEach((lane,index)=>{lane.width=widths[index]});
+    return publish(sections,items,group);
+  }
+  return [...items];
 }
 
 /** Two adjacent lanes can receive a shared spanning widget when their visible

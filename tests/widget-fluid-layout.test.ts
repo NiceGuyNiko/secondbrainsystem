@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {placeWidget,removeWidgetAndCompactLayout,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetLayoutBands} from "../lib/widget-layout";
+import {placeWidget,removeWidgetAndCompactLayout,reorderWidgetColumn,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetLayoutBands} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
 const section:WidgetPageSection={id:"history",page_id:"world",title:"World History",position:0};
@@ -51,6 +51,18 @@ test("deleting a column compacts the remaining lanes without a ghost fourth trac
   assert.deepEqual(band.lanes.map(lane=>lane.width),[4,4,4]);
   assert.equal(three.length,3);
   assert.equal(three.find(w=>w.id==="d")?.config.layoutLane,"lane-d");
+});
+
+test("dragging a full widget container shifts four occupied columns without adding a fifth",()=>{
+  const four=["a","b","c","d"].map((id,i)=>({...widget(id,3,i),
+    config:{sectionId:"history",layoutBand:"shared",layoutLane:"lane-"+id}}));
+  const second=reorderWidgetColumn(four,[section],"d","b");
+  assert.deepEqual(widgetLayoutBands(second)[0].lanes.map(l=>l.widgets[0].id),["a","d","b","c"]);
+  const first=reorderWidgetColumn(second,[section],"d","a");
+  assert.deepEqual(widgetLayoutBands(first)[0].lanes.map(l=>l.widgets[0].id),["d","a","b","c"]);
+  assert.equal(widgetLayoutBands(first)[0].lanes.length,4);
+  assert.deepEqual(widgetLayoutBands(first)[0].lanes.map(l=>l.width),[3,3,3,3]);
+  assert.deepEqual(first.map(w=>w.id).sort(),["a","b","c","d"]);
 });
 
 test("deleting one stacked widget preserves its sibling lane and three-column widths",()=>{

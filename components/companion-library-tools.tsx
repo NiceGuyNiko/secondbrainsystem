@@ -1,11 +1,12 @@
 "use client";
-import {useEffect,useState} from "react";
-import {ChevronDown,ChevronRight,Database,Eye,Grip,NotebookPen} from "lucide-react";
+import {useCallback,useEffect,useRef,useState} from "react";
+import {ChevronDown,ChevronRight,Code2,Eye,NotebookPen,Plus} from "lucide-react";
 import WidgetConfigurePanel from "@/components/widget-configure-panel";
 import type {WidgetConfigureTarget} from "@/lib/widget-system";
 import type {CompanionInspection,CompanionTarget} from "@/lib/companion-config";
 
-export function CompanionDeveloperView({profileKey,target,inspection,configuration,onConfigureClose,onEditDatabase,onDragState}:{
+/** Developer reuses the one canonical widget Configure editor. */
+export function CompanionDeveloperView({profileKey,target,inspection,configuration,onConfigureClose,onEditDatabase}:{
   profileKey:string;target:CompanionTarget;inspection:CompanionInspection|null;
   configuration?:WidgetConfigureTarget|null;onConfigureClose?:()=>void;
   onEditDatabase?:(id:string)=>void;onDragState?:(active:boolean)=>void;
@@ -27,48 +28,31 @@ export function CompanionDeveloperView({profileKey,target,inspection,configurati
     const next=!notesOpen;setNotesOpen(next);
     try{localStorage.setItem(visibilityKey,String(next))}catch{}
   };
-  const beginDrag=(event:React.DragEvent<HTMLElement>)=>{
-    const id=inspection?.definitionId;
-    if(!id){event.preventDefault();return}
-    event.dataTransfer.setData("application/x-aaa-widget-definition",id);
-    event.dataTransfer.setData("text/plain",id);
-    event.dataTransfer.effectAllowed="copy";
-    window.dispatchEvent(new CustomEvent("aaa-developer-widget-drag",{detail:{definitionId:id}}));
-    onDragState?.(true);
-  };
-  const endDrag=()=>{
-    window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));
-    onDragState?.(false);
-  };
-  return <div className="aaa-companion-library-tool aaa-companion-developer-view">
-    <section className="aaa-companion-dev-preview" aria-label="Widget build preview">
-      <div className="aaa-companion-dev-widget" draggable={!!inspection?.definitionId}
-        onDragStart={beginDrag} onDragEnd={endDrag} title="Drag the six-dot grip to place a reusable copy on the page">
-        <span className="aaa-companion-dev-drag-grip" aria-label="Drag widget onto the page"><Grip size={19}/></span>
-        <strong>{inspection?.title??"Select a widget to develop"}</strong>
-        <small>{inspection?.databaseName??"Choose a widget on this page"}</small>
-      </div>
-      {inspection?.samples?.length?<div className="aaa-companion-dev-preview-body">
-        {inspection.samples.map((record,index)=><div className="aaa-companion-dev-preview-record" key={index}>
-          <strong>{record.title}</strong><small>{record.detail}</small><ChevronRight size={14}/>
-        </div>)}
-      </div>:<div className="aaa-companion-dev-preview-empty"><Database size={22}/>
-        <span>{inspection?.databaseName&&inspection.databaseName!=="Not connected"
-          ?"No records in this connected view yet":"Connect a database source to build this widget."}</span></div>}
-      <p className="aaa-companion-dev-drag-help">Drag the six-dot handle into a section. Drop on a card to stack above or below; use a divider to choose a specific position.</p>
-    </section>
-    <section className="aaa-companion-dev-source" aria-label="Widget data source and configuration">
-      <h3><Database size={15}/> Source &amp; configuration</h3>
-      {configuration?<WidgetConfigurePanel selection={configuration} onClose={onConfigureClose??(()=>{})} onEditDatabase={onEditDatabase}/>
-        :<div className="aaa-companion-dev-source-summary">
-          <dl><div><dt>Database</dt><dd>{inspection?.databaseName??"Not connected"}</dd></div>
-            <div><dt>Saved view</dt><dd>{inspection?.viewName??"Default view"}</dd></div>
-            <div><dt>Renderer</dt><dd>{inspection?.renderer??"Table"}</dd></div></dl>
-          {inspection?.fields.length?<ul>{inspection.fields.map(field=><li key={field.name}>
-            <span>{field.name}</span><small>{field.type}</small></li>)}</ul>:null}
-          <p>Select a widget or add one to edit its source, display settings, and database fields.</p>
+  return <div className="aaa-companion-library-tool aaa-companion-developer-view aaa-companion-developer-workshop">
+    <header className="aaa-companion-workshop-heading">
+      <span><Code2 size={16}/> Developer</span>
+      <small>Reusable widget configuration</small>
+    </header>
+    <nav className="aaa-companion-workshop-tabs" aria-label="Developer widget views">
+      {configuration&&<span className="aaa-companion-workshop-tab active" title={configuration.title}>
+        <Code2 size={14}/>{configuration.title}
+      </span>}
+      <button type="button" className="aaa-companion-workshop-new" onClick={()=>
+        window.dispatchEvent(new Event("aaa-developer-create-widget"))}>
+        <Plus size={14}/> New Widget
+      </button>
+    </nav>
+    <div className="aaa-companion-workshop-config" aria-label="Widget configuration editor">
+      {configuration?<WidgetConfigurePanel key={configuration.id} selection={configuration}
+        onClose={onConfigureClose??(()=>{})} onEditDatabase={onEditDatabase}/>
+        :<div className="aaa-companion-workshop-empty">
+          <p>{inspection?`Select ${inspection.title} on the page to configure it.`:
+            "Choose a widget from the page, or create a new reusable widget."}</p>
+          <button type="button" onClick={()=>window.dispatchEvent(new Event("aaa-developer-create-widget"))}>
+            <Plus size={15}/> New Widget
+          </button>
         </div>}
-    </section>
+    </div>
     <section className="aaa-companion-dev-notes">
       <button className="aaa-companion-dev-notes-toggle" type="button" aria-expanded={notesOpen}
         onClick={toggleNotes}>{notesOpen?<ChevronDown size={15}/>:<ChevronRight size={15}/>}<NotebookPen size={15}/>
@@ -81,17 +65,28 @@ export function CompanionDeveloperView({profileKey,target,inspection,configurati
   </div>;
 }
 
-export function CompanionViewPanel({target,inspection}:{target:CompanionTarget;inspection:CompanionInspection|null}){
-  return <div className="aaa-companion-library-tool aaa-companion-view-panel">
-    <div className="aaa-companion-tool-intro"><Eye size={18}/><div><strong>View</strong><small>Context from what you select</small></div></div>
-    {inspection?<>
-      <section><small>SELECTED WIDGET</small><h3>{inspection.title}</h3>
-        <dl><div><dt>Type</dt><dd>{inspection.kind}</dd></div>
-          <div><dt>Connected database</dt><dd>{inspection.databaseName}</dd></div>
-          <div><dt>Saved view</dt><dd>{inspection.viewName}</dd></div></dl></section>
-      <section><h3>Available fields</h3>{inspection.fields.length?<ul>{inspection.fields.map(field=><li key={field.name}>
-        <span>{field.name}</span><small>{field.type}</small></li>)}</ul>:<p>No database fields are connected yet.</p>}</section>
-    </>:<section><small>CURRENT PAGE</small><h3>{target.title}</h3>
-      <p>Select a widget in the page to see its connected data, saved view, and relevant details here.</p></section>}
+export function CompanionViewPanel({target,inspection,configuration,onPreviewMount,onPreviewHeight}:{
+  target:CompanionTarget;inspection:CompanionInspection|null;
+  configuration?:WidgetConfigureTarget|null;onPreviewHeight?:(height:number)=>void;
+  onPreviewMount?:(element:HTMLDivElement|null)=>void;
+}){
+  const viewport=useRef<HTMLDivElement|null>(null);
+  useEffect(()=>{
+    const node=viewport.current;if(!node||!onPreviewHeight)return;
+    const update=()=>{
+      const card=node.querySelector<HTMLElement>(".aaa-companion-live-widget");
+      if(card)onPreviewHeight(Math.ceil(card.getBoundingClientRect().height));
+    };
+    const changes=new MutationObserver(update);
+    const size=new ResizeObserver(update);
+    changes.observe(node,{childList:true,subtree:true});size.observe(node);update();
+    return ()=>{changes.disconnect();size.disconnect()};
+  },[onPreviewHeight]);
+  const mount=useCallback((node:HTMLDivElement|null)=>{viewport.current=node;onPreviewMount?.(node)},[onPreviewMount]);
+  return <div className="aaa-companion-library-tool aaa-companion-view-panel aaa-companion-live-preview-view">
+    <div className="aaa-companion-tool-intro"><Eye size={17}/><div><strong>View</strong>
+      <small>{configuration?.title??inspection?.title??target.title} · live widget appearance</small></div></div>
+    <div className="aaa-companion-preview-viewport" ref={mount} aria-label="Live widget container preview"/>
+    {!inspection&&!configuration&&<p className="aaa-companion-preview-empty-text">Select a widget or create a New Widget in Developer to see its live appearance here.</p>}
   </div>;
 }
