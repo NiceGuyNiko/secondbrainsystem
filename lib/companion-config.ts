@@ -1,4 +1,4 @@
-export type CompanionTool = "agenda" | "context" | "thoughts";
+export type CompanionTool = "agenda" | "context" | "thoughts" | "developer" | "view";
 export type CompanionLayout = "single" | "split";
 export type CompanionJump = "first" | "midnight";
 export type CompanionVisibility = "rules" | "empty" | "manual";
@@ -21,9 +21,9 @@ export type CompanionPreferences = {
   launcher: "top" | "edge";
 };
 export const defaultCompanion: CompanionPreferences = {
-  uiVersion: 2,
+  uiVersion: 3,
   layout: "single", primary: "agenda", secondary: "context", matchingTool: "duplicate",
-  tabDisplay: "labels",
+  tabDisplay: "icons",
   widthPx: 380, resizableColumn: true,
   splitPercent: 52, jump: "first", visibility: "rules",
   follow: "page", quickLink: true, launcher: "top"
@@ -37,16 +37,20 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
   const oldPreviewDefault = !(typeof r.uiVersion === "number" && r.uiVersion >= 2)
     && r.primary === "context" && r.secondary === "agenda"
     && r.layout === "split" && r.splitPercent === 52;
-  const primary = oldPreviewDefault ? "agenda" : pick("primary", ["agenda", "context", "thoughts"] as const, defaultCompanion.primary);
-  const secondary = oldPreviewDefault ? "context" : pick("secondary", ["agenda", "context", "thoughts"] as const, defaultCompanion.secondary);
+  const primary = oldPreviewDefault ? "agenda" : pick("primary", ["agenda", "context", "thoughts", "developer", "view"] as const, defaultCompanion.primary);
+  const secondary = oldPreviewDefault ? "context" : pick("secondary", ["agenda", "context", "thoughts", "developer", "view"] as const, defaultCompanion.secondary);
   const matchingTool = pick("matchingTool", ["duplicate", "swap"] as const, defaultCompanion.matchingTool);
   return {
-    uiVersion: 2,
+    uiVersion: 3,
     layout: oldPreviewDefault ? "single" : pick("layout", ["single", "split"] as const, defaultCompanion.layout),
     primary,
     secondary: matchingTool === "swap" && secondary === primary ? (primary === "agenda" ? "context" : "agenda") : secondary,
     matchingTool,
-    tabDisplay: pick("tabDisplay", ["labels", "icons", "icon-labels"] as const, defaultCompanion.tabDisplay),
+    // One-time migration of the former labels-first default to the requested
+    // icon-first Companion. New explicit choices remain user-configurable.
+    tabDisplay: typeof r.uiVersion==="number"&&r.uiVersion>=3
+      ?pick("tabDisplay", ["labels", "icons", "icon-labels"] as const, defaultCompanion.tabDisplay)
+      :"icons",
     widthPx: typeof r.widthPx === "number" && Number.isFinite(r.widthPx)
       ? Math.min(720,Math.max(300,Math.round(r.widthPx))) : defaultCompanion.widthPx,
     resizableColumn: typeof r.resizableColumn === "boolean" ? r.resizableColumn : defaultCompanion.resizableColumn,
@@ -60,6 +64,10 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
   };
 }
 export type CompanionField = { id: string; label: string; value: string; kind?: "property" | "relation" };
+export type CompanionInspection = {
+  id:string; title:string; kind:string; databaseName:string; viewName:string;
+  fields:{name:string;type:string}[];
+};
 export type CompanionTarget = {
   id: string;
   title: string;

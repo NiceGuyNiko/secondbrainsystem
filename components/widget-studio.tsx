@@ -1,16 +1,17 @@
 "use client";
 import {Fragment,useCallback,useEffect,useRef,useState} from "react";
-import {ArrowDown,ArrowUp,BookOpen,Check,ChevronDown,ChevronRight,ChevronUp,Copy,Database,LayoutGrid,Link2,Lock,Unlock,MoreHorizontal,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
+import {ArrowDown,ArrowUp,BookOpen,Check,ChevronDown,ChevronRight,ChevronUp,Copy,Database,Eye,EyeOff,LayoutGrid,Link2,Lock,Unlock,MoreHorizontal,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
 import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,canInsertWidgetColumn,placeWidget,resizeWidgetLane,widgetDoubleClickDescription,widgetLayoutBands,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
+import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,canInsertWidgetColumn,placeWidget,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
 import PlanningWorkspace from "@/components/planning-workspace";
+import type {CompanionInspection} from "@/lib/companion-config";
 
 type Mode="library"|"goals"|"widgets";
 type Selection={kind:"definition"|"instance";id:string}|null;
@@ -18,6 +19,9 @@ type Props={
   mode:Mode;visualStyle?:"classic"|"studio"|"blend";headerPosition?:"top"|"bottom";
   cornerDoubleClick?:WidgetDoubleClickAction;bottomDoubleClick?:WidgetDoubleClickAction;
   activePageId?:string;newPageIntent?:number;
+  editIntent?:number;
+  onEditModeChange?:(editing:boolean)=>void;
+  onInspect?:(selection:CompanionInspection)=>void;
   onPages?:(items:{id:string;title:string}[])=>void;
   onPage?:(id:string)=>void;
   onConfigure:(target:WidgetConfigureTarget|null)=>void;
@@ -40,7 +44,11 @@ export default function WidgetStudio(p:Props){
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
   const [notice,setNotice]=useState("");
-  const [arrange,setArrange]=useState(true);
+  const [arrange,setArrange]=useState(false);
+  const [sectionPrefs,setSectionPrefs]=useState<Record<string,{collapsed:boolean;hideLabel:boolean;label:string}>>({});
+  const [sectionToolsVisible,setSectionToolsVisible]=useState(false);
+  const [editingSectionLabel,setEditingSectionLabel]=useState<string|null>(null);
+  const [sectionLabelDraft,setSectionLabelDraft]=useState("");
   // Temporary Arrange Mode folding only; saved sizes and record views remain
   // unchanged in Use Mode and after reload.
   const [collapsedWidgets,setCollapsedWidgets]=useState<string[]>([]);
@@ -158,6 +166,22 @@ export default function WidgetStudio(p:Props){
   const area=p.mode==="goals"?"goals":"library";
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
+  useEffect(()=>{if(p.editIntent)setArrange(true)},[p.editIntent]);
+  useEffect(()=>{
+    if(!page?.id)return;
+    try{
+      const raw=localStorage.getItem("aaa-section-display-v1:"+page.id);
+      const stored=raw?JSON.parse(raw):{};
+      setSectionPrefs(stored&&typeof stored==="object"&&!Array.isArray(stored)?stored:{});
+    }catch{setSectionPrefs({})}
+  },[page?.id]);
+  const updateSectionDisplay=(id:string,patch:Partial<{collapsed:boolean;hideLabel:boolean;label:string}>)=>{
+    const current=sectionPrefs[id];
+    const next={...sectionPrefs,[id]:{collapsed:current?.collapsed??false,hideLabel:current?.hideLabel??false,label:current?.label??"",...patch}};
+    setSectionPrefs(next);
+    try{if(page?.id)localStorage.setItem("aaa-section-display-v1:"+page.id,JSON.stringify(next))}catch{}
+  };
+  const changeMode=(editing:boolean)=>{setArrange(editing);p.onEditModeChange?.(editing)};
   const instanceList=data.instances.filter(w=>w.page_id===page?.id).sort((a,b)=>a.position-b.position);
   const allWidgetsCollapsed=instanceList.length>0&&instanceList.every(w=>collapsedWidgets.includes(w.id));
   const toggleAllWidgetCollapse=()=>setCollapsedWidgets(old=>allWidgetsCollapsed?old.filter(id=>!instanceList.some(w=>w.id===id))
@@ -453,7 +477,16 @@ export default function WidgetStudio(p:Props){
   const deleteInstance=async(id:string)=>{
     const {error}=await supabase.from("aaa_page_widgets").delete().eq("id",id);
     if(error){report(error);return}
-    setData(s=>({...s,instances:s.instances.filter(w=>w.id!==id)}));
+    const next=removeWidgetAndCompactLayout(instanceList,pageSections,id,fillGaps);
+    const prior=new Map(instanceList.map(w=>[w.id,w]));
+    setData(s=>({...s,instances:[...s.instances.filter(w=>w.page_id!==page?.id),...next]}));
+    const scheduled=pending.current.get("aaa_page_widgets:"+id);
+    if(scheduled){clearTimeout(scheduled.timer);pending.current.delete("aaa_page_widgets:"+id)}
+    for(const widget of next){
+      const old=prior.get(widget.id);
+      if(old&&(old.width!==widget.width||old.position!==widget.position||JSON.stringify(old.config)!==JSON.stringify(widget.config)))
+        queueSave("aaa_page_widgets",widget.id,{width:widget.width,position:widget.position,config:widget.config});
+    }
     if(selected?.id===id)setSelected(null);
     setRemoveTarget(null);setRemoveCore(false);
   };
@@ -814,9 +847,17 @@ export default function WidgetStudio(p:Props){
     const chromeLocked=widget.config.chromeLocked===true;
     const hideChrome=!arrange&&chromeLocked;
     const labelsShown=cfg.showTitle||cfg.showDatabase||cfg.showViewTag;
+    const inspect=()=>{
+      const source=sourceOf(widget);
+      p.onInspect?.({id:widget.id,title,kind:widget.kind,
+        databaseName:data.databases.find(db=>db.id===source.databaseId)?.name||"Not connected",
+        viewName:data.views.find(view=>view.id===source.viewId)?.name||"Default view",
+        fields:data.properties.filter(field=>field.database_id===source.databaseId).map(field=>({name:field.name,type:field.type}))});
+    };
     return <article key={widget.id} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${arrange?"aaa-widget-arranging":""} ${folded?"aaa-widget-folded":""} ${hideChrome?"aaa-widget-chrome-locked":""} ${p.headerPosition==="bottom"?"aaa-widget-header-bottom":""} ${fitContent?"aaa-widget-fit-content":""} ${drag===widget.id?"aaa-widget-dragging":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
       data-aaa-widget-id={widget.id}
       style={{height:"100%",minHeight:0}}
+      onClickCapture={inspect}
       onDragStart={e=>{if(!arrange)return;setDrag(widget.id);e.dataTransfer.setData("text/plain",widget.id);e.dataTransfer.effectAllowed="move"}}
       onDragOver={e=>widgetHover(e,widget)}
       onDrop={e=>{e.stopPropagation();e.preventDefault();if(drag===widget.id){setDrag(null);setDropHint(null)}else commitDrop(dropTargetFor(e,widget))}}
@@ -877,7 +918,7 @@ export default function WidgetStudio(p:Props){
           onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
           onDoubleClick={e=>{e.preventDefault();e.stopPropagation();
             resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
-            if(cornerAction!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,cornerAction,fillGaps,14,arrange?34:0));
+            if(cornerAction!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,cornerAction,fillGaps,14,WIDGET_EDITOR_FOOTER_PX));
           }}/>
       </>}
     </article>;
@@ -947,16 +988,16 @@ export default function WidgetStudio(p:Props){
       <div className="aaa-widget-hero"><div><span className="aaa-widget-eyebrow">{p.mode==="goals"?"GOALS / DASHBOARD":"LIBRARY / PAGES"}</span>
         <h1>{page?.title|| (p.mode==="goals"?"Goals":"Your Library")}</h1>
         <p>{p.mode==="goals"?"Your existing goals, projects and tasks alongside reusable database widgets.":"Create pages and combine reusable database views into a readable workspace."}</p></div>
-        <div className="aaa-widget-hero-actions"><div className="aaa-widget-mode" role="group" aria-label="Page editing mode">
-          <button aria-pressed={!arrange} className={!arrange?"active":""} onClick={()=>setArrange(false)}>Use mode</button>
-          <button aria-pressed={arrange} className={arrange?"active":""} onClick={()=>setArrange(true)}>Arrange mode</button>
-        </div>{arrange&&page&&<button className="aaa-widget-secondary" aria-pressed={allWidgetsCollapsed}
+        <div className="aaa-widget-hero-actions"><button className="aaa-widget-mode-toggle" type="button"
+          aria-label={arrange?"Switch to View mode":"Switch to Edit mode"} aria-pressed={arrange}
+          onClick={()=>changeMode(!arrange)}>{arrange?<><Eye size={16}/> View</>:<><Pencil size={16}/> Edit</>}</button>
+        {arrange&&page&&<button className="aaa-widget-secondary" aria-pressed={allWidgetsCollapsed}
             title={allWidgetsCollapsed?"Expand all widgets":"Collapse all widgets to titles"} onClick={toggleAllWidgetCollapse}>
             {allWidgetsCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>} {allWidgetsCollapsed?"Expand all":"Collapse all"}
           </button>}
         {arrange&&page&&<button className="aaa-widget-secondary" onClick={()=>{setPageDraft(page.title);setRenamingPage(true)}}><Pencil size={15}/> Rename page</button>}
-        <button className="aaa-widget-secondary" disabled={busy} onClick={()=>setCreatingDatabase(true)}><Database size={16}/> New database</button>
-        <button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget(pageSections[0]?.id??"")}><Plus size={16}/> New widget</button>
+        {arrange&&<button className="aaa-widget-secondary" disabled={busy} onClick={()=>setCreatingDatabase(true)}><Database size={16}/> New database</button>}
+        {arrange&&<button className="aaa-widget-secondary" disabled={!page||busy} onClick={()=>void createAndPlaceWidget(pageSections[0]?.id??"")}><Plus size={16}/> New widget</button>}
         {arrange&&<button className="aaa-widget-primary" onClick={()=>{setPickerSection(pageSections[0]?.id??"");setAddWidget(true)}}><Plus size={16}/> Add widget</button>}</div>
       </div>
       <nav className="aaa-widget-page-tabs" aria-label={p.mode==="goals"?"Goals pages":"Library pages"}>
@@ -965,7 +1006,7 @@ export default function WidgetStudio(p:Props){
           {index===0?<LayoutGrid size={14}/>:<BookOpen size={14}/>} {item.title}
         </button>)}
         <button className="aaa-widget-page-add" onClick={()=>setCreatingPage(true)}><Plus size={14}/> Page</button>
-        {page&&<button className="aaa-widget-page-add aaa-widget-section-add" type="button"
+        {arrange&&page&&<button className="aaa-widget-page-add aaa-widget-section-add" type="button"
           title="Add a section to the current page" onClick={()=>setCreatingSection(true)}><Plus size={14}/> Section</button>}
       </nav>
       {renamingPage&&page&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();renamePage()}}>
@@ -987,31 +1028,49 @@ export default function WidgetStudio(p:Props){
         {!data.definitions.length&&<p>No saved widgets yet. Create one here and it will also appear in Developing IT → Widgets.</p>}
       </div>}
       {page?<div className={"aaa-widget-sections"+(arrange?" aaa-widget-sections-arranging":"")}>
-        <div className="aaa-widget-section-toolbar"><span>{arrange
-          ?"Drag a widget to an insertion line. Release to rearrange; drag its corner or column dividers to resize."
-          :"Switch to Arrange mode to rearrange or resize widgets."}</span></div>
+        {arrange&&<div className="aaa-widget-section-toolbar"><button type="button" className="aaa-widget-tips-toggle"
+          aria-expanded={sectionToolsVisible} onClick={()=>setSectionToolsVisible(open=>!open)}>
+          {sectionToolsVisible?"Hide editing tips":"Show editing tips"}</button>
+          {sectionToolsVisible&&<span>Drag widgets to insertion lines, or drag their corner and dividers to resize.</span>}</div>}
         {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
           <input autoFocus aria-label="New section name" placeholder="e.g. World History, Project Progress…" maxLength={100} value={newSection} onChange={e=>setNewSection(e.target.value)}/>
           <button type="submit" disabled={!newSection.trim()||busy}><Check size={15}/> Create section</button>
           <button type="button" aria-label="Cancel new section" onClick={()=>setCreatingSection(false)}><X size={15}/></button>
         </form>}
         {sectionGroups.map(({section,widgets},sectionIndex)=><section key={section.id||"overview"} className="aaa-widget-page-section" aria-label={section.title+" section"}>
-          <header className="aaa-widget-section-header"><div><small>SECTION {sectionIndex+1}</small>
+          <header className="aaa-widget-section-header"><div className="aaa-widget-section-heading-main">
+            <button type="button" className="aaa-widget-section-collapse" aria-expanded={!sectionPrefs[section.id]?.collapsed}
+              aria-label={(sectionPrefs[section.id]?.collapsed?"Expand ":"Collapse ")+section.title+" section"}
+              onClick={()=>updateSectionDisplay(section.id,{collapsed:!sectionPrefs[section.id]?.collapsed})}>
+              {sectionPrefs[section.id]?.collapsed?<ChevronRight size={17}/>:<ChevronDown size={17}/>}</button>
+            <div>{editingSectionLabel===section.id&&arrange?<form className="aaa-widget-section-label-editor" onSubmit={e=>{
+              e.preventDefault();updateSectionDisplay(section.id,{label:sectionLabelDraft});setEditingSectionLabel(null);
+            }}><input autoFocus maxLength={60} aria-label="Custom section label" value={sectionLabelDraft}
+              placeholder={`Section ${sectionIndex+1}`} onChange={e=>setSectionLabelDraft(e.target.value)}/>
+              <button type="submit" aria-label="Save section label"><Check size={13}/></button>
+              <button type="button" onClick={()=>setEditingSectionLabel(null)} aria-label="Cancel label"><X size={13}/></button></form>
+              :!sectionPrefs[section.id]?.hideLabel&&<small>{sectionPrefs[section.id]?.label||`SECTION ${sectionIndex+1}`}</small>}
             {renamingSection===section.id&&section.id?<form className="aaa-widget-section-rename" onSubmit={e=>{e.preventDefault();renameSection(section.id)}}>
               <input autoFocus maxLength={100} aria-label="Rename section" value={sectionDraft} onChange={e=>setSectionDraft(e.target.value)}/>
               <button type="submit" disabled={!sectionDraft.trim()} aria-label="Save section name"><Check size={15}/></button>
               <button type="button" onClick={()=>setRenamingSection(null)} aria-label="Cancel section rename"><X size={15}/></button>
             </form>:<h2>{section.title}</h2>}
-            <p>{widgets.length} {widgets.length===1?"widget":"widgets"} · reusable database views</p></div>
+            <p>{widgets.length} {widgets.length===1?"widget":"widgets"} · reusable database views</p></div></div>
             {arrange&&<div className="aaa-widget-section-actions">
               {section.id&&<><button disabled={pageSections.findIndex(s=>s.id===section.id)===0} aria-label={`Move ${section.title} section up`} onClick={()=>shiftSection(section.id,-1)}><ArrowUp size={15}/></button>
                 <button disabled={pageSections.findIndex(s=>s.id===section.id)===pageSections.length-1} aria-label={`Move ${section.title} section down`} onClick={()=>shiftSection(section.id,1)}><ArrowDown size={15}/></button>
                 <button aria-label={`Rename ${section.title} section`} onClick={()=>{setRenamingSection(section.id);setSectionDraft(section.title)}}><Pencil size={15}/></button>
+                <button aria-label="Customize section label" title="Customize section label"
+                  onClick={()=>{setSectionLabelDraft(sectionPrefs[section.id]?.label||`Section ${sectionIndex+1}`);setEditingSectionLabel(section.id)}}><BookOpen size={15}/></button>
+                <button aria-label={sectionPrefs[section.id]?.hideLabel?"Show section label":"Hide section label"}
+                  title={sectionPrefs[section.id]?.hideLabel?"Show label":"Hide label"}
+                  onClick={()=>updateSectionDisplay(section.id,{hideLabel:!sectionPrefs[section.id]?.hideLabel})}>
+                  {sectionPrefs[section.id]?.hideLabel?<Eye size={15}/>:<EyeOff size={15}/>}</button>
                 <button aria-label={`Remove ${section.title} section`} onClick={()=>void deleteSection(section.id)}><Trash2 size={15}/></button></>}
               <button className="aaa-widget-secondary" onClick={()=>void createAndPlaceWidget(section.id)} disabled={busy}><Plus size={14}/> Widget</button>
             </div>}
           </header>
-          <div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
+          {!sectionPrefs[section.id]?.collapsed&&<div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
             onDragOver={e=>{if(!arrange||!drag)return;e.preventDefault();hint({sectionId:section.id,targetId:null,edge:"section-end"})}}
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {arrange&&widgets.length>0&&(()=>{
@@ -1056,7 +1115,7 @@ export default function WidgetStudio(p:Props){
               const used=band.lanes.reduce((sum,lane)=>sum+lane.width,0);
               const gap=14;
               const heights=(w:PageWidget)=>measuredWidgetHeights[w.id]??
-                (arrange&&collapsedWidgets.includes(w.id)?58:widgetHeightPx(w)+(arrange?34:0));
+                (widgetFootprintHeight(w,arrange,collapsedWidgets.includes(w.id))??widgetHeightPx(w)+WIDGET_EDITOR_FOOTER_PX);
               const visualTracks=widgetVisualTracks(band,heights,gap);
               const largestEnd=Math.max(0,...visualTracks.map(track=>track.endPx));
               const bandPadding=arrange?66:undefined;
@@ -1097,9 +1156,12 @@ export default function WidgetStudio(p:Props){
               };
               const renderItem=(widget:PageWidget)=><div className={"aaa-widget-layout-item"+(widget.config.fitContent===true?" aaa-widget-layout-fit":"")} key={widget.id}
                 data-aaa-layout-widget-id={widget.id}
-                style={{height:arrange&&collapsedWidgets.includes(widget.id)?58:widget.config.fitContent===true?"auto":widgetHeightPx(widget)+(arrange?34:0)}}>
+                style={{height:widgetFootprintHeight(widget,arrange,collapsedWidgets.includes(widget.id))??"auto"}}>
                 {widgetCard(widget)}
                 {arrange&&(["left","right"] as const).map(side=>{
+                  // Ordinary lanes already have one shared full-height
+                  // divider. Only merged lower widgets need local split hits.
+                  if(typeof widget.config.layoutSpanCount!=="number")return null;
                   const target=edgePlacement(widget,side);
                   if(!target?.targetId)return null;
                   return <button key={"local-"+side} type="button"
@@ -1126,7 +1188,7 @@ export default function WidgetStudio(p:Props){
                   onDoubleClick={e=>{e.preventDefault();e.stopPropagation();
                     resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
                     const action=p.bottomDoubleClick??"match-height";
-                    if(action!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,action,fillGaps,14,arrange?34:0));
+                    if(action!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,action,fillGaps,14,WIDGET_EDITOR_FOOTER_PX));
                   }}
                   onKeyDown={e=>{
                     if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();
@@ -1290,7 +1352,7 @@ export default function WidgetStudio(p:Props){
             })}
             {arrange&&!widgets.length&&<button className="aaa-widget-empty-slot" onClick={()=>void createAndPlaceWidget(section.id)}><Plus size={20}/> Add a widget</button>}
             {!widgets.length&&!arrange&&<div className="aaa-widget-section-empty">No widgets in this section yet. Switch to Arrange mode to add some.</div>}
-          </div>
+          </div>}
         </section>)}
         {!instanceList.length&&!arrange&&<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>Create a new widget here or enter Arrange mode to add an existing one.</p><button disabled={busy} onClick={()=>void createAndPlaceWidget()}><Plus size={16}/> Create widget</button></div>}
       </div>:<div className="aaa-widget-empty aaa-widget-large"><LayoutGrid size={28}/><p>Create a page to start organizing your widgets.</p><button onClick={()=>setCreatingPage(true)}><Plus size={16}/> New page</button></div>}

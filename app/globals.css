@@ -3977,6 +3977,79 @@ input[type="range"]{
    purple stroke and centered text. The inside edge guides use a lighter idle
    treatment so they don't obscure titles, cards, or widget footer controls. */
 
+/* Library page edit controls: the mode switch occupies one fixed location, and
+   the single structural column divider owns the visible + insertion marker. */
+.aaa-widget-hero-actions>.aaa-widget-mode-toggle{
+  flex:0 0 92px;min-width:92px;display:inline-flex;align-items:center;
+  justify-content:center;gap:7px;padding:9px 12px;
+  color:var(--text);background:var(--surface-2);
+  border:1px solid var(--accent);border-radius:9px;
+  font-size:12px;font-weight:750;cursor:pointer;
+}
+.aaa-widget-hero-actions>.aaa-widget-mode-toggle:focus-visible,
+.aaa-widget-section-collapse:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+.aaa-widget-section-heading-main{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.aaa-widget-section-heading-main>div{min-width:0}
+.aaa-widget-section-label-editor{display:flex;align-items:center;gap:4px;margin-bottom:5px}
+.aaa-widget-section-label-editor input{max-width:155px;min-width:75px;background:var(--bg);color:var(--text);
+  border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11px}
+.aaa-widget-section-label-editor button{display:grid;place-items:center;width:23px;height:23px;
+  border:1px solid var(--border);border-radius:5px;cursor:pointer}
+.aaa-widget-section-collapse{
+  display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;
+  margin-top:4px;background:transparent;color:var(--accent-text);
+  border:1px solid var(--border);border-radius:6px;cursor:pointer;
+}
+.aaa-widget-tips-toggle{
+  cursor:pointer;color:var(--muted);font-size:11px;
+  border:1px solid var(--border);border-radius:6px;padding:5px 9px;
+  background:var(--surface);
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::after{
+  opacity:0!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::after,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::after{
+  opacity:.85!important;
+}
+
+/* Developer and View are contextual Companion tools, not separate page overlays. */
+.aaa-companion-library-tool{display:flex;flex-direction:column;gap:13px;padding:15px;color:var(--text)}
+.aaa-companion-tool-intro{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.aaa-companion-tool-intro svg{color:var(--accent-text);flex-shrink:0}
+.aaa-companion-tool-intro>div{display:flex;flex-direction:column;gap:2px}
+.aaa-companion-tool-intro strong{font-size:14px}
+.aaa-companion-tool-intro small{font-size:11px;color:var(--muted)}
+.aaa-companion-library-tool section{min-width:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:13px}
+.aaa-companion-library-tool h3{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750;margin:0 0 9px}
+.aaa-companion-library-tool p{font-size:12px;line-height:1.5;color:var(--muted);margin:4px 0 10px}
+.aaa-companion-library-tool section>small{font-size:10px;letter-spacing:.08em;color:var(--accent-text)}
+.aaa-companion-dev-widget{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--accent);border-radius:8px;background:var(--surface-2)}
+.aaa-companion-dev-widget>svg{color:var(--accent-text);flex-shrink:0}
+.aaa-companion-dev-widget>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.aaa-companion-dev-widget strong{font-size:12px;overflow-wrap:anywhere}
+.aaa-companion-dev-widget small{font-size:10px;color:var(--muted)}
+.aaa-companion-library-tool .aaa-companion-dev-future{font-size:11px;margin-top:10px}
+.aaa-companion-dev-notes textarea{display:block;resize:vertical;min-height:135px;width:100%;padding:10px;
+  border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);
+  font:inherit;font-size:12px;line-height:1.5}
+.aaa-companion-dev-notes>small{display:block;margin-top:7px;font-size:10px;color:var(--muted)}
+.aaa-companion-library-tool ul{display:flex;flex-direction:column;list-style:none;padding:0;margin:0;gap:0}
+.aaa-companion-library-tool li{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.aaa-companion-library-tool li:last-child{border-bottom:0}
+.aaa-companion-library-tool li small{font-size:10px;color:var(--muted)}
+.aaa-companion-view-panel dl{margin:10px 0 0}
+.aaa-companion-view-panel dl div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)}
+.aaa-companion-view-panel dt,.aaa-companion-view-panel dd{font-size:12px;margin:0}
+.aaa-companion-view-panel dt{color:var(--muted)}
+.aaa-companion-view-panel dd{text-align:right;overflow-wrap:anywhere}
+
 /* Narrow-widget More actions remain IN THE SAME HEADER ROW. No purple-framed
    flyout below the card; the title yields space and the centered six-dot
    handle hides only while these actions are expanded. */

@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useRef,useState,type MouseEvent,type SyntheticEvent} from "react";
 import {createPortal} from "react-dom";
-import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft,Settings2,Database} from "lucide-react";
+import {CalendarDays,BookOpen,Lightbulb,ChevronUp,ChevronDown,Pin,PinOff,X,PanelsTopLeft,Settings2,Database,Code2,Eye} from "lucide-react";
 import {canPin,type AgendaPreference} from "@/lib/agenda-state";
 import type {AgendaMode} from "@/components/agenda";
 import {type Occurrence,type CalendarEvent,type CalendarTask} from "@/lib/calendar-layout";
@@ -16,11 +16,15 @@ import {positionCompanionPopover} from "@/lib/companion-popover-position";
 import WidgetConfigurePanel from "@/components/widget-configure-panel";
 import WidgetDatabaseEditorPanel from "@/components/widget-database-editor-panel";
 import type {WidgetConfigureTarget} from "@/lib/widget-system";
+import {CompanionDeveloperView,CompanionViewPanel} from "@/components/companion-library-tools";
+import type {CompanionInspection} from "@/lib/companion-config";
 
 const tools: {key:CompanionTool;title:string}[] = [
   {key:"agenda",title:"The Agenda"},
   {key:"context",title:"Context"},
-  {key:"thoughts",title:"Thoughts"}
+  {key:"thoughts",title:"Thoughts"},
+  {key:"view",title:"View"},
+  {key:"developer",title:"Developer"}
 ];
 type Props={
   preference:AgendaPreference;mode:AgendaMode;onMode:(mode:AgendaMode)=>void;
@@ -37,6 +41,8 @@ type Props={
   profileKey:string;
   configuration?:WidgetConfigureTarget|null;
   onConfigureClose?:()=>void;
+  inspection?:CompanionInspection|null;
+  onActivateDeveloper?:()=>void;
 };
 export default function Companion(p:Props){
   const [top,setTop]=useState<CompanionTool>(p.options.primary);
@@ -153,6 +159,10 @@ export default function Companion(p:Props){
   };
 
   const selectTool=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(tool==="developer"){
+      p.onMode("pinned");
+      p.onActivateDeveloper?.();
+    }
     if(slot==="top"&&p.configuration)p.onConfigureClose?.();
     if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
@@ -223,7 +233,7 @@ export default function Companion(p:Props){
         onFocus={e=>showTabTooltip(e,t.title)}
         onBlur={()=>setTabTooltip(null)}
         onContextMenu={e=>showTabMenu(e,slot,t.key)}>
-        {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={20}/>:t.key==="context"?<BookOpen size={20}/>:<Lightbulb size={20}/>)}
+        {p.options.tabDisplay!=="labels"&&(t.key==="agenda"?<CalendarDays size={20}/>:t.key==="context"?<BookOpen size={20}/>:t.key==="thoughts"?<Lightbulb size={20}/>:t.key==="view"?<Eye size={20}/>:<Code2 size={20}/>)}
         {p.options.tabDisplay!=="icons"&&<span>{t.title.toUpperCase()}</span>}
       </button>)}
     </nav>;
@@ -238,6 +248,8 @@ export default function Companion(p:Props){
     if(drawerHeightRef.current<35){drawerHeightRef.current=50;setDrawerHeight(50)}
   };
   const body=(slot:CompanionSlot,tool:CompanionTool)=>{
+    if(tool==="developer")return <CompanionDeveloperView profileKey={p.profileKey} target={p.target} inspection={p.inspection??null}/>;
+    if(tool==="view")return <CompanionViewPanel target={p.target} inspection={p.inspection??null}/>;
     if(tool==="agenda")return <CompanionAgendaView
       date={panes[slot].agenda.date} today={p.today} now={p.now}
       timeZone={p.timeZone} jump={p.options.jump}

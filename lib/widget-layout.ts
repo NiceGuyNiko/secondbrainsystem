@@ -20,6 +20,12 @@ export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidg
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
 
 export const MAX_WIDGET_COLUMNS=4;
+export const WIDGET_EDITOR_FOOTER_PX=34;
+/** Edit controls live inside the same saved visual footprint as View mode. */
+export function widgetFootprintHeight(item:PageWidget,editing:boolean,collapsed=false):number|null{
+  if(editing&&collapsed)return 58;
+  return item.config.fitContent===true?null:widgetHeightPx(item)+WIDGET_EDITOR_FOOTER_PX;
+}
 const MIN_WIDTH=2;
 // Fractions are essential for 33% + three equal children of the other 67%.
 // Persist a small, stable precision rather than rounding back to 12 integers.
@@ -209,6 +215,56 @@ const mutableBands=(items:readonly PageWidget[])=>widgetLayoutBands(items).map(b
   lanes:b.lanes.map(l=>({...l,widgets:[...l.widgets]})),
   spans:b.spans?.map(s=>({...s,widgets:[...s.widgets]}))
 }));
+
+/** Removing a placement also removes its physical lane when that lane is empty.
+ * Repair span anchors by lane identity, then distribute the vacated width.
+ * Otherwise the UI keeps a 25% ghost column after deleting one of four. */
+export function removeWidgetAndCompactLayout(
+  items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,fillGaps=true
+):PageWidget[]{
+  if(!items.some(w=>w.id===id))return [...items];
+  const remaining=items.filter(w=>w.id!==id);
+  const grouped=new Map<string,WidgetLayoutBand[]>();
+  for(const sectionId of new Set(["",...sections.map(s=>s.id),...items.map(widgetSectionId)])){
+    const bands=mutableBands(items.filter(w=>widgetSectionId(w)===sectionId));
+    const cleaned:WidgetLayoutBand[]=[];
+    for(const band of bands){
+      const anchors=(band.spans??[]).map(span=>({span,ids:band.lanes
+        .slice(span.startLane,span.startLane+span.laneCount).map(lane=>lane.id)}));
+      for(const lane of band.lanes)lane.widgets=lane.widgets.filter(w=>w.id!==id);
+      band.lanes=band.lanes.filter(lane=>lane.widgets.length>0);
+      for(const {span,ids} of anchors){
+        span.widgets=span.widgets.filter(w=>w.id!==id);
+        if(!span.widgets.length)continue;
+        const indices=ids.map(laneId=>band.lanes.findIndex(lane=>lane.id===laneId)).filter(index=>index>=0);
+        if(indices.length>=2&&indices[indices.length-1]-indices[0]+1===indices.length){
+          span.startLane=indices[0];span.laneCount=indices.length;
+        }else{
+          // A merged widget cannot remain attached to a deleted lane; keep
+          // its record in the nearest surviving lane rather than losing it.
+          const lane=band.lanes[Math.max(0,indices[0]??0)];
+          if(lane)lane.widgets.push(...span.widgets);
+          else band.lanes.push({id:"lane-"+span.widgets[0].id,width:12,widgets:[...span.widgets]});
+          span.widgets=[];
+        }
+      }
+      band.spans=band.spans?.filter(span=>span.widgets.length>0);
+      if(!band.lanes.length)continue;
+      if(fillGaps){
+        const total=band.lanes.reduce((sum,lane)=>sum+lane.width,0);
+        let consumed=0;
+        band.lanes.forEach((lane,index)=>{
+          lane.width=index===band.lanes.length-1?Math.round((12-consumed)*1000)/1000
+            :Math.round((lane.width/total*12)*1000)/1000;
+          consumed+=lane.width;
+        });
+      }
+      cleaned.push(band);
+    }
+    grouped.set(sectionId,cleaned);
+  }
+  return publish(sections,remaining,grouped);
+}
 
 /** Every band needs its own durable ID even when the dragged widget was
  * originally the ID source for a row that still contains sibling widgets. */
