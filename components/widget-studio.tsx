@@ -76,6 +76,7 @@ export default function WidgetStudio(p:Props){
   const [reorderPreview,setReorderPreview]=useState<PageWidget[]|null>(null);
   const [expandedWidgetActions,setExpandedWidgetActions]=useState<string|null>(null);
   const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
+  const previewPointer=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
   const returnWidgetRef=useRef<(id:string)=>void>(()=>{});
   const dividerWasResized=useRef(false);
   const spanHandleDrag=useRef<{id:string;side:"left"|"right";x:number;completed:boolean}|null>(null);
@@ -546,18 +547,19 @@ export default function WidgetStudio(p:Props){
       if(changed)queueSave("aaa_page_widgets",widget.id,{width:widget.width,height:widget.height,position:widget.position,config:widget.config});
     }
   };
-  const commitDrop=(fallback?:WidgetDropTarget)=>{
+  const commitDrop=(fallback?:WidgetDropTarget,sourceOverride?:string)=>{
     const target=fallback??dropHint;
-    if(drag&&target){
-      if(drag.startsWith("developer:")){
-        const sourceId=drag.slice("developer:".length);
+    const movingId=sourceOverride??drag;
+    if(movingId&&target){
+      if(movingId.startsWith("developer:")){
+        const sourceId=movingId.slice("developer:".length);
         const sourceWidget=data.instances.find(widget=>widget.id===sourceId);
         const definition=data.definitions.find(def=>def.id===(sourceWidget?.definition_id??sourceId));
         if(definition)void addDefinition(definition,target,"preferred",sourceWidget);
-      }else if(target.targetId!==drag){
+      }else if(target.targetId!==movingId){
         if(target.edge==="reorder"&&target.targetId)
-          saveLayout(reorderWidgetColumn(instanceList,pageSections,drag,target.targetId));
-        else saveLayout(placeWidget(instanceList,pageSections,drag,target,fillGaps));
+          saveLayout(reorderWidgetColumn(instanceList,pageSections,movingId,target.targetId));
+        else saveLayout(placeWidget(instanceList,pageSections,movingId,target,fillGaps));
       }
     }
     setDrag(null);setDropHint(null);setReorderPreview(null);
@@ -634,10 +636,42 @@ export default function WidgetStudio(p:Props){
     const article=element?.closest<HTMLElement>("[data-aaa-widget-id]");
     const targetId=article?.getAttribute("data-aaa-widget-id");
     const target=instanceList.find(w=>w.id===targetId);
-    if(!article||!target||target.id===movingId)return null;
-    const rect=article.getBoundingClientRect();
-    const edge=widgetDropEdgeAtPoint(rect.width,rect.height,x-rect.left,y-rect.top);
-    return {sectionId:widgetSectionId(target),targetId:target.id,edge};
+    if(article&&target&&target.id!==movingId){
+      const rect=article.getBoundingClientRect();
+      const edge=widgetDropEdgeAtPoint(rect.width,rect.height,x-rect.left,y-rect.top);
+      return {sectionId:widgetSectionId(target),targetId:target.id,edge};
+    }
+    const canvas=element?.closest<HTMLElement>(".aaa-widget-canvas");
+    if(canvas)return {sectionId:canvas.dataset.aaaSectionId??"",targetId:null,edge:"section-end"};
+    return null;
+  };
+  // Pointer-based workshop drag works when the source is inside an overlaid
+  // Companion, where native HTML dragging may cancel as the panel fades.
+  const previewPointerStart=(e:React.PointerEvent<HTMLSpanElement>,widget:PageWidget,def:WidgetDefinition)=>{
+    if(e.button!==0)return;
+    e.preventDefault();e.stopPropagation();
+    const id="developer:"+(data.instances.some(row=>row.id===widget.id)?widget.id:def.id);
+    previewPointer.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const previewPointerMove=(e:React.PointerEvent<HTMLSpanElement>)=>{
+    const state=previewPointer.current;if(!state)return;
+    if(!state.active&&Math.hypot(e.clientX-state.x,e.clientY-state.y)<8)return;
+    if(!state.active){
+      state.active=true;
+      setDrag(state.id);setArrange(true);
+      window.dispatchEvent(new CustomEvent("aaa-developer-widget-drag",{
+        detail:{definitionId:state.id.slice("developer:".length)}}));
+    }
+    const target=touchTargetAt(e.clientX,e.clientY,state.id);
+    state.target=target;setDropHint(target);
+  };
+  const previewPointerEnd=(e:React.PointerEvent<HTMLSpanElement>,cancel=false)=>{
+    const state=previewPointer.current;if(!state)return;
+    previewPointer.current=null;
+    if(state.active&&!cancel&&state.target)commitDrop(state.target,state.id);
+    if(state.active)window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));
+    if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const startTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>,id:string)=>{
     if(!arrange||e.pointerType!=="touch")return;
@@ -967,6 +1001,7 @@ export default function WidgetStudio(p:Props){
       style={{height:"100%",minHeight:0}}
       onClickCapture={inspect}
       onDragStart={e=>{if(preview){
+          if(previewPointer.current){e.preventDefault();return}
           if(!def){e.preventDefault();return}
           e.dataTransfer.setData("application/x-aaa-widget-definition",def.id);
           e.dataTransfer.setData("text/plain",def.id);e.dataTransfer.effectAllowed="copy";
@@ -1010,7 +1045,14 @@ export default function WidgetStudio(p:Props){
               {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
             </svg></span>
           </>}
-          {preview&&<span className="aaa-widget-drag-handle aaa-widget-preview-grip" aria-label="Drag this widget into the page" title="Drag this widget into a Library section"><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">{[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}</svg></span>}
+          {preview&&def&&<span className="aaa-widget-drag-handle aaa-widget-preview-grip" draggable={false}
+            role="button" tabIndex={0} aria-label="Drag this widget into the page"
+            title="Drag this widget into a Library section"
+            onPointerDown={e=>previewPointerStart(e,widget,def)}
+            onPointerMove={previewPointerMove}
+            onPointerUp={e=>previewPointerEnd(e)}
+            onPointerCancel={e=>previewPointerEnd(e,true)}>
+            <svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">{[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}</svg></span>}
           {def&&<button title="Configure in The Companion" aria-label="Configure widget" onClick={()=>select("instance",widget.id)}><Settings2 size={16}/></button>}
           {def&&<button title="Duplicate to another page" aria-label={`Duplicate ${title}`} onClick={()=>{setDuplicate(widget);setDuplicatePageId(page?.id||"");setDuplicateMode("independent")}}><Copy size={15}/></button>}
           <button title="Remove view, with optional source database deletion" aria-label={`Delete ${title} view`} onClick={()=>{setRemoveTarget({kind:"instance",id:widget.id,databaseId:sourceOf(widget).databaseId});setRemoveCore(false);setDeleteConfirmation("")}}><Trash2 size={15}/></button>
@@ -1204,6 +1246,7 @@ export default function WidgetStudio(p:Props){
             </div>}
           </header>
           {!sectionPrefs[section.id]?.collapsed&&<div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
+            data-aaa-section-id={section.id}
             onDragOver={e=>{if(!arrange||!drag)return;e.preventDefault();hint({sectionId:section.id,targetId:null,edge:"section-end"})}}
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
             {arrange&&widgets.length>0&&(()=>{

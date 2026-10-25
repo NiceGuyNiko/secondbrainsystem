@@ -10,7 +10,7 @@ test("dragging an edited page widget copies its displayed title, database, view,
     title:"Michael's timeline",position:2,width:6,height:4,
     config:{databaseOverride:"characters",viewOverride:"my-view",renderer:"timeline",sectionId:"history"}};
   const effective={...defaultWidgetConfig,renderer:"timeline" as const,
-    filters:[{id:"filter-1",propertyId:"actor",operator:"equals" as const,value:"Michael"}]};
+    filters:[{id:"filter-1",field:"actor",operator:"is" as const,value:"Michael"}]};
   const copied=copyWidgetBlueprint(definition,{databaseId:"characters",viewId:"my-view"},effective,instance);
   assert.equal(copied.name,"Michael's timeline");
   assert.equal(copied.database_id,"characters");
