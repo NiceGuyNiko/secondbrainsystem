@@ -11,6 +11,7 @@ import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
 import WidgetStudio from "@/components/widget-studio";
+import {isPageWidgetDrag,returnPageWidgetToDeveloper} from "@/lib/widget-drag";
 import type {CompanionInspection} from "@/lib/companion-config";
 import {widgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetProperty,type WidgetView,type WidgetDefinition} from "@/lib/widget-system";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
@@ -203,7 +204,7 @@ function Workspace() {
     task?: { id: string; title: string; workingId?: string };
   }>();
   const changeAgenda=useCallback((next:AgendaMode)=>{
-    setAgendaMode(next=== "closed"?"closed":effectiveAgendaPreference==="column"?"pinned":next);
+    setAgendaMode(next);
     if(next!=="closed"&&effectiveAgendaPreference==="toggle")setLastPinned(next==="pinned");
   },[effectiveAgendaPreference,setLastPinned]);
   const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):"closed");
@@ -747,7 +748,6 @@ function Workspace() {
           onCloseWidgetConfiguration={()=>setWidgetConfiguration(null)}
           widgetInspection={widgetInspection}
           onActivateDeveloper={()=>{
-            changeAgenda("pinned");
             if(section==="Library"||section==="Goals")setLibraryEditIntent(value=>value+1);
           }}
         >
@@ -755,7 +755,9 @@ function Workspace() {
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
-                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
+                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button aaa-companion-return-target" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion · drop a widget here to return it to Developer" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}
+                  onDragOver={e=>{if(isPageWidgetDrag(e.dataTransfer)){e.preventDefault();e.dataTransfer.dropEffect="move"}}}
+                  onDrop={e=>{if(!isPageWidgetDrag(e.dataTransfer))return;e.preventDefault();returnPageWidgetToDeveloper(e.dataTransfer)}}><PanelRightOpen size={20}/></button>}
 
               </div>
               {section === "Developing IT" && contextId === "databases" && isDemo ? (
@@ -780,12 +782,18 @@ function Workspace() {
                 <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle} headerPosition={preferences.widgetHeaderPosition}
                   cornerDoubleClick={preferences.widgetCornerDoubleClick} bottomDoubleClick={preferences.widgetBottomDoubleClick}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
+                  developerActive={preferences.companion.primary==="developer"}
                   editIntent={libraryEditIntent} onEditModeChange={editing=>{
                     if(!editing&&preferences.companion.primary==="developer")setCompanion({primary:"view"});
                   }} onInspect={setWidgetInspection}
                   onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
                   onConfigure={setWidgetConfiguration}
                   onOpenConfigure={()=>changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):agendaMode)}
+                  onOpenDeveloper={()=>{
+                    setCompanion({primary:"developer"});
+                    changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):agendaMode);
+                    setLibraryEditIntent(value=>value+1);
+                  }}
                   onOpenRecord={openThought} onPlanningContext={setPlanningContext}
                   onSchedule={task=>setCommand({id:Date.now(),type:"new",task})}/>
               ) : section === "Settings" ? (

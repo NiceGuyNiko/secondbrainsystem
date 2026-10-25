@@ -65,6 +65,7 @@ export default function Companion(p:Props){
   const [tabMenu,setTabMenu]=useState<{slot:CompanionSlot;tool:CompanionTool;left:number;top:number}|null>(null);
   const [tabTooltip,setTabTooltip]=useState<{title:string;left:number;top:number;width:number}|null>(null);
   const [message,setMessage]=useState("");
+  const [dragCollapsed,setDragCollapsed]=useState(false);
   const [configs,setConfigs]=useState<ContextConfigurations>({});
   const [thoughts,setThoughts]=useState<Thought[]>([]);
   const [loadingThoughts,setLoadingThoughts]=useState(false);
@@ -130,7 +131,7 @@ export default function Companion(p:Props){
     const onKey=(e:KeyboardEvent)=>{
       if(e.key!=="Escape")return;
       if(tabMenu){e.preventDefault();e.stopPropagation();setTabMenu(null);return;}
-      if(p.preference!=="column")p.onMode("closed");
+      if(p.preference!=="column"||p.mode==="overlay")p.onMode("closed");
     };
     window.addEventListener("keydown",onKey);
     return()=>window.removeEventListener("keydown",onKey);
@@ -160,10 +161,11 @@ export default function Companion(p:Props){
 
   const selectTool=(slot:CompanionSlot,tool:CompanionTool)=>{
     if(tool==="developer"){
-      p.onMode("pinned");
+      // Preserve the user's chosen Companion presentation (column or pull-out).
+      if(p.mode==="closed")p.onMode(p.preference==="column"?"pinned":"overlay");
       p.onActivateDeveloper?.();
     }
-    if(slot==="top"&&p.configuration)p.onConfigureClose?.();
+    if(slot==="top"&&p.configuration&&tool!=="developer")p.onConfigureClose?.();
     if(slot==="bottom"&&fixed===bottom&&bottom!==tool)return;
     let nextTop=slot==="top"?tool:top;
     let nextBottom=slot==="bottom"?tool:bottom;
@@ -221,13 +223,13 @@ export default function Companion(p:Props){
   const tabList=(slot:CompanionSlot,value:CompanionTool)=>
     <nav role="tablist" aria-label={slot==="top"?"Primary Companion tools":"Secondary Companion tools"}
       className={"aaa-companion-header-tabs aaa-companion-tabs-"+p.options.tabDisplay}>
-      {slot==="top"&&p.configuration&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
+      {slot==="top"&&p.configuration&&top!=="developer"&&<button type="button" role="tab" aria-selected={true} className="active" aria-label="Configure widget" onClick={()=>{}}>
         <Settings2 size={20}/>{p.options.tabDisplay!=="icons"&&<span>CONFIGURE</span>}
       </button>}
-      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration?false:value===t.key}
+      {tools.map(t=><button type="button" role="tab" key={t.key} aria-selected={slot==="top"&&p.configuration&&top!=="developer"?false:value===t.key}
         aria-label={t.title}
         disabled={slot==="bottom"&&fixed===bottom&&value!==t.key}
-        className={!p.configuration&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
+        className={(!p.configuration||top==="developer")&&value===t.key?"active":""} onClick={()=>{setTabTooltip(null);selectTool(slot,t.key)}}
         onMouseEnter={e=>showTabTooltip(e,t.title)}
         onMouseLeave={()=>setTabTooltip(null)}
         onFocus={e=>showTabTooltip(e,t.title)}
@@ -248,7 +250,10 @@ export default function Companion(p:Props){
     if(drawerHeightRef.current<35){drawerHeightRef.current=50;setDrawerHeight(50)}
   };
   const body=(slot:CompanionSlot,tool:CompanionTool)=>{
-    if(tool==="developer")return <CompanionDeveloperView profileKey={p.profileKey} target={p.target} inspection={p.inspection??null}/>;
+    if(tool==="developer")return <CompanionDeveloperView profileKey={p.profileKey} target={p.target}
+      inspection={p.inspection??null} configuration={slot==="top"?p.configuration:null}
+      onConfigureClose={p.onConfigureClose} onEditDatabase={editDatabaseInContext}
+      onDragState={setDragCollapsed}/>;
     if(tool==="view")return <CompanionViewPanel target={p.target} inspection={p.inspection??null}/>;
     if(tool==="agenda")return <CompanionAgendaView
       date={panes[slot].agenda.date} today={p.today} now={p.now}
@@ -272,8 +277,8 @@ export default function Companion(p:Props){
   };
   if(p.mode==="closed")return null;
   return <>
-    {p.mode==="overlay"&&<button className="aaa-companion-backdrop" aria-label="Close The Companion" onClick={()=>p.onMode("closed")}/>}
-    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode} aria-label="The Companion"
+    {p.mode==="overlay"&&<button className={"aaa-companion-backdrop"+(dragCollapsed?" aaa-companion-drag-collapsed":"")} aria-label="Close The Companion" onClick={()=>p.onMode("closed")}/>}
+    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode+(dragCollapsed&&p.mode==="overlay"?" aaa-companion-drag-collapsed":"")} aria-label="The Companion"
       style={{width:previewWidth+"px",flexBasis:previewWidth+"px"}}>
       {p.mode==="pinned"&&p.options.resizableColumn&&<div className="aaa-companion-width-resizer"
         role="separator" aria-label="Resize Companion width" aria-orientation="vertical" tabIndex={0}
@@ -311,12 +316,12 @@ export default function Companion(p:Props){
           {canPin(p.preference,p.mode)&&<button className="aaa-companion-pin-action" aria-label={p.mode==="pinned"?"Unpin Companion":"Pin Companion"}
             title={p.mode==="pinned"?"Unpin":"Pin"} onClick={()=>p.onMode(p.mode==="pinned"?"overlay":"pinned")}>
             {p.mode==="pinned"?<PinOff size={17}/>:<Pin size={17}/>}</button>}
-          {p.preference!=="column"&&<button aria-label="Close Companion" onClick={()=>p.onMode("closed")}><X size={17}/></button>}
+          {(p.preference!=="column"||p.mode==="overlay")&&<button aria-label="Close Companion" onClick={()=>p.onMode("closed")}><X size={17}/></button>}
         </div>
       </header>
       <div className="aaa-hybrid-sections">
         <div className="aaa-hybrid-slot aaa-hybrid-primary">
-          <div className="aaa-hybrid-slot-body">{p.configuration?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()} onEditDatabase={editDatabaseInContext}/>:body("top",top)}</div>
+          <div className="aaa-hybrid-slot-body">{p.configuration&&top!=="developer"?<WidgetConfigurePanel selection={p.configuration} onClose={()=>p.onConfigureClose?.()} onEditDatabase={editDatabaseInContext}/>:body("top",top)}</div>
         </div>
         <button type="button" className={"aaa-companion-pull"+(drawerHeight>0?" is-open":"")}
           role="separator" aria-label={drawerHeight>0?"Drag down to hide second tool":"Drag up to reveal second tool"}

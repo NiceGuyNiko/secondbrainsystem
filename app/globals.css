@@ -4072,7 +4072,7 @@ input[type="range"]{
     margin:0!important;
     border:0!important;
     border-radius:0!important;
-    background:var(--surface)!important;
+    background:transparent!important;
     box-shadow:none!important;
     z-index:47;
   }
@@ -4090,3 +4090,110 @@ input[type="range"]{
     display:none!important;
   }
 }
+
+/* Library UI refinement: the mode switch is anchored in the same physical
+   position in both modes, regardless of how many editing actions are shown. */
+.aaa-widget-studio .aaa-widget-hero{position:relative}
+.aaa-widget-studio .aaa-widget-hero-actions{padding-right:104px;min-height:38px}
+.aaa-widget-studio .aaa-widget-hero-actions>.aaa-widget-mode-toggle{
+  position:absolute;right:0;top:0;margin:0;width:92px;height:38px;z-index:2;
+}
+@media(max-width:640px){
+  .aaa-widget-studio .aaa-widget-hero{padding-top:44px}
+  .aaa-widget-studio .aaa-widget-hero-actions{padding-right:0}
+}
+
+/* The small eyebrow and larger heading behave as independent Notion-style
+   text blocks. Their editing affordance appears only on hover or focus. */
+.aaa-widget-section-text-blocks{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit{
+  min-width:55px;max-width:100%;border-radius:4px;outline:0;cursor:text;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:hover{background:var(--ui-hover)}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:focus{
+  box-shadow:0 1px 0 var(--accent-text);background:var(--accent-soft);
+}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:empty::before{
+  content:attr(data-placeholder);opacity:.4;pointer-events:none;
+}
+.aaa-widget-section-text-blocks>h2{min-height:1.25em}
+
+/* Blend cards should show only the scroll thumb. Neither the dark track nor
+   browser scrollbar arrows should introduce an extra panel at either end. */
+.aaa-widget-style-blend .aaa-widget-card-body,
+.aaa-widget-style-blend .aaa-widget-table-scroll{
+  scrollbar-width:thin!important;scrollbar-color:var(--accent) transparent!important;
+  scrollbar-gutter:auto;
+}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar{width:6px;height:6px}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-track,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-track{background:transparent!important;border:0}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-thumb,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-thumb{
+  border:0;border-radius:99px;background:var(--accent)!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-button,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-button{
+  display:none!important;width:0!important;height:0!important;
+}
+
+/* Developer tool: widget preview first, source settings second, notes tucked
+   into a small optional banner below them. */
+.aaa-companion-developer-view{gap:10px;padding:10px}
+.aaa-companion-developer-view .aaa-companion-dev-preview{padding:0;overflow:hidden}
+.aaa-companion-developer-view .aaa-companion-dev-widget{
+  display:grid;grid-template-columns:30px minmax(0,1fr);gap:2px 8px;
+  align-items:center;padding:12px;border:0;border-bottom:1px solid var(--border);
+  border-radius:0;background:transparent;cursor:grab;
+}
+.aaa-companion-dev-widget:active{cursor:grabbing}
+.aaa-companion-dev-widget .aaa-companion-dev-drag-grip{grid-row:1/3;grid-column:1;display:grid;place-items:center;color:var(--accent-text)}
+.aaa-companion-dev-widget>strong{grid-column:2;font-size:12px}
+.aaa-companion-dev-widget>small{grid-column:2;font-size:10px;color:var(--muted)}
+.aaa-companion-dev-preview-body{display:grid;gap:7px;padding:12px}
+.aaa-companion-dev-preview-record{
+  display:grid;grid-template-columns:minmax(0,1fr) 14px;gap:3px;
+  border:1px solid var(--border);border-radius:9px;background:var(--surface-2);padding:10px;
+}
+.aaa-companion-dev-preview-record strong{font-size:11px;grid-column:1;overflow-wrap:anywhere}
+.aaa-companion-dev-preview-record small{font-size:10px;color:var(--muted);grid-column:1;overflow-wrap:anywhere}
+.aaa-companion-dev-preview-record svg{grid-column:2;grid-row:1/3;align-self:center;color:var(--muted)}
+.aaa-companion-dev-preview-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:105px;gap:9px;padding:13px;color:var(--muted);font-size:11px;text-align:center}
+.aaa-companion-dev-preview-empty svg{color:var(--muted)}
+.aaa-companion-developer-view .aaa-companion-dev-drag-help{font-size:10px;padding:0 12px 10px;margin:0}
+.aaa-companion-dev-source{padding:12px!important}
+.aaa-companion-dev-source .aaa-widget-config{padding:0;overflow:visible;min-height:0}
+.aaa-companion-dev-source .aaa-widget-config h2{font-size:13px}
+.aaa-companion-dev-source-summary dl{margin:0 0 10px}
+.aaa-companion-dev-source-summary dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.aaa-companion-dev-source-summary dt,.aaa-companion-dev-source-summary dd{font-size:11px;margin:0}
+.aaa-companion-dev-source-summary dt{color:var(--muted)}
+.aaa-companion-dev-notes{padding:0!important}
+.aaa-companion-dev-notes-toggle{display:flex;align-items:center;gap:7px;width:100%;padding:10px 12px;text-align:left}
+.aaa-companion-dev-notes-toggle strong{font-size:11px;flex:1}
+.aaa-companion-dev-notes-toggle small{font-size:10px;color:var(--muted)}
+.aaa-companion-dev-notes>p,.aaa-companion-dev-notes>textarea,.aaa-companion-dev-notes>small{margin:8px 12px 12px;width:calc(100% - 24px)}
+.aaa-companion-drag-collapsed{opacity:0!important;pointer-events:none!important}
+.aaa-companion-return-target:hover,.aaa-companion-return-target:focus-visible{outline:2px solid var(--accent)}
+.aaa-page-widget-in-flight .aaa-companion-return-target{
+  outline:2px dashed var(--accent)!important;outline-offset:3px;
+  background:var(--accent-soft)!important;
+}
+.aaa-widget-page-section .aaa-widget-guide-label{display:flex;align-items:center;gap:3px;justify-content:center}
+
+/* A lower stacked widget can claim the free width beside it, forming a T,
+   without changing the widths of the widgets above. */
+.aaa-widget-span-grow{position:absolute;z-index:38;top:50%;width:22px;height:38px;
+  display:grid;place-items:center;transform:translateY(-50%);border:1px solid var(--accent);
+  background:var(--surface);color:var(--accent-text);border-radius:7px;opacity:0;
+  transition:opacity .15s ease,background .15s ease}
+.aaa-widget-span-grow-left{left:-10px}
+.aaa-widget-span-grow-left svg{transform:rotate(180deg)}
+.aaa-widget-span-grow-right{right:-10px}
+.aaa-widget-layout-item:hover>.aaa-widget-span-grow,
+.aaa-widget-span-grow:focus-visible{opacity:1}
+.aaa-widget-span-grow:hover{background:var(--accent-soft)}
+@media(pointer:coarse){.aaa-widget-span-grow{opacity:1}}

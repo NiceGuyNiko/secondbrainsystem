@@ -66,6 +66,7 @@ export function parseCompanion(raw: unknown): CompanionPreferences {
 export type CompanionField = { id: string; label: string; value: string; kind?: "property" | "relation" };
 export type CompanionInspection = {
   id:string; title:string; kind:string; databaseName:string; viewName:string;
+  definitionId?:string; renderer?:string; samples?:{title:string;detail:string}[];
   fields:{name:string;type:string}[];
 };
 export type CompanionTarget = {

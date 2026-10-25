@@ -1,12 +1,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {placeWidget,removeWidgetAndCompactLayout,widgetFootprintHeight,widgetLayoutBands} from "../lib/widget-layout";
+import {placeWidget,removeWidgetAndCompactLayout,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetLayoutBands} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
 const section:WidgetPageSection={id:"history",page_id:"world",title:"World History",position:0};
 const widget=(id:string,width:number,position:number):PageWidget=>({
   id,page_id:"world",definition_id:id,kind:"database",title:id,
   config:{sectionId:"history"},width,height:2,position
+});
+
+test("dropping on a widget never replaces it: middle stacks, sides insert, bottom creates a row",()=>{
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,75),"above");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,220),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,12,140),"left");
+  assert.equal(widgetDropEdgeAtPoint(400,300,386,140),"right");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,290),"new-row");
 });
 
 test("near-bottom column stack and lower full-width row are distinct drops",()=>{

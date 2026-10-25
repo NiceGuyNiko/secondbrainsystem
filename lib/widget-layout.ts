@@ -15,6 +15,14 @@ export type WidgetDropTarget={
    * clicking an edge beside a merged widget instead of creating a gap. */
   extendSpanWidgetId?:string;
 };
+/** A card is never replaced by a drop. Its middle stacks above/below, its
+ * sides insert columns, and its narrow bottom edge inserts a full-width row. */
+export function widgetDropEdgeAtPoint(width:number,height:number,x:number,y:number,wasNewRow=false):WidgetDropEdge{
+  if(height-y>=0&&height-y<=(wasNewRow?38:27))return "new-row";
+  if(x/Math.max(1,width)<.22)return "left";
+  if(x/Math.max(1,width)>.78)return "right";
+  return y/Math.max(1,height)<.5?"above":"below";
+}
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
 export type WidgetLayoutBand={id:string;lanes:WidgetLayoutLane[];spans?:WidgetLayoutSpan[]};
