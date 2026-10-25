@@ -51,8 +51,6 @@ export default function Companion(p:Props){
   useEffect(()=>{setTop(p.options.primary);setBottom(p.options.secondary);},[p.options.primary,p.options.secondary]);
   const [fixed,setFixed]=useState<CompanionTool|null>(null);
   const [drawerHeight,setDrawerHeight]=useState(p.options.layout==="split"?100-p.options.splitPercent:0);
-  const [viewWidgetHeight,setViewWidgetHeight]=useState<number|null>(null);
-  const onViewWidgetHeight=useCallback((height:number)=>setViewWidgetHeight(old=>old===height?old:height),[]);
   const [databaseEditorId,setDatabaseEditorId]=useState<string|null>(null);
   const drawerHeightRef=useRef(drawerHeight);
   useEffect(()=>{
@@ -69,6 +67,20 @@ export default function Companion(p:Props){
   const [tabTooltip,setTabTooltip]=useState<{title:string;left:number;top:number;width:number}|null>(null);
   const [message,setMessage]=useState("");
   const [dragCollapsed,setDragCollapsed]=useState(false);
+  useEffect(()=>{
+    // Keep the HTML drag source mounted but reveal the page beneath an
+    // overlaid Companion while a widget is travelling out of its View pane.
+    const started=()=>setDragCollapsed(true);
+    const ended=()=>setDragCollapsed(false);
+    window.addEventListener("aaa-developer-widget-drag",started);
+    window.addEventListener("aaa-developer-widget-drag-end",ended);
+    window.addEventListener("drop",ended);
+    return()=>{
+      window.removeEventListener("aaa-developer-widget-drag",started);
+      window.removeEventListener("aaa-developer-widget-drag-end",ended);
+      window.removeEventListener("drop",ended);
+    };
+  },[]);
   const [configs,setConfigs]=useState<ContextConfigurations>({});
   const [thoughts,setThoughts]=useState<Thought[]>([]);
   const [loadingThoughts,setLoadingThoughts]=useState(false);
@@ -176,7 +188,12 @@ export default function Companion(p:Props){
       if(slot==="top")nextBottom=top;else nextTop=bottom;
     }
     setTop(nextTop);setBottom(nextBottom);
-    p.onOptions({primary:nextTop,secondary:nextBottom});
+    // View should open large enough to inspect an entire default widget.
+    // Longer widgets scroll inside the pane, and the splitter stays draggable.
+    const expandPreview=slot==="bottom"&&tool==="view"&&drawerHeightRef.current<62;
+    if(expandPreview){drawerHeightRef.current=62;setDrawerHeight(62)}
+    p.onOptions({primary:nextTop,secondary:nextBottom,
+      ...(expandPreview?{layout:"split" as const,splitPercent:38}:{})});
   };
   const duplicateToOtherPane=(source:CompanionSlot,tool:CompanionTool)=>{
     const destination:CompanionSlot=source==="top"?"bottom":"top";
@@ -257,8 +274,7 @@ export default function Companion(p:Props){
       onConfigureClose={p.onConfigureClose} onEditDatabase={editDatabaseInContext}
       onDragState={setDragCollapsed}/>;
     if(tool==="view")return <CompanionViewPanel target={p.target} inspection={p.inspection??null}
-      configuration={p.configuration} onPreviewMount={p.onPreviewMount}
-      onPreviewHeight={onViewWidgetHeight}/>;
+      configuration={p.configuration} onPreviewMount={p.onPreviewMount}/>;
     if(tool==="agenda")return <CompanionAgendaView
       date={panes[slot].agenda.date} today={p.today} now={p.now}
       timeZone={p.timeZone} jump={p.options.jump}
@@ -370,7 +386,7 @@ export default function Companion(p:Props){
           </span><span className="aaa-companion-pull-track"/>
         </button>
         {drawerHeight>0&&<div id="aaa-companion-second-pane" className="aaa-hybrid-slot aaa-hybrid-secondary"
-          style={{flex:"0 0 "+drawerHeight+"%",maxHeight:bottom==="view"&&viewWidgetHeight!==null?viewWidgetHeight+66:undefined}}>
+          style={{flex:"0 0 "+drawerHeight+"%"}}>
           {secondaryHeader()}
           <div className="aaa-hybrid-slot-body">{databaseEditorId&&p.configuration?<WidgetDatabaseEditorPanel target={p.configuration} databaseId={databaseEditorId} onClose={()=>{
             setDatabaseEditorId(null);if(p.options.layout==="single"){drawerHeightRef.current=0;setDrawerHeight(0)}

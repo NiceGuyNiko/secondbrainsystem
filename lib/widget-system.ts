@@ -55,6 +55,13 @@ export type WidgetDefinition={id:string;name:string;database_id:string|null;view
 export type LibraryPage={id:string;area:"library"|"goals";title:string;position:number};
 export type WidgetPageSection={id:string;page_id:string;title:string;position:number};
 export type PageWidget={id:string;page_id:string;definition_id:string|null;kind:"database"|"goals";title:string|null;config:Record<string,unknown>;width:number;height:number;position:number};
+/** A dragged View must copy the rendered widget's effective source and edits,
+ * even if the page instance has never published them to its reusable master. */
+export function copyWidgetBlueprint(definition:WidgetDefinition,source:{databaseId:string|null;viewId:string|null},
+  effectiveConfig:WidgetConfig,instance?:PageWidget){
+  return {name:instance?.title?.trim()||definition.name?.trim()||"Untitled widget",
+    database_id:source.databaseId||null,view_id:source.viewId||null,config:effectiveConfig};
+}
 export function widgetIsSynced(widget:PageWidget){return widget.config?.syncMode==="synced"}
 export function widgetSectionId(widget:PageWidget):string{
   return typeof widget.config?.sectionId==="string"?widget.config.sectionId:"";

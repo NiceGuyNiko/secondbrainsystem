@@ -4305,3 +4305,28 @@ input[type="range"]{
 .aaa-widget-live-preview-card .aaa-widget-preview-grip{cursor:grab;display:flex;justify-content:center;align-items:center;opacity:.8;padding:3px}
 .aaa-widget-live-preview-card:active .aaa-widget-preview-grip{cursor:grabbing}
 .aaa-companion-preview-empty-text{font-size:12px;color:var(--muted);padding:10px}
+
+/* In Edit mode the guides are inert for clicking, but workshop drags may use
+   them as placement targets. They only intercept a pointer during a drag. */
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop{
+  pointer-events:none;cursor:default;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::after{display:none!important}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-top-new-row,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-top-column-stack,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-combine-choice,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-span-insertion,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-band-row-drop,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-outer-column-drop{
+  pointer-events:auto;cursor:copy;
+}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-outer-column-drop.is-target::before{
+  width:4px!important;opacity:1!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-band-row-drop .aaa-widget-divider-stroke{
+  pointer-events:none;
+}
+.aaa-companion-live-preview-view .aaa-companion-preview-viewport{
+  flex:1 1 0;min-height:0;overflow-x:auto;overflow-y:auto;overscroll-behavior:contain;
+}
+.aaa-companion-live-preview-view .aaa-companion-live-widget{flex-shrink:0}

@@ -6,8 +6,8 @@ import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
-import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,canInsertWidgetColumn,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
+import {copyWidgetBlueprint,groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
+import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -421,17 +421,27 @@ export default function WidgetStudio(p:Props){
     }finally{setBusy(false)}
   };
   const addDefinition=async(definition:WidgetDefinition,placement?:WidgetDropTarget,
-    heightMode:"preferred"|"match"="preferred")=>{
+    heightMode:"preferred"|"match"="preferred",sourceInstance?:PageWidget)=>{
     if(!page||busy)return;setBusy(true);
     try{
       // Choosing an existing view creates an independent copy by default.
       // Shared master IDs are reserved for the explicitly requested Widget Sync action.
+      // A page widget may have unpublished per-instance edits. Copy the actual
+      // rendered configuration and connected source, not its older master.
+      const source=sourceInstance?sourceOf(sourceInstance):{
+        databaseId:definition.database_id,viewId:definition.view_id};
+      const copiedConfig=sourceInstance?effectiveConfig(definition,sourceInstance):
+        effectiveConfig(definition);
+      const blueprint=copyWidgetBlueprint(definition,source,copiedConfig,sourceInstance);
       const {data:master,error:masterError}=await supabase.from("aaa_widget_definitions")
-        .insert({name:definition.name+" · Copy",database_id:definition.database_id,view_id:definition.view_id,config:{...definition.config}})
+        .insert(blueprint)
         .select("id,name,database_id,view_id,config").single();
       if(masterError)throw masterError;
       const {data:row,error}=await supabase.from("aaa_page_widgets")
-        .insert({page_id:page.id,definition_id:master.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,width:12,height:2,config:activePlacementSection?{sectionId:activePlacementSection}:{}})
+        .insert({page_id:page.id,definition_id:master.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,
+          width:sourceInstance?.width??12,height:sourceInstance?.height??2,
+          config:{...(sourceInstance?{heightPx:widgetHeightPx(sourceInstance)}:{}),
+            ...(placement?.sectionId||activePlacementSection?{sectionId:placement?.sectionId??activePlacementSection}:{})}})
         .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(error)throw error;
       const {initial,placed}=preparedPlacement(row as PageWidget,placement,heightMode);
@@ -540,8 +550,10 @@ export default function WidgetStudio(p:Props){
     const target=fallback??dropHint;
     if(drag&&target){
       if(drag.startsWith("developer:")){
-        const definition=data.definitions.find(def=>def.id===drag.slice("developer:".length));
-        if(definition)void addDefinition(definition,target);
+        const sourceId=drag.slice("developer:".length);
+        const sourceWidget=data.instances.find(widget=>widget.id===sourceId);
+        const definition=data.definitions.find(def=>def.id===(sourceWidget?.definition_id??sourceId));
+        if(definition)void addDefinition(definition,target,"preferred",sourceWidget);
       }else if(target.targetId!==drag){
         if(target.edge==="reorder"&&target.targetId)
           saveLayout(reorderWidgetColumn(instanceList,pageSections,drag,target.targetId));
@@ -559,8 +571,8 @@ export default function WidgetStudio(p:Props){
   };
   useEffect(()=>{
     const started=(event:Event)=>{
-      const id=(event as CustomEvent<{definitionId:string}>).detail?.definitionId;
-      if(id){setDrag("developer:"+id);setArrange(true)}
+      const detail=(event as CustomEvent<{definitionId:string;instanceId?:string}>).detail;
+      if(detail?.definitionId){setDrag("developer:"+(detail.instanceId??detail.definitionId));setArrange(true)}
     };
     const ended=()=>{setDrag(null);setDropHint(null);setReorderPreview(null)};
     const returned=(event:Event)=>{
@@ -958,7 +970,8 @@ export default function WidgetStudio(p:Props){
           if(!def){e.preventDefault();return}
           e.dataTransfer.setData("application/x-aaa-widget-definition",def.id);
           e.dataTransfer.setData("text/plain",def.id);e.dataTransfer.effectAllowed="copy";
-          window.dispatchEvent(new CustomEvent("aaa-developer-widget-drag",{detail:{definitionId:def.id}}));
+          window.dispatchEvent(new CustomEvent("aaa-developer-widget-drag",{
+            detail:{definitionId:def.id,instanceId:previewInstance?.id===widget.id?previewInstance.id:undefined}}));
           return;
         }
         if(!editing)return;setDrag(widget.id);document.body.classList.add("aaa-page-widget-in-flight");e.dataTransfer.setData("text/plain",widget.id);
@@ -1200,21 +1213,21 @@ export default function WidgetStudio(p:Props){
               if(!topId)return null;
               const newRowTarget:WidgetDropTarget={sectionId:section.id,targetId:topId,edge:"new-row-before"};
               return <div className="aaa-widget-top-insertion" aria-label="Insert before the first widget row">
-                <button type="button" className="aaa-widget-top-new-row" disabled
+                <div className="aaa-widget-top-new-row" role="presentation"
                   title="Insert a new full-width row above the existing widgets"
                   aria-label="New full-width row at the top"
                   data-aaa-insert-edge="new-row-before" data-aaa-target-id={topId}
                   data-aaa-section-id={section.id}
                   onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint(newRowTarget)}}
                   onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(newRowTarget)}}
-                  onClick={()=>openPlacement(first,newRowTarget)}>
+                  >
                   <span className="aaa-widget-divider-stroke" aria-hidden="true"/>
                   <span className="aaa-widget-guide-label">New row above</span>
-                </button>
+                </div>
                 <div className="aaa-widget-top-stack-options">
                   {tracks.map((track,index)=>{
                     const target:WidgetDropTarget={sectionId:section.id,targetId:track.targetId,edge:"above"};
-                    return <button type="button" key={"above-"+index} disabled
+                    return <div key={"above-"+index} role="presentation"
                       className="aaa-widget-top-column-stack"
                       style={{flex:`${track.width} 1 0`}}
                       title={`Stack a widget above visual column ${index+1}`}
@@ -1223,10 +1236,10 @@ export default function WidgetStudio(p:Props){
                       data-aaa-section-id={section.id}
                       onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint(target)}}
                       onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(target)}}
-                      onClick={()=>void createAndPlaceWidget(section.id,target,"match")}>
+                      >
                       <span className="aaa-widget-divider-stroke" aria-hidden="true"/>
                       <span className="aaa-widget-guide-label"><Plus size={12}/> Stack above</span>
-                    </button>;
+                    </div>;
                   })}
                 </div>
               </div>;
@@ -1349,6 +1362,9 @@ export default function WidgetStudio(p:Props){
                   })()}
                 </div>
                 {arrange&&laneIndex<band.lanes.length-1&&(()=>{
+                  const rightWidget=band.lanes[laneIndex+1]?.widgets[0];
+                  const insertBetween=band.lanes.length<4&&rightWidget&&drag?.startsWith("developer:")
+                    ?{sectionId:section.id,targetId:rightWidget.id,edge:"left" as const}:null;
                   const upperSpan=(band.spans??[])
                     .filter(span=>span.startLane<=laneIndex&&span.startLane+span.laneCount>laneIndex+1)
                     .sort((a,b)=>a.laneCount-b.laneCount)[0];
@@ -1363,6 +1379,8 @@ export default function WidgetStudio(p:Props){
                     style={junctionY===undefined?undefined:{"--aaa-junction-y":`${junctionY}px`} as React.CSSProperties}
                     title="Drag to resize neighboring columns"
                     aria-label="Resize neighboring columns"
+                    onDragOver={e=>{if(!insertBetween)return;e.preventDefault();e.stopPropagation();hint(insertBetween)}}
+                    onDrop={e=>{if(!insertBetween)return;e.preventDefault();e.stopPropagation();commitDrop(insertBetween)}}
                     onPointerDown={e=>startResize(e,lane.widgets[0],"x")}
                     onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}/>;
                 })()}
@@ -1383,7 +1401,7 @@ export default function WidgetStudio(p:Props){
                     {node.children.map(renderNode)}
                   </div>
                   {node.span.widgets.map(renderItem)}
-                  {arrange&&targetId&&<button type="button" className="aaa-widget-span-insertion" disabled
+                  {arrange&&targetId&&<div role="presentation" className="aaa-widget-span-insertion"
                     title="Stack another widget in this combined column"
                     aria-label={"Stack in combined column "+(node.startLane+1)+" through "+(node.startLane+node.laneCount)}
                     data-aaa-insert-edge="span-below"
@@ -1393,15 +1411,17 @@ export default function WidgetStudio(p:Props){
                     data-aaa-span-count={node.laneCount}
                     onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();hint(target)}}
                     onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(target)}}
-                    onClick={()=>void createAndPlaceWidget(section.id,target,"match")}>
+                    >
                     <span className="aaa-widget-guide-label" aria-hidden="true"><Plus size={12}/> Stack combined</span>
-                  </button>}
+                  </div>}
                 </div>;
               };
               const segments=widgetVisualHierarchy(band).map(renderNode);
               const firstOuter=band.lanes.flatMap(l=>l.widgets).find(w=>w.id!==drag);
               const lastOuter=[...band.lanes].reverse().flatMap(l=>l.widgets).find(w=>w.id!==drag);
-              const showOuter=false; // Edge insertion lives in the Developer drag workflow.
+              // Never expose a fifth-column target; a 1–3-column band keeps
+              // its subtle outer rails for dragging a workshop preview in.
+              const showOuter=arrange&&band.lanes.length<4;
               const afterId=band.lanes.flatMap(l=>l.widgets).find(w=>w.id!==drag)?.id??
                 band.spans?.flatMap(s=>s.widgets).find(w=>w.id!==drag)?.id??null;
               const rangeTarget:WidgetDropTarget={
@@ -1411,7 +1431,7 @@ export default function WidgetStudio(p:Props){
               };
               return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}
                 style={{paddingBottom:bandPadding}}> 
-                {showOuter&&firstOuter&&<button type="button"
+                {showOuter&&firstOuter&&<div role="presentation"
                   className={"aaa-widget-outer-column-drop aaa-widget-outer-left"+(dropHint?.edge==="left"&&dropHint.targetId===firstOuter.id?" is-target":"")}
                   title="Drop a widget here to add a column on the left"
                   aria-label="Insert new column on left edge"
@@ -1420,12 +1440,12 @@ export default function WidgetStudio(p:Props){
                     hint({sectionId:section.id,targetId:firstOuter.id,edge:"left"})}}
                   onDrop={e=>{if(!drag||drag===firstOuter.id)return;e.preventDefault();e.stopPropagation();
                     commitDrop({sectionId:section.id,targetId:firstOuter.id,edge:"left"})}}
-                  onClick={()=>openPlacement(band,{sectionId:section.id,targetId:firstOuter.id,edge:"left"})}/>}
+                  />}
                 {segments}
                 {arrange&&afterId&&<div className="aaa-widget-combine-bar"
                   style={{top:largestEnd+19}} role="group" aria-label="Add across selected columns">
                   <span className="aaa-widget-combine-track" aria-hidden="true"/>
-                  <button type="button" className="aaa-widget-combine-choice" disabled
+                  <div role="presentation" className="aaa-widget-combine-choice"
                     style={{left:0,width:"100%"}}
                     title="Select any contiguous range of columns for a new widget"
                     aria-label="Choose columns for a combined widget"
@@ -1435,14 +1455,14 @@ export default function WidgetStudio(p:Props){
                     onDragOver={e=>{if(!drag||drag===afterId)return;
                       e.preventDefault();e.stopPropagation();hint(rangeTarget)}}
                     onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();commitDrop(rangeTarget)}}
-                    onClick={()=>openPlacement(band,rangeTarget)}>
+                    >
                     <span className="aaa-widget-combine-label" style={{left:"50%"}}>
                       <Plus size={10}/> Choose columns
                     </span>
-                  </button>
+                  </div>
                 </div>}
                 {used<12&&<div className="aaa-widget-layout-spacer" style={{flex:`${12-used} 1 0`}}/>}
-                {showOuter&&lastOuter&&<button type="button"
+                {showOuter&&lastOuter&&<div role="presentation"
                   className={"aaa-widget-outer-column-drop aaa-widget-outer-right"+(dropHint?.edge==="right"&&dropHint.targetId===lastOuter.id?" is-target":"")}
                   title="Drop a widget here to add a column on the right"
                   aria-label="Insert new column on right edge"
@@ -1451,9 +1471,13 @@ export default function WidgetStudio(p:Props){
                     hint({sectionId:section.id,targetId:lastOuter.id,edge:"right"})}}
                   onDrop={e=>{if(!drag||drag===lastOuter.id)return;e.preventDefault();e.stopPropagation();
                     commitDrop({sectionId:section.id,targetId:lastOuter.id,edge:"right"})}}
-                  onClick={()=>openPlacement(band,{sectionId:section.id,targetId:lastOuter.id,edge:"right"})}/>}
+                  />}
                 {arrange&&band.lanes.length>0&&<div className="aaa-widget-band-row-drop" role="presentation"
-                  aria-hidden="true">
+                  aria-label="Drop a widget here to add another row"
+                  onDragOver={e=>{if(!drag||!afterId)return;e.preventDefault();e.stopPropagation();
+                    hint({sectionId:section.id,targetId:afterId,edge:"new-row"})}}
+                  onDrop={e=>{if(!drag||!afterId)return;e.preventDefault();e.stopPropagation();
+                    commitDrop({sectionId:section.id,targetId:afterId,edge:"new-row"})}}>
                     <span className="aaa-widget-divider-stroke" aria-hidden="true"/>
                     <span className="aaa-widget-guide-label" aria-hidden="true">New row</span>
                   </div>}
