@@ -87,7 +87,8 @@ export default function WidgetStudio(p:Props){
   const [snapGuide,setSnapGuide]=useState(false);
   const [measuredWidgetHeights,setMeasuredWidgetHeights]=useState<Record<string,number>>({});
   const resizePreviewRef=useRef<PageWidget[]|null>(null);
-  const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;heightPx:number;axis:"x"|"y"|"both";initial:PageWidget[]}|null>(null);
+  const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;heightPx:number;axis:"x"|"y"|"both";
+    side:"left"|"right";initial:PageWidget[]}|null>(null);
   const [duplicate,setDuplicate]=useState<PageWidget|null>(null);
   const [duplicateMode,setDuplicateMode]=useState<"independent"|"synced">("independent");
   const [duplicatePageId,setDuplicatePageId]=useState("");
@@ -618,12 +619,12 @@ export default function WidgetStudio(p:Props){
     const x=event.clientX-bounds.left,y=event.clientY-bounds.top;
     const movingWidget=instanceList.find(w=>w.id===drag);
     const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(widget);
-    const edge=x>bounds.width*.3&&x<bounds.width*.7&&y>bounds.height*.3&&y<bounds.height*.7&&
+    const edge=x>bounds.width*.36&&x<bounds.width*.64&&y>bounds.height*.43&&y<bounds.height*.57&&
       outsideBand?"replace":widgetDropEdgeAtPoint(bounds.width,bounds.height,x,y,wasNewRow);
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
   };
-  const reorderTargetFor=(widget:PageWidget):WidgetDropTarget|null=>{
-    const moving=instanceList.find(w=>w.id===drag);
+  const reorderTargetFor=(widget:PageWidget,movingId=drag):WidgetDropTarget|null=>{
+    const moving=instanceList.find(w=>w.id===movingId);
     if(!moving||moving.id===widget.id||widgetSectionId(moving)!==widgetSectionId(widget))return null;
     const band=widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(widget)))
       .find(row=>row.lanes.some(lane=>lane.widgets.some(w=>w.id===moving.id))&&
@@ -631,7 +632,10 @@ export default function WidgetStudio(p:Props){
     if(!band||band.spans?.length)return null;
     const source=band.lanes.find(l=>l.widgets.some(w=>w.id===moving.id));
     const destination=band.lanes.find(l=>l.widgets.some(w=>w.id===widget.id));
-    if(!source||!destination||source===destination)return null;
+    // A stacked card is moved individually; dragging one must not silently
+    // relocate its entire column of unrelated widgets.
+    if(!source||!destination||source===destination||
+      source.widgets.length!==1||destination.widgets.length!==1)return null;
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge:"reorder"};
   };
   // iOS touch handles share the same drop targets as desktop dragging.
@@ -655,14 +659,20 @@ export default function WidgetStudio(p:Props){
     const targetId=article?.getAttribute("data-aaa-widget-id");
     const target=instanceList.find(w=>w.id===targetId);
     if(article&&target&&target.id!==movingId){
+      const reorder=reorderTargetFor(target,movingId);
+      if(reorder)return reorder;
       const rect=article.getBoundingClientRect();
       const dx=x-rect.left,dy=y-rect.top;
       const movingWidget=instanceList.find(w=>w.id===movingId);
       const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(target);
-      const edge=dx>rect.width*.3&&dx<rect.width*.7&&dy>rect.height*.3&&dy<rect.height*.7&&
+      const edge=dx>rect.width*.36&&dx<rect.width*.64&&dy>rect.height*.43&&dy<rect.height*.57&&
         outsideBand?"replace":widgetDropEdgeAtPoint(rect.width,rect.height,dx,dy);
       return {sectionId:widgetSectionId(target),targetId:target.id,edge};
     }
+    const lane=element?.closest<HTMLElement>("[data-aaa-lane-bottom-widget]");
+    const bottomId=lane?.dataset.aaaLaneBottomWidget;
+    if(bottomId&&bottomId!==movingId)
+      return {sectionId:lane?.dataset.aaaSectionId??"",targetId:bottomId,edge:"below"};
     const canvas=element?.closest<HTMLElement>(".aaa-widget-canvas");
     if(canvas)return {sectionId:canvas.dataset.aaaSectionId??"",targetId:null,edge:"section-end"};
     return null;
@@ -707,29 +717,34 @@ export default function WidgetStudio(p:Props){
     if(!state.active&&Math.hypot(e.clientX-state.x,e.clientY-state.y)<9)return;
     if(!state.active){state.active=true;setDrag(state.id);}
     const target=touchTargetAt(e.clientX,e.clientY,state.id);
-    state.target=target;
-    setDropHint(target);
+    if(target||state.target?.edge!=="reorder"){
+      state.target=target;
+      setDropHint(target);
+    }
   };
   const endTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>,cancel=false)=>{
     const state=touchDrag.current;
     if(!state)return;
     touchDrag.current=null;
     if(state.active&&!cancel&&state.target&&state.target.targetId!==state.id)
-      saveLayout(placeWidget(instanceList,pageSections,state.id,state.target,fillGaps,formation));
+      saveLayout(state.target.edge==="reorder"&&state.target.targetId
+        ?reorderWidgetColumn(instanceList,pageSections,state.id,state.target.targetId)
+        :placeWidget(instanceList,pageSections,state.id,state.target,fillGaps,formation));
     setDrag(null);setDropHint(null);
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
     if(!arrange||!drag)return;
     event.preventDefault();event.stopPropagation();
-    if(drag===widget.id){setDropHint(null);return}
+    if(drag===widget.id){if(dropHint?.edge!=="reorder")setDropHint(null);return}
     const target=dropTargetFor(event,widget);
     hint(target);
     if(target.edge==="reorder"&&target.targetId)
       setReorderPreview(reorderWidgetColumn(instanceList,pageSections,drag!,target.targetId));
     else setReorderPreview(null);
   };
-  const startResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,axis:"x"|"y"|"both")=>{
+  const startResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,axis:"x"|"y"|"both",
+    side:"left"|"right"="right")=>{
     e.preventDefault();e.stopPropagation();
     if(widgetSizeLocked(widget)){setNotice("Unlock this widget's size in Configure before resizing.");return}
     const grid=e.currentTarget.closest(".aaa-widget-canvas");
@@ -737,7 +752,7 @@ export default function WidgetStudio(p:Props){
     if(!bounds)return;
     dividerWasResized.current=false;
     resizeStart.current={id:widget.id,x:e.clientX,y:e.clientY,
-      unitX:bounds.width/12,heightPx:widgetHeightPx(widget),axis,initial:instanceList};
+      unitX:bounds.width/12,heightPx:widgetHeightPx(widget),axis,side,initial:instanceList};
     resizePreviewRef.current=instanceList;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -757,12 +772,18 @@ export default function WidgetStudio(p:Props){
       .flatMap(band=>band.lanes.reduce((edges:number[],lane)=>{
         edges.push((edges[edges.length-1]??0)+lane.width);return edges},[]));
     const nominalWidth=selected?Number(selected.config.layoutWidth??selected.width):6;
+    const signedDx=start.side==="left"?-dx:dx;
     const snapped=formation.magneticSnapping
-      ?magneticSnapWidth(nominalWidth+dx/start.unitX,peerEdges,start.unitX,formation.snapDistancePx)
-      :{width:nominalWidth+dx/start.unitX,snapped:false};
+      ?magneticSnapWidth(nominalWidth+signedDx/start.unitX,peerEdges,start.unitX,formation.snapDistancePx)
+      :{width:nominalWidth+signedDx/start.unitX,snapped:false};
     setSnapGuide(snapped.snapped&&start.axis!=="y");
-    const x=Math.round((snapped.snapped?snapped.width-nominalWidth:dx/start.unitX));
-    let result=start.axis==="y"||x===0?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps,formation);
+    const x=Math.round((snapped.snapped?snapped.width-nominalWidth:signedDx/start.unitX));
+    const lowerWidget=selected&&widgetLayoutBands(start.initial.filter(w=>widgetSectionId(w)===widgetSectionId(selected)))
+      .some(b=>b.spans?.some(span=>span.widgets.some(w=>w.id===selected.id))||
+        b.lanes.some(lane=>lane.widgets.findIndex(w=>w.id===selected.id)>0));
+    let result=start.axis==="y"||x===0?start.initial:lowerWidget
+      ?x>0?expandWidgetIntoVacantLane(start.initial,start.id,start.side):start.initial
+      :resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps,formation,start.side);
     if(start.axis!=="x")result=resizeWidgetHeight(result,pageSections,start.id,start.heightPx+dy,formation);
     if(result===start.initial)return;
     dividerWasResized.current=true;
@@ -865,6 +886,7 @@ export default function WidgetStudio(p:Props){
       width:instance?Number(instance.config.layoutWidth??instance.width):undefined,
       height:instance?.height,heightPx:instance?widgetHeightPx(instance):undefined,
       layoutEditing:arrange,sizeLocked:instance?widgetSizeLocked(instance):false,
+      magneticLinked:instance?.config.magneticLinked===true,
       rowPinned:instance?widgetRowPinned(instance):false,
       rowLocked:instance?widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
         .find(b=>b.id===widgetBandIdentity(instance))?.lanes.some(l=>l.widgets.some(w=>w.config.rowLocked===true)):false,
@@ -873,7 +895,8 @@ export default function WidgetStudio(p:Props){
         ?(()=>{
           const band=widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
             .find(b=>b.id===widgetBandIdentity(instance));
-          return band&&band.lanes.length>1&&Math.abs(12-band.lanes.reduce((n,l)=>n+l.width,0))<.005
+          return instance.config.magneticLinked===true&&band&&band.lanes.length>1&&
+            band.lanes.some(l=>l.widgets.some(w=>w.id!==instance.id&&w.config.magneticLinked===true))
             ?"Adjacent columns share a magnetic boundary":"No magnetic connection";
         })():"Snapping disabled"):undefined,
       databases:data.databases,views:data.views,properties:data.properties,
@@ -885,6 +908,14 @@ export default function WidgetStudio(p:Props){
       onSizeLock:instance?locked=>changeInstance(instance.id,{config:{...instance.config,sizeLocked:locked}}):undefined,
       onRowPin:instance?pinned=>changeInstance(instance.id,{config:{...instance.config,rowPinned:pinned}}):undefined,
       onRowLock:instance?locked=>saveLayout(setWidgetRowLock(instanceList,instance.id,locked)):undefined,
+      onMagneticLink:instance?linked=>{
+        const band=widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
+          .find(b=>b.id===widgetBandIdentity(instance));
+        const laneIndex=band?.lanes.findIndex(l=>l.widgets.some(w=>w.id===instance.id))??-1;
+        const peerIds=new Set([instance.id,
+          ...((band?.lanes[laneIndex+1]??band?.lanes[laneIndex-1])?.widgets??[]).map(w=>w.id)]);
+        saveLayout(instanceList.map(w=>peerIds.has(w.id)?{...w,config:{...w.config,magneticLinked:linked}}:w));
+      }:undefined,
       onSaveToDefinition:instance?saveMaster:undefined,
       onCreateDatabase:createSource,onAddProperty:addSourceProperty,onUpdateProperty:updateSourceProperty
     });
@@ -1376,7 +1407,7 @@ export default function WidgetStudio(p:Props){
                 (widgetFootprintHeight(w,arrange,collapsedWidgets.includes(w.id))??widgetHeightPx(w)+WIDGET_EDITOR_FOOTER_PX);
               const visualTracks=widgetVisualTracks(band,heights,gap);
               const largestEnd=Math.max(0,...visualTracks.map(track=>track.endPx));
-              const bandPadding=arrange?66:undefined;
+              const bandPadding=arrange?42:undefined;
               // The upper-row divider creates an upper column; the lower-row
               // edge fills a vacant lower slot. They must never share a hit box.
               const extendLowerWidget=(widget:PageWidget,side:"left"|"right")=>
@@ -1386,6 +1417,16 @@ export default function WidgetStudio(p:Props){
                 style={{height:widgetFootprintHeight(widget,arrange,collapsedWidgets.includes(widget.id))??"auto",
                   marginTop:Math.max(0,Number(widget.config.layoutOffsetPx??0))}}>
                 {widgetCard(widget)}
+                {arrange&&!collapsedWidgets.includes(widget.id)&&(["left","right"] as const).map(side=>
+                  <button key={"edge-"+side} type="button"
+                    className={"aaa-widget-side-resize aaa-widget-side-resize-"+side}
+                    aria-label={"Resize "+(widget.title||"widget")+" from "+side+" side"}
+                    title={widgetSizeLocked(widget)?"Unlock widget size in Configure":"Drag this side to resize the widget"}
+                    disabled={widgetSizeLocked(widget)}
+                    onPointerDown={e=>startResize(e,widget,"x",side)}
+                    onPointerMove={resizeMove}
+                    onPointerUp={resizeEnd}
+                    onPointerCancel={resizeEnd}/>)}
                 {arrange&&(()=>{
                   const start=widget.config.layoutSpanStart,count=widget.config.layoutSpanCount;
                   const laneIndex=band.lanes.findIndex(lane=>lane.widgets.some(item=>item.id===widget.id));
@@ -1473,7 +1514,15 @@ export default function WidgetStudio(p:Props){
               </div>;
               const renderLane=(lane:WidgetLayoutLane,laneIndex:number)=><div className="aaa-widget-layout-lane-shell" key={lane.id}
                 style={{flex:`${lane.width} 1 0`}}>
-                <div className="aaa-widget-layout-lane">
+                <div className="aaa-widget-layout-lane" data-aaa-lane-bottom-widget={lane.widgets[lane.widgets.length-1]?.id}
+                  data-aaa-section-id={section.id}
+                  onDragOver={e=>{if(!drag||!lane.widgets.length)return;
+                    if((e.target as HTMLElement).closest("[data-aaa-widget-id]"))return;
+                    e.preventDefault();e.stopPropagation();
+                    hint({sectionId:section.id,targetId:lane.widgets[lane.widgets.length-1].id,edge:"below"})}}
+                  onDrop={e=>{if(!drag||!lane.widgets.length)return;
+                    e.preventDefault();e.stopPropagation();
+                    commitDrop({sectionId:section.id,targetId:lane.widgets[lane.widgets.length-1].id,edge:"below"})}}>
                   {lane.widgets.map(renderItem)}
                   {arrange&&lane.widgets.length>0&&(()=>{
                     const bottom=lane.widgets[lane.widgets.length-1];
@@ -1481,6 +1530,11 @@ export default function WidgetStudio(p:Props){
                       className="aaa-widget-lane-stack-drop aaa-widget-stack-resizer"
                       title={"Drag to resize "+(bottom.title||"this widget")+" height"}
                       aria-label={"Resize "+(bottom.title||"this widget")+" height"}
+                      data-aaa-insert-edge="below" data-aaa-target-id={bottom.id} data-aaa-section-id={section.id}
+                      onDragOver={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();
+                        hint({sectionId:section.id,targetId:bottom.id,edge:"below"})}}
+                      onDrop={e=>{if(!drag)return;e.preventDefault();e.stopPropagation();
+                        commitDrop({sectionId:section.id,targetId:bottom.id,edge:"below"})}}
                       onPointerDown={e=>startResize(e,bottom,"y")}
                       onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}>
                       <span className="aaa-widget-divider-stroke" aria-hidden="true"/>

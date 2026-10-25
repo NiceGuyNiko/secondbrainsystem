@@ -103,6 +103,9 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
           <input type="checkbox" checked={selection.rowPinned===true} onChange={e=>selection.onRowPin?.(e.target.checked)}/></label>
         <label className="aaa-widget-switch"><span>Lock the entire row</span>
           <input type="checkbox" checked={selection.rowLocked===true} onChange={e=>selection.onRowLock?.(e.target.checked)}/></label>
+        <label className="aaa-widget-switch"><span>Connect neighboring magnetic edges</span>
+          <input type="checkbox" checked={selection.magneticLinked===true}
+            onChange={e=>selection.onMagneticLink?.(e.target.checked)}/></label>
         <p role="status">{selection.rowLocked?"Locked row":"Flexible row"} · {selection.rowOccupancy??100}% occupied
           {" · "}{selection.magneticConnections??"No magnetic connection"}</p>
         {selection.sizeLocked&&<p>Width and height are fixed. Unlock the widget before resizing it or using its space for another column.</p>}

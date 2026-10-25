@@ -4375,3 +4375,30 @@ input[type="range"]{
 .aaa-widget-canvas.aaa-widget-magnetic-active .aaa-widget-layout-lane-shell{
   transition:flex-grow .15s ease-out;
 }
+
+/* Direct card-edge resizing, distinct from the six-dot move handle. */
+.aaa-widget-sections-arranging .aaa-widget-side-resize{
+  position:absolute;top:19%;bottom:19%;width:11px;z-index:16;
+  padding:0;border:0;border-radius:5px;background:transparent;
+  cursor:ew-resize;touch-action:none;opacity:.45;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-left{left:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-right{right:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize::before{
+  content:"";position:absolute;left:4px;top:20%;bottom:20%;width:2px;
+  border-radius:99px;background:var(--accent);opacity:.55;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:active::before{
+  opacity:1;box-shadow:0 0 7px var(--accent-soft);width:3px;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:disabled{cursor:not-allowed;opacity:.16}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize{display:none}
+.aaa-widget-row-controls{
+  top:-21px;right:2px;gap:6px;padding:1px 5px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--surface);opacity:.76;
+}
+.aaa-widget-row-controls:hover,.aaa-widget-row-controls:focus-within{opacity:1}
+.aaa-widget-row-lock{border:0;background:transparent;padding:1px 2px}

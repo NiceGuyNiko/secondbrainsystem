@@ -27,8 +27,14 @@ test("magnetic edges connect inside the configured pixel threshold, not beyond i
   assert.deepEqual(magneticSnapWidth(5.82,[6,9],100,14),{width:5.82,snapped:false});
 });
 test("magnetically linked lanes resize their shared boundary together",()=>{
-  const result=resizeWidgetLane(two(),[section],"a",1,true,prefs());
+  const linked=two().map(w=>({...w,config:{...w.config,magneticLinked:true}}));
+  const result=resizeWidgetLane(linked,[section],"a",1,true,prefs({magneticSnapping:true}));
   assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[7,5]);
+});
+test("new rows begin unconnected, even when magnetic alignment is globally enabled",()=>{
+  const result=resizeWidgetLane(two(),[section],"a",1,true,prefs({magneticSnapping:true}));
+  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[7]);
+  assert.equal(bands(result)[1].lanes[0].width,6);
 });
 test("without snapping, a resized lane leaves its neighbor unchanged and can free space",()=>{
   const result=resizeWidgetLane(two(),[section],"a",-2,true,prefs({magneticSnapping:false}));
@@ -46,7 +52,8 @@ test("row locking persists membership and synchronizes resizing even with magnet
   assert.deepEqual(JSON.parse(JSON.stringify(changed)).map((w:PageWidget)=>w.config.rowLocked),[true,true]);
 });
 test("width lock at 75 percent remains exact when an unlocked neighbor holds 25 percent",()=>{
-  const wide=resizeWidgetLane(two(),[section],"a",3);
+  const wide=setWidgetRowLock(resizeWidgetLane(setWidgetRowLock(two(),"a",true),
+    [section],"a",3), "a",false);
   const frozen=wide.map(w=>w.id==="a"?{...w,config:{...w.config,sizeLocked:true}}:w);
   assert.deepEqual(bands(frozen)[0].lanes.map(l=>l.width),[9,3]);
   assert.deepEqual(resizeWidgetLane(frozen,[section],"a",-2),frozen);
@@ -65,7 +72,8 @@ test("separated boundaries remain independent even after re-enabling magnetism",
   assert.deepEqual(bands(restored)[0].lanes.map(l=>l.width),[5,6]);
 });
 test("a third physical occupant cannot compress a fully allocated 75/25 locked row",()=>{
-  const wide=resizeWidgetLane(two(),[section],"a",3);
+  const wide=setWidgetRowLock(resizeWidgetLane(setWidgetRowLock(two(),"a",true),
+    [section],"a",3),"a",false);
   const locked=wide.map(w=>w.id==="a"?{...w,config:{...w.config,sizeLocked:true}}:w);
   const attempted=placeWidget([...locked,make("third",2)],[section],"third",at("b","right"));
   assert.equal(bands(attempted)[0].lanes.length,2);
@@ -91,9 +99,38 @@ test("locked target cannot be displaced and locked widths cannot swap into small
   const locked=two().map(w=>w.id==="b"?{...w,config:{...w.config,sizeLocked:true}}:w);
   const blocked=placeWidget([...locked,make("replacement",2)],[section],"replacement",at("b","replace"));
   assert.equal(bands(blocked)[0].lanes[1].widgets[0].id,"b");
-  const wide=resizeWidgetLane(two(),[section],"a",3);
+  const wide=setWidgetRowLock(resizeWidgetLane(setWidgetRowLock(two(),"a",true),
+    [section],"a",3),"a",false);
   const frozen=wide.map(w=>w.id==="a"?{...w,config:{...w.config,sizeLocked:true}}:w);
-  assert.deepEqual(reorderWidgetColumn(frozen,[section],"a","b"),frozen);
+  const moved=reorderWidgetColumn(frozen,[section],"a","b");
+  assert.deepEqual(bands(moved)[0].lanes.map(l=>l.width),[3,9]);
+  assert.equal(moved.find(w=>w.id==="a")?.config.sizeLocked,true);
+});
+test("swapping unequal columns inverses 25/75 without changing either widget footprint",()=>{
+  const original=two().map(w=>w.id==="a"
+    ?{...w,config:{...w.config,layoutWidth:3},width:3}
+    :{...w,config:{...w.config,layoutWidth:9},width:9});
+  const changed=reorderWidgetColumn(original,[section],"a","b");
+  assert.deepEqual(bands(changed)[0].lanes.map(l=>l.width),[9,3]);
+  assert.deepEqual(bands(changed)[0].lanes.map(l=>l.widgets[0].id),["b","a"]);
+  assert.equal(changed.find(w=>w.id==="a")?.config.layoutWidth,3);
+  assert.equal(changed.find(w=>w.id==="b")?.config.layoutWidth,9);
+});
+test("growing an independent widget pushes the obstructing column down, preserving its width",()=>{
+  const original=two();
+  const changed=resizeWidgetLane(original,[section],"a",3);
+  assert.deepEqual(bands(changed)[0].lanes.map(l=>l.width),[9]);
+  assert.deepEqual(bands(changed)[1].lanes.map(l=>l.width),[6]);
+  assert.equal(changed.find(w=>w.id==="b")?.definition_id,"source-b");
+  assert.equal(changed.find(w=>w.id==="b")?.config.layoutWidth,6);
+});
+test("both widget side edges resize and locked neighbors cannot be displaced",()=>{
+  const prepared=setWidgetRowLock(two(),"a",true);
+  const left=resizeWidgetLane(prepared,[section],"b",-1,true,prefs(),"left");
+  assert.deepEqual(bands(left)[0].lanes.map(l=>l.width),[7,5]);
+  const locked=two().map(w=>w.id==="b"?{...w,config:{...w.config,sizeLocked:true}}:w);
+  const blocked=resizeWidgetLane(locked,[section],"a",3,true,prefs(),"right");
+  assert.deepEqual(blocked,locked);
 });
 test("shrinking with Fill Freed Space disabled keeps the next stacked widget stationary",()=>{
   const stacked=placeWidget([...two(),make("c",2)],[section],"c",at("a","below"));

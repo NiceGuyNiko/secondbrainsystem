@@ -74,6 +74,7 @@ export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionI
     ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{}),
     ...(typeof widget.config.layoutWidth==="number"?{layoutWidth:widget.config.layoutWidth}:{}),
     ...(widget.config.sizeLocked===true?{sizeLocked:true}:{}),
+    ...(widget.config.magneticLinked===true?{magneticLinked:true}:{}),
     ...(widget.config.rowPinned===true?{rowPinned:true}:{}),
     ...(widget.config.rowLocked===true?{rowLocked:true}:{}),
     ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{})};
@@ -112,6 +113,7 @@ export type WidgetConfigureTarget={
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;heightPx?:number;
   sizeLocked?:boolean;rowPinned?:boolean;rowLocked?:boolean;
+  magneticLinked?:boolean;
   layoutEditing?:boolean;
   rowOccupancy?:number;magneticConnections?:string;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
@@ -123,6 +125,7 @@ export type WidgetConfigureTarget={
   onSizeLock?:(locked:boolean)=>void;
   onRowPin?:(pinned:boolean)=>void;
   onRowLock?:(locked:boolean)=>void;
+  onMagneticLink?:(linked:boolean)=>void;
   onSaveToDefinition?:()=>void;
   onCreateDatabase?:(name:string)=>Promise<string>;
   onAddProperty?:(databaseId:string,name:string,type:string)=>Promise<void>;

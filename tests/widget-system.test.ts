@@ -4,6 +4,7 @@ import {PGlite} from "@electric-sql/pglite";
 import {readFileSync,readdirSync} from "node:fs";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,type PageWidget} from "../lib/widget-system";
 import {placeWidget,resizeWidgetLane,widgetLayoutBands} from "../lib/widget-layout";
+import {setWidgetRowLock} from "../lib/widget-formation";
 
 test("stable drop placements snap columns, stack widgets and conserve neighboring widths",()=>{
   const widget=(id:string,width:number,position:number,sectionId="history"):PageWidget=>({id,page_id:"world",definition_id:id,
@@ -18,9 +19,10 @@ test("stable drop placements snap columns, stack widgets and conserve neighborin
   const middle=placeWidget(original,sections,"moment",{sectionId:"history",targetId:"event",edge:"left"});
   assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.widgets[0].id),["era","moment","event"]);
   assert.deepEqual(widgetLayoutBands(middle)[0].lanes.map(l=>l.width),[4,4,4],"three columns automatically snap to thirds");
-  const stretched=resizeWidgetLane(middle,sections,"era",2);
+  const lockedMiddle=setWidgetRowLock(middle,"era",true);
+  const stretched=resizeWidgetLane(lockedMiddle,sections,"era",2);
   assert.deepEqual(widgetLayoutBands(stretched)[0].lanes.map(l=>l.width),[6,2,4],"a divider expands the left lane as it contracts the neighbor");
-  const thirds=resizeWidgetLane(resizeWidgetLane(middle,sections,"era",-1),sections,"moment",1);
+  const thirds=resizeWidgetLane(resizeWidgetLane(lockedMiddle,sections,"era",-1),sections,"moment",1);
   assert.deepEqual(widgetLayoutBands(thirds)[0].lanes.map(l=>l.width),[3,6,3],"custom 25/50/25 layout stays possible after snapping to thirds");
   const oneColumn=placeWidget(original.slice(0,2),sections,"event",{sectionId:"history",targetId:"era",edge:"below"});
   assert.deepEqual(widgetLayoutBands(oneColumn)[0].lanes.map(l=>l.width),[12],"stacking two half widgets restores a full-width column");

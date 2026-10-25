@@ -50,11 +50,12 @@ test("Double-click matching changes the clicked widget's height and nothing else
   assert.equal(widgetHeightPx(shrink.find(w=>w.id==="short")!),240);
   assert.equal(shrink.find(w=>w.id==="tall")?.definition_id,"master-tall");
 });
-test("Column divider resizing retains individual saved heights",()=>{
+test("Independent side resize pushes obstructing columns down and retains their saved heights",()=>{
   const input=[item("a",700,0),item("b",230,1),item("c",330,2)];
   const two=placeWidget(input,[sec],"b",target("a","right"));
   const three=placeWidget(two,[sec],"c",target("b","right"));
   const changed=resizeWidgetLane(three,[sec],"a",1);
-  assert.deepEqual(widgetLayoutBands(changed)[0].lanes.map(l=>l.width),[5,3,4]);
+  assert.deepEqual(widgetLayoutBands(changed)[0].lanes.map(l=>l.width),[5,4]);
+  assert.deepEqual(widgetLayoutBands(changed)[1].lanes.map(l=>l.width),[4]);
   assert.deepEqual(["a","b","c"].map(id=>widgetHeightPx(changed.find(w=>w.id===id)!)),[700,230,330]);
 });
