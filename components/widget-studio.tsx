@@ -6,7 +6,7 @@ import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,canInsertWidgetColumn,canPlaceWidgetRange,placeWidget,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
+import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,canInsertWidgetColumn,expandWidgetIntoVacantLane,placeWidget,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropEdge,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -75,6 +75,8 @@ export default function WidgetStudio(p:Props){
   const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
   const returnWidgetRef=useRef<(id:string)=>void>(()=>{});
   const dividerWasResized=useRef(false);
+  const spanHandleDrag=useRef<{id:string;side:"left"|"right";x:number;completed:boolean}|null>(null);
+  const spanHandleConsumedClick=useRef<string|null>(null);
   const [resizePreview,setResizePreview]=useState<PageWidget[]|null>(null);
   const [measuredWidgetHeights,setMeasuredWidgetHeights]=useState<Record<string,number>>({});
   const resizePreviewRef=useRef<PageWidget[]|null>(null);
@@ -577,8 +579,9 @@ export default function WidgetStudio(p:Props){
       const rawCount=surface.getAttribute("data-aaa-span-count");
       const spanLaneCount=rawCount===null?undefined:Number(rawCount);
       const extendSpanWidgetId=surface.getAttribute("data-aaa-extend-span")??undefined;
+      const preserveGroupWidth=surface.getAttribute("data-aaa-preserve-group")==="true";
       if(targetId&&targetId!==movingId)
-        return {sectionId,targetId,edge,spanStartLane,spanLaneCount,extendSpanWidgetId};
+        return {sectionId,targetId,edge,spanStartLane,spanLaneCount,extendSpanWidgetId,preserveGroupWidth};
     }
     const article=element?.closest<HTMLElement>("[data-aaa-widget-id]");
     const targetId=article?.getAttribute("data-aaa-widget-id");
@@ -893,6 +896,12 @@ export default function WidgetStudio(p:Props){
     const folded=arrange&&collapsedWidgets.includes(widget.id);
     const fitContent=widget.config.fitContent===true;
     const cornerAction=p.cornerDoubleClick??"fit-content";
+    const expandedLeft=expandWidgetIntoVacantLane(instanceList,widget.id,"left");
+    const expandedRight=expandWidgetIntoVacantLane(instanceList,widget.id,"right");
+    const canFillWidth=expandedLeft.some(w=>w.id===widget.id&&w.config.layoutSpanCount!==widget.config.layoutSpanCount)||
+      expandedRight.some(w=>w.id===widget.id&&w.config.layoutSpanCount!==widget.config.layoutSpanCount);
+    const cornerDescription=cornerAction==="fit-content"&&canFillWidth?"fill available row space":
+      cornerAction==="fit-content"&&fitContent?"restore saved fixed height":widgetDoubleClickDescription(cornerAction);
     const chromeLocked=widget.config.chromeLocked===true;
     const hideChrome=!arrange&&chromeLocked;
     const labelsShown=cfg.showTitle||cfg.showDatabase||cfg.showViewTag;
@@ -955,17 +964,20 @@ export default function WidgetStudio(p:Props){
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
           <option value="">Overview</option>{pageSections.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}
         </select></label>
-        <span className="aaa-widget-height-caption">{fitContent?"Content-fit height":Math.round(height)+"px tall"} · double-click corner: {cornerAction==="fit-content"?(fitContent?"restore fixed height":"fit contents"):widgetDoubleClickDescription(cornerAction)}</span>
+        <span className="aaa-widget-height-caption">{fitContent?"Content-fit height":Math.round(height)+"px tall"} · double-click corner: {cornerDescription}</span>
       </footer>}
       {arrange&&<>
         <button type="button" className="aaa-widget-resize-corner"
-          aria-label={`Resize ${title}. Double-click to ${cornerAction==="fit-content"&&fitContent?"restore saved fixed height":widgetDoubleClickDescription(cornerAction)}.`}
-          title={`Drag to resize height; double-click to ${cornerAction==="fit-content"&&fitContent?"restore saved fixed height":widgetDoubleClickDescription(cornerAction)}`}
+          aria-label={`Resize ${title}. Double-click to ${cornerDescription}.`}
+          title={`Drag to resize height; double-click to ${cornerDescription}`}
           onPointerDown={e=>{if(e.detail>=2)return;startResize(e,widget,"y")}}
           onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
           onDoubleClick={e=>{e.preventDefault();e.stopPropagation();
             resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
-            if(cornerAction!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,cornerAction,fillGaps,14,WIDGET_EDITOR_FOOTER_PX));
+            if(cornerAction==="fit-content"&&canFillWidth)saveLayout(
+              expandedLeft.find(w=>w.id===widget.id)?.config.layoutSpanCount!==widget.config.layoutSpanCount
+                ?expandedLeft:expandedRight);
+            else if(cornerAction!=="none")saveLayout(applyWidgetDoubleClickAction(instanceList,pageSections,widget.id,cornerAction,fillGaps,14,WIDGET_EDITOR_FOOTER_PX));
           }}/>
       </>}
     </article>;
@@ -1170,54 +1182,10 @@ export default function WidgetStudio(p:Props){
               const visualTracks=widgetVisualTracks(band,heights,gap);
               const largestEnd=Math.max(0,...visualTracks.map(track=>track.endPx));
               const bandPadding=arrange?66:undefined;
-              // Local insertion guides follow each widget edge separately.
-              // A second-row merged widget can therefore have its own left
-              // and right insertion zones without drawing a thick full-height
-              // bar through the entire parent column.
-              const edgePlacement=(widget:PageWidget,edge:"left"|"right"):WidgetDropTarget|null=>{
-                const start=widget.config.layoutSpanStart;
-                const count=widget.config.layoutSpanCount;
-                const isSpan=typeof start==="number"&&typeof count==="number"&&
-                  Number.isInteger(start)&&Number.isInteger(count)&&count>=2;
-                // At the four-track limit, D can still be divided into F+D.
-                // Its edge controls now partition its existing columns rather
-                // than silently stacking or trying to create a fifth column.
-                if(!canInsertWidgetColumn(band))
-                  return isSpan?{sectionId:section.id,targetId:widget.id,
-                    edge:edge==="left"?"split-span-left":"split-span-right"}:null;
-                const widgetLane=band.lanes.findIndex(lane=>lane.widgets.some(w=>w.id===widget.id));
-                const laneIndex=isSpan
-                  ?edge==="left"?start:start+count-1
-                  :widgetLane;
-                const lane=band.lanes[laneIndex];
-                if(!lane?.widgets.length)return null;
-                const targetId=lane.widgets[0].id;
-                // If inserted beside a combined widget (or immediately next
-                // to one), preserve the combined widget across the new lane.
-                const boundary=laneIndex+(edge==="right"?1:0);
-                const adjacentSpan=isSpan
-                  ?band.spans?.find(span=>span.widgets.some(w=>w.id===widget.id))
-                  :band.spans?.find(span=>span.startLane<=laneIndex&&
-                      span.startLane+span.laneCount>laneIndex) ??
-                    band.spans?.find(span=>edge==="left"
-                      ?span.startLane+span.laneCount===boundary
-                      :span.startLane===boundary);
-                const extendSpanWidgetId=adjacentSpan?.widgets[0]?.id;
-                return {sectionId:section.id,targetId,edge,extendSpanWidgetId};
-              };
-              const extendLowerWidget=(widget:PageWidget,side:"left"|"right")=>{
-                const spanStart=widget.config.layoutSpanStart,spanCount=widget.config.layoutSpanCount;
-                const currentStart=typeof spanStart==="number"&&typeof spanCount==="number"&&spanCount>=2
-                  ?spanStart:band.lanes.findIndex(lane=>lane.widgets.some(row=>row.id===widget.id));
-                const currentCount=typeof spanCount==="number"&&spanCount>=2?spanCount:1;
-                const nextStart=currentStart+(side==="left"?-1:0),nextCount=currentCount+1;
-                if(nextStart<0||nextStart+nextCount>band.lanes.length||
-                  !canPlaceWidgetRange(band,nextStart,nextCount))return;
-                saveLayout(instanceList.map(row=>row.id===widget.id?{
-                  ...row,config:{...row.config,layoutBand:band.id,
-                    layoutSpanStart:nextStart,layoutSpanCount:nextCount}
-                }:row));
-              };
+              // The upper-row divider creates an upper column; the lower-row
+              // edge fills a vacant lower slot. They must never share a hit box.
+              const extendLowerWidget=(widget:PageWidget,side:"left"|"right")=>
+                saveLayout(expandWidgetIntoVacantLane(instanceList,widget.id,side));
               const renderItem=(widget:PageWidget)=><div className={"aaa-widget-layout-item"+(widget.config.fitContent===true?" aaa-widget-layout-fit":"")} key={widget.id}
                 data-aaa-layout-widget-id={widget.id}
                 style={{height:widgetFootprintHeight(widget,arrange,collapsedWidgets.includes(widget.id))??"auto"}}>
@@ -1231,32 +1199,52 @@ export default function WidgetStudio(p:Props){
                   if(!isLower)return null;
                   const first=typeof start==="number"&&typeof count==="number"&&count>=2?start:laneIndex;
                   const last=first+(typeof count==="number"&&count>=2?count:1);
+                  const isAvailable=(side:"left"|"right")=>{
+                    const result=expandWidgetIntoVacantLane(instanceList,widget.id,side);
+                    return result.find(w=>w.id===widget.id)?.config.layoutSpanCount!==count;
+                  };
+                  const growHandle=(side:"left"|"right")=><button type="button" key={side}
+                    className={"aaa-widget-span-edge-resize aaa-widget-span-edge-"+side}
+                    title={"Drag this dotted edge "+side+" to expand into available space"}
+                    aria-label={"Drag lower widget's "+side+" dotted edge to expand into free space"}
+                    onPointerDown={e=>{e.preventDefault();e.stopPropagation();
+                      spanHandleDrag.current={id:widget.id,side,x:e.clientX,completed:false};
+                      e.currentTarget.setPointerCapture(e.pointerId)}}
+                    onPointerMove={e=>{const state=spanHandleDrag.current;
+                      if(state?.id===widget.id&&state.side===side&&
+                        (side==="left"?state.x-e.clientX:e.clientX-state.x)>23)
+                        state.completed=true}}
+                    onPointerUp={e=>{const state=spanHandleDrag.current;
+                      if(state?.id===widget.id&&state.side===side){
+                        if(state.completed){spanHandleConsumedClick.current=widget.id+side;extendLowerWidget(widget,side)}
+                        spanHandleDrag.current=null;
+                      }
+                      if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId)}}
+                    onPointerCancel={()=>{spanHandleDrag.current=null}}
+                    onClick={e=>{e.stopPropagation();
+                      if(spanHandleConsumedClick.current===widget.id+side){spanHandleConsumedClick.current=null;return}
+                      extendLowerWidget(widget,side)}}/>;
                   return <>
-                    {first>0&&canPlaceWidgetRange(band,first-1,last-first+1)&&<button type="button"
-                      className="aaa-widget-span-grow aaa-widget-span-grow-left"
-                      title="Expand this lower widget into the neighboring left column without resizing the widgets above"
-                      aria-label="Expand lower widget left" onClick={()=>extendLowerWidget(widget,"left")}><ChevronRight size={13}/></button>}
-                    {last<band.lanes.length&&canPlaceWidgetRange(band,first,last-first+1)&&<button type="button"
-                      className="aaa-widget-span-grow aaa-widget-span-grow-right"
-                      title="Expand this lower widget into the neighboring right column without resizing the widgets above"
-                      aria-label="Expand lower widget right" onClick={()=>extendLowerWidget(widget,"right")}><ChevronRight size={13}/></button>}
+                    {first>0&&isAvailable("left")&&growHandle("left")}
+                    {last<band.lanes.length&&isAvailable("right")&&growHandle("right")}
                   </>;
                 })()}
                 {arrange&&(["left","right"] as const).map(side=>{
-                  // Ordinary lanes already have one shared full-height
-                  // divider. Only merged lower widgets need local split hits.
-                  if(typeof widget.config.layoutSpanCount!=="number")return null;
-                  const target=edgePlacement(widget,side);
-                  if(!target?.targetId)return null;
+                  // The lower-row + lives near the bottom of the merged card,
+                  // clear of its central sideways resize arrow (part zero).
+                  const start=widget.config.layoutSpanStart,count=widget.config.layoutSpanCount;
+                  if(typeof start!=="number"||typeof count!=="number"||count<2)return null;
+                  const adjacent=band.lanes[side==="left"?start-1:start+count];
+                  if(!adjacent||adjacent.widgets.length!==1)return null;
+                  const target:WidgetDropTarget={sectionId:section.id,targetId:widget.id,
+                    edge:side==="left"?"lower-adjacent-left":"lower-adjacent-right"};
                   return <button key={"local-"+side} type="button"
-                    className={"aaa-widget-local-column-drop aaa-widget-local-"+side+
-                      (dropHint?.edge===target.edge&&dropHint.targetId===target.targetId&&
-                        dropHint.extendSpanWidgetId===target.extendSpanWidgetId?" is-target":"")}
-                    title={`Insert a widget ${side} of ${widget.title||"this widget"}`}
-                    aria-label={`Add a column ${side} of ${widget.title||"this widget"}`}
-                    data-aaa-insert-edge={side} data-aaa-target-id={target.targetId}
+                    className={"aaa-widget-lower-adjacent-drop aaa-widget-lower-adjacent-"+side+
+                      (dropHint?.edge===target.edge&&dropHint.targetId===target.targetId?" is-target":"")}
+                    title={`Add a widget in the lower empty space ${side} of ${widget.title||"this widget"}`}
+                    aria-label={`Fill lower empty space ${side} of ${widget.title||"this widget"}`}
+                    data-aaa-insert-edge={target.edge} data-aaa-target-id={target.targetId}
                     data-aaa-section-id={section.id}
-                    data-aaa-extend-span={target.extendSpanWidgetId}
                     onDragOver={e=>{if(!drag||drag===target.targetId)return;
                       e.preventDefault();e.stopPropagation();hint(target)}}
                     onDrop={e=>{if(!drag||drag===target.targetId)return;
@@ -1316,21 +1304,40 @@ export default function WidgetStudio(p:Props){
                   const after=band.lanes[laneIndex+1]?.widgets.find(w=>w.id!==drag);
                   const target=before??after;
                   const edge:WidgetDropEdge=before?"right":"left";
+                  const upperSpan=(band.spans??[])
+                    .filter(span=>span.startLane<=laneIndex&&span.startLane+span.laneCount>laneIndex+1)
+                    .sort((a,b)=>a.laneCount-b.laneCount)[0];
+                  // An insertion inside B+C divides ONLY the existing B+C
+                  // width into three top columns, while D stays merged below.
+                  // The A|B divider has no such span and affects full height.
+                  const insertion:WidgetDropTarget={sectionId:section.id,targetId:target?.id??null,edge,
+                    ...(upperSpan?{extendSpanWidgetId:upperSpan.widgets[0]?.id,preserveGroupWidth:true}:{})};
+                  const nextSpan=(band.spans??[]).find(span=>span.startLane===laneIndex+1);
+                  const junctionY=nextSpan?Math.max(0,...band.lanes
+                    .slice(nextSpan.startLane,nextSpan.startLane+nextSpan.laneCount)
+                    .map(inner=>inner.widgets.reduce((total,w)=>total+heights(w),0)+
+                      Math.max(0,inner.widgets.length-1)*gap))+gap:undefined;
                   return <button className="aaa-widget-lane-divider" type="button"
+                    data-aaa-guide={upperSpan?"upper-segment":"full-band"}
                     data-aaa-insert-edge={canInsert?edge:undefined}
                     data-aaa-target-id={canInsert?target?.id:undefined}
                     data-aaa-section-id={canInsert?section.id:undefined}
+                    data-aaa-extend-span={insertion.extendSpanWidgetId}
+                    data-aaa-preserve-group={insertion.preserveGroupWidth?"true":undefined}
+                    style={junctionY===undefined?undefined:{"--aaa-junction-y":`${junctionY}px`} as React.CSSProperties}
+                    data-aaa-target-active={dropHint?.edge===insertion.edge&&
+                      dropHint.targetId===insertion.targetId?"true":undefined}
                     title={canInsert?"Drag to resize columns; drop widget here to add a column":"Drag to resize neighboring columns"}
                     aria-label={canInsert?"Resize columns or insert column between widgets":"Resize neighboring columns"}
                     onDragOver={e=>{if(!drag||!canInsert||!target)return;e.preventDefault();e.stopPropagation();
-                      hint({sectionId:section.id,targetId:target.id,edge})}}
+                      hint(insertion)}}
                     onDrop={e=>{if(!drag||!canInsert||!target)return;e.preventDefault();e.stopPropagation();
-                      commitDrop({sectionId:section.id,targetId:target.id,edge})}}
+                      commitDrop(insertion)}}
                     onPointerDown={e=>startResize(e,lane.widgets[0],"x")}
                     onPointerMove={resizeMove} onPointerUp={resizeEnd} onPointerCancel={resizeEnd}
                     onClick={()=>{if(dividerWasResized.current){dividerWasResized.current=false;return}
                       if(!drag&&canInsert&&target&&!busy)
-                        openPlacement(band,{sectionId:section.id,targetId:target.id,edge});
+                        openPlacement(band,insertion);
                     }}/>;
                 })()}
               </div>;

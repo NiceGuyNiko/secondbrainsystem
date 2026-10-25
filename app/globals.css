@@ -4197,3 +4197,64 @@ input[type="range"]{
 .aaa-widget-span-grow:focus-visible{opacity:1}
 .aaa-widget-span-grow:hover{background:var(--accent-soft)}
 @media(pointer:coarse){.aaa-widget-span-grow{opacity:1}}
+
+/* Fluid divider zones: 1 is constrained to the upper grouped row; 2 marks
+   the junction but resizes/inserts across the full band. Neither overlays
+   the independent lower-row add control (3) or its draggable dotted edge (4). */
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-guide="full-band"]::after{
+  top:var(--aaa-junction-y,50%)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-target-active="true"]::before{
+  width:4px!important;left:6px!important;opacity:1!important;
+  box-shadow:0 0 11px var(--accent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster-columns:has(.aaa-widget-lane-divider[data-aaa-guide="upper-segment"][data-aaa-target-active="true"]){
+  outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  outline-offset:4px;
+  background:color-mix(in srgb,var(--accent) 8%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-band:has(.aaa-widget-lane-divider[data-aaa-guide="full-band"][data-aaa-target-active="true"]){
+  outline:2px dashed color-mix(in srgb,var(--accent) 55%,transparent);
+  outline-offset:4px;
+}
+/* The old full-height local-column button covered the middle resize arrow.
+   Replace it with a narrow draggable dotted stroke; its only interactive
+   width is the strip itself, allowing the + to sit on top at the midpoint. */
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize{
+  appearance:none;position:absolute;top:7px;bottom:7px;
+  width:14px;height:auto;margin:0;padding:0;border:0;background:transparent;
+  z-index:40;cursor:ew-resize;touch-action:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-left{left:-12px}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-right{right:-12px}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize::before{
+  content:"";position:absolute;top:0;bottom:0;left:6px;width:2px;
+  border-radius:2px;opacity:.75;
+  background:repeating-linear-gradient(to bottom,var(--accent) 0px,var(--accent) 4px,transparent 4px,transparent 8px);
+}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize:focus-visible::before{
+  width:3px;opacity:1;box-shadow:0 0 7px var(--accent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop{
+  appearance:none;position:absolute;top:50%;width:22px;height:27px;
+  padding:0;margin:0;transform:translateY(-50%);
+  border:0;border-radius:7px;background:var(--bg);color:var(--accent-text);
+  z-index:43;cursor:copy;display:grid;place-items:center;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-left{left:-16px}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-right{right:-16px}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop::after{
+  content:"+";font-size:17px;line-height:20px;font-weight:700;
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop:hover,
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop.is-target,
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop:focus-visible{
+  color:var(--text);background:var(--accent-soft);
+  box-shadow:0 0 0 2px var(--accent),0 0 12px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+@media(pointer:coarse){
+  .aaa-widget-sections-arranging .aaa-widget-span-edge-resize{width:19px}
+  .aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop{width:28px;height:31px}
+}

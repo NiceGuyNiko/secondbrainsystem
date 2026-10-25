@@ -3,7 +3,7 @@ import {widgetSectionId,widgetHeightPx,type PageWidget,type WidgetPageSection} f
 // Layout identity is stored on the placement, not on the database or master
 // widget. Bands are horizontal rows, lanes are columns within each band, and
 // widgets in the same lane stack vertically. They survive reload and sync.
-export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end"|"split-span-left"|"split-span-right";
+export type WidgetDropEdge="left"|"right"|"above"|"below"|"span-below"|"new-row"|"new-row-before"|"section-end"|"split-span-left"|"split-span-right"|"lower-adjacent-left"|"lower-adjacent-right";
 export type WidgetDropTarget={
   sectionId:string;targetId:string|null;edge:WidgetDropEdge;
   spanStartLane?:number;spanLaneCount?:number;
@@ -397,6 +397,24 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
         id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
       });
     }
+  }else if(destinationBand&&destinationSpan&&
+    (target.edge==="lower-adjacent-left"||target.edge==="lower-adjacent-right")){
+    // A lower merged row has its OWN neighboring empty space. Fill that
+    // space beneath the upper widget in the adjacent physical lane; do not
+    // add a fourth column to the upper row or split the merged widget.
+    const side=target.edge==="lower-adjacent-left"?-1:1;
+    const next=side===-1?destinationSpan.startLane-1:
+      destinationSpan.startLane+destinationSpan.laneCount;
+    const adjacent=destinationBand.lanes[next];
+    if(adjacent){
+      const sameHeight=destinationSpan.widgets.find(w=>w.id===target.targetId);
+      const height=sameHeight?widgetHeightPx(sameHeight):widgetHeightPx(moving);
+      adjacent.widgets.push({...moving,config:{...moving.config,fitContent:false,heightPx:height}});
+    }else{
+      destination.splice(destination.indexOf(destinationBand)+1,0,{
+        id:uniqueBandId(destination,id),lanes:[{id:"lane-"+id,width:12,widgets:[moving]}]
+      });
+    }
   }else if(destinationSpan&&(target.edge==="above"||target.edge==="below")){
     const idx=destinationSpan.widgets.findIndex(w=>w.id===target.targetId);
     destinationSpan.widgets.splice(idx+(target.edge==="below"?1:0),0,moving);
@@ -426,11 +444,10 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
           .reduce((sum,lane)=>sum+lane.width,0);
         if(affectedSpan){
           const identities=spanAnchors.get(affectedSpan);
-          if(identities?.length&&insertionIndex===affectedSpan.startLane){
-            spanAnchors.set(affectedSpan,[newLane.id,...identities]);
-            affectedSpan.laneCount+=1;
-          }else if(identities?.length&&insertionIndex===affectedSpan.startLane+affectedSpan.laneCount){
-            spanAnchors.set(affectedSpan,[...identities,newLane.id]);
+          if(identities?.length&&insertionIndex>=affectedSpan.startLane&&
+            insertionIndex<=affectedSpan.startLane+affectedSpan.laneCount){
+            const at=insertionIndex-affectedSpan.startLane;
+            spanAnchors.set(affectedSpan,[...identities.slice(0,at),newLane.id,...identities.slice(at)]);
             affectedSpan.laneCount+=1;
           }
         }
@@ -502,6 +519,38 @@ export function placeWidget(items:readonly PageWidget[],sections:readonly Widget
   }
   group.set(target.sectionId,destination);
   return publish(sections,items,group);
+}
+
+/** Expand a lower widget into an EMPTY adjacent slot, preserving upper-row
+ * column widths. The neighboring column may have its upper widget, but not a
+ * second lower widget that would overlap the expanded area. */
+export function expandWidgetIntoVacantLane(
+  items:readonly PageWidget[],id:string,side:"left"|"right"
+):PageWidget[]{
+  const widget=items.find(item=>item.id===id);
+  if(!widget)return [...items];
+  const band=widgetLayoutBands(items.filter(item=>widgetSectionId(item)===widgetSectionId(widget)))
+    .find(b=>b.lanes.some(lane=>lane.widgets.some(item=>item.id===id))||
+      b.spans?.some(span=>span.widgets.some(item=>item.id===id)));
+  if(!band)return [...items];
+  const start=widget.config.layoutSpanStart;
+  const count=widget.config.layoutSpanCount;
+  const isSpan=typeof start==="number"&&typeof count==="number"&&count>=2;
+  const currentStart=isSpan?start:band.lanes.findIndex(lane=>lane.widgets.some(item=>item.id===id));
+  const currentCount=isSpan?count:1;
+  const ownLane=band.lanes[currentStart];
+  if(currentStart<0||(!isSpan&&ownLane.widgets[0]?.id===id))return [...items];
+  const neighborIndex=side==="left"?currentStart-1:currentStart+currentCount;
+  const neighbor=band.lanes[neighborIndex];
+  if(!neighbor||neighbor.widgets.length!==1)return [...items];
+  const nextStart=Math.min(currentStart,neighborIndex);
+  const nextCount=currentCount+1;
+  if(!canPlaceWidgetRange(band,nextStart,nextCount))return [...items];
+  const width=band.lanes.slice(nextStart,nextStart+nextCount).reduce((total,lane)=>total+lane.width,0);
+  return items.map(item=>item.id===id?{
+    ...item,width,config:{...item.config,layoutBand:band.id,
+      layoutSpanStart:nextStart,layoutSpanCount:nextCount}
+  }:item);
 }
 
 /** A lane divider conserves the combined width of its adjacent columns. */
