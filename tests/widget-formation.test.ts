@@ -31,15 +31,16 @@ test("magnetically linked lanes resize their shared boundary together",()=>{
   const result=resizeWidgetLane(linked,[section],"a",1,true,prefs({magneticSnapping:true}));
   assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[7,5]);
 });
-test("new rows begin unconnected, even when magnetic alignment is globally enabled",()=>{
+test("full-row neighbors keep their row and resize their shared boundary without enabling magnetic links",()=>{
   const result=resizeWidgetLane(two(),[section],"a",1,true,prefs({magneticSnapping:true}));
-  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[7]);
-  assert.equal(bands(result)[1].lanes[0].width,6);
+  assert.equal(bands(result).length,1);
+  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[7,5]);
+  assert.equal(result.some(widget=>widget.config.magneticLinked===true),false);
 });
-test("without snapping, a resized lane leaves its neighbor unchanged and can free space",()=>{
+test("without snapping, shrinking a full row keeps both widgets aligned",()=>{
   const result=resizeWidgetLane(two(),[section],"a",-2,true,prefs({magneticSnapping:false}));
-  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[4,6]);
-  assert.equal(widgetRowOccupancy(result,widgetBandIdentity(result[0])),83);
+  assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[4,8]);
+  assert.equal(widgetRowOccupancy(result,widgetBandIdentity(result[0])),100);
 });
 test("row locking persists membership and synchronizes resizing even with magnets off",()=>{
   const source=setWidgetRowLock(two(),"a",true);
@@ -66,8 +67,9 @@ test("a new neighbor takes the remaining 25 percent beside a pre-locked 75 perce
   assert.deepEqual(bands(result)[0].lanes.map(l=>l.width),[9,3]);
   assert.equal(result.find(w=>w.id==="wide")?.config.sizeLocked,true);
 });
-test("separated boundaries remain independent even after re-enabling magnetism",()=>{
-  const free=resizeWidgetLane(two(),[section],"a",-2,true,prefs({magneticSnapping:false}));
+test("partially occupied rows leave real gaps, even after re-enabling magnetism",()=>{
+  const free=two().map(w=>w.id==="a"
+    ?{...w,width:4,config:{...w.config,layoutWidth:4}}:w);
   const restored=resizeWidgetLane(free,[section],"a",1,true,prefs({magneticSnapping:true}));
   assert.deepEqual(bands(restored)[0].lanes.map(l=>l.width),[5,6]);
 });
@@ -116,13 +118,18 @@ test("swapping unequal columns inverses 25/75 without changing either widget foo
   assert.equal(changed.find(w=>w.id==="a")?.config.layoutWidth,3);
   assert.equal(changed.find(w=>w.id==="b")?.config.layoutWidth,9);
 });
-test("growing an independent widget pushes the obstructing column down, preserving its width",()=>{
+test("Story Moments widening past 67 percent never pushes World Eras to a new row",()=>{
   const original=two();
   const changed=resizeWidgetLane(original,[section],"a",3);
-  assert.deepEqual(bands(changed)[0].lanes.map(l=>l.width),[9]);
-  assert.deepEqual(bands(changed)[1].lanes.map(l=>l.width),[6]);
+  assert.equal(bands(changed).length,1);
+  assert.deepEqual(bands(changed)[0].lanes.map(l=>l.width),[9,3]);
   assert.equal(changed.find(w=>w.id==="b")?.definition_id,"source-b");
-  assert.equal(changed.find(w=>w.id==="b")?.config.layoutWidth,6);
+  const restored=resizeWidgetLane(changed,[section],"a",-3);
+  assert.deepEqual(bands(restored)[0].lanes.map(l=>l.width),[6,6]);
+  assert.equal(bands(restored).length,1);
+  const capped=resizeWidgetLane(restored,[section],"a",8);
+  assert.deepEqual(bands(capped)[0].lanes.map(l=>l.width),[10,2]);
+  assert.equal(bands(capped).length,1);
 });
 test("both widget side edges resize and locked neighbors cannot be displaced",()=>{
   const prepared=setWidgetRowLock(two(),"a",true);

@@ -8,7 +8,7 @@ import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {copyWidgetBlueprint,groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,resizeWidgetHeight,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
+import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,resizeWidgetHeight,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetReorderZoneAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -612,15 +612,17 @@ export default function WidgetStudio(p:Props){
     old.spanLaneCount===value.spanLaneCount&&
     old.extendSpanWidgetId===value.extendSpanWidgetId?old:value);
   const dropTargetFor=(event:React.DragEvent<HTMLElement>,widget:PageWidget):WidgetDropTarget=>{
-    const reordered=reorderTargetFor(widget);
-    if(reordered)return reordered;
     const bounds=event.currentTarget.getBoundingClientRect();
-    const wasNewRow=dropHint?.targetId===widget.id&&dropHint.edge==="new-row";
     const x=event.clientX-bounds.left,y=event.clientY-bounds.top;
+    // Within an existing row, the card's central area reorders columns;
+    // the upper/lower strips explicitly STACK in that same column instead.
+    // This also prevents a drop near the bottom of a card from creating a row.
+    const reordered=widgetReorderZoneAtPoint(bounds.height,y)?reorderTargetFor(widget):null;
+    if(reordered)return reordered;
     const movingWidget=instanceList.find(w=>w.id===drag);
     const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(widget);
     const edge=x>bounds.width*.36&&x<bounds.width*.64&&y>bounds.height*.43&&y<bounds.height*.57&&
-      outsideBand?"replace":widgetDropEdgeAtPoint(bounds.width,bounds.height,x,y,wasNewRow);
+      outsideBand?"replace":widgetDropEdgeAtPoint(bounds.width,bounds.height,x,y);
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
   };
   const reorderTargetFor=(widget:PageWidget,movingId=drag):WidgetDropTarget|null=>{
@@ -659,10 +661,11 @@ export default function WidgetStudio(p:Props){
     const targetId=article?.getAttribute("data-aaa-widget-id");
     const target=instanceList.find(w=>w.id===targetId);
     if(article&&target&&target.id!==movingId){
-      const reorder=reorderTargetFor(target,movingId);
-      if(reorder)return reorder;
       const rect=article.getBoundingClientRect();
       const dx=x-rect.left,dy=y-rect.top;
+      const reorder=widgetReorderZoneAtPoint(rect.height,dy)
+        ?reorderTargetFor(target,movingId):null;
+      if(reorder)return reorder;
       const movingWidget=instanceList.find(w=>w.id===movingId);
       const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(target);
       const edge=dx>rect.width*.36&&dx<rect.width*.64&&dy>rect.height*.43&&dy<rect.height*.57&&
@@ -673,6 +676,21 @@ export default function WidgetStudio(p:Props){
     const bottomId=lane?.dataset.aaaLaneBottomWidget;
     if(bottomId&&bottomId!==movingId)
       return {sectionId:lane?.dataset.aaaSectionId??"",targetId:bottomId,edge:"below"};
+    // Gaps between a row's cards are part of that row, not an implicit
+    // section-end/new-row zone. Pick the nearest surviving card instead.
+    const band=element?.closest<HTMLElement>(".aaa-widget-layout-band");
+    if(band){
+      const cards=[...band.querySelectorAll<HTMLElement>("[data-aaa-widget-id]")]
+        .filter(card=>card.dataset.aaaWidgetId!==movingId);
+      const nearest=cards.map(card=>{
+        const r=card.getBoundingClientRect();
+        const dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom);
+        return {card,score:dx*dx+dy*dy};
+      }).sort((a,b)=>a.score-b.score)[0]?.card;
+      const next=instanceList.find(w=>w.id===nearest?.dataset.aaaWidgetId);
+      if(next)return {sectionId:widgetSectionId(next),targetId:next.id,
+        edge:y<nearest!.getBoundingClientRect().top?"above":"below"};
+    }
     const canvas=element?.closest<HTMLElement>(".aaa-widget-canvas");
     if(canvas)return {sectionId:canvas.dataset.aaaSectionId??"",targetId:null,edge:"section-end"};
     return null;
@@ -777,7 +795,9 @@ export default function WidgetStudio(p:Props){
       ?magneticSnapWidth(nominalWidth+signedDx/start.unitX,peerEdges,start.unitX,formation.snapDistancePx)
       :{width:nominalWidth+signedDx/start.unitX,snapped:false};
     setSnapGuide(snapped.snapped&&start.axis!=="y");
-    const x=Math.round((snapped.snapped?snapped.width-nominalWidth:signedDx/start.unitX));
+    // Ten subdivisions per 12-slot grid unit make drag resizing responsive
+    // without silently jumping from one coarse 8.33% step to another.
+    const x=Math.round((snapped.snapped?snapped.width-nominalWidth:signedDx/start.unitX)*10)/10;
     const lowerWidget=selected&&widgetLayoutBands(start.initial.filter(w=>widgetSectionId(w)===widgetSectionId(selected)))
       .some(b=>b.spans?.some(span=>span.widgets.some(w=>w.id===selected.id))||
         b.lanes.some(lane=>lane.widgets.findIndex(w=>w.id===selected.id)>0));

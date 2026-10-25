@@ -17,13 +17,23 @@ export type WidgetDropTarget={
    * clicking an edge beside a merged widget instead of creating a gap. */
   extendSpanWidgetId?:string;
 };
-/** A card is never replaced by a drop. Its middle stacks above/below, its
- * sides insert columns, and its narrow bottom edge inserts a full-width row. */
-export function widgetDropEdgeAtPoint(width:number,height:number,x:number,y:number,wasNewRow=false):WidgetDropEdge{
-  if(height-y>=0&&height-y<=(wasNewRow?38:27))return "new-row";
-  if(x/Math.max(1,width)<.22)return "left";
-  if(x/Math.max(1,width)>.78)return "right";
-  return y/Math.max(1,height)<.5?"above":"below";
+/** Card edges are column/stack targets. A full-width row is only created by
+ * dropping on the dedicated BETWEEN-row gutter, never the card's bottom edge:
+ * otherwise an intended column stack too often lands in a different row. */
+export function widgetDropEdgeAtPoint(width:number,height:number,x:number,y:number):WidgetDropEdge{
+  const horizontal=x/Math.max(1,width),vertical=y/Math.max(1,height);
+  // The corners belong to the stack bands, not to invisible column-insertion
+  // rails. Only the middle height of a card offers left/right insertion.
+  if(vertical<=.20)return "above";
+  if(vertical>=.80)return "below";
+  if(horizontal<.22)return "left";
+  if(horizontal>.78)return "right";
+  return vertical<.5?"above":"below";
+}
+/** Same-row column reordering is a central target. The outer top/bottom
+ * strips stay available for intentional stacking, even in a full row. */
+export function widgetReorderZoneAtPoint(height:number,y:number):boolean{
+  return y>height*.20&&y<height*.80;
 }
 export type WidgetLayoutLane={id:string;width:number;widgets:PageWidget[]};
 export type WidgetLayoutSpan={startLane:number;laneCount:number;widgets:PageWidget[]};
@@ -629,12 +639,16 @@ export function expandWidgetIntoVacantLane(
   }:item);
 }
 
-/** Resize from either card edge. Unless its row is locked or the neighboring
- * edge was deliberately magnetized, a widget's width is independent.
- * Growing into a full row moves the obstructing unlocked column below, keeping
- * its own size and data rather than silently compressing it. */
+/** Resize a boundary between neighbors without reflowing either widget into
+ * another row. In a fully occupied row the neighbor gives/takes exactly the
+ * same amount, subject to its own size lock and the minimum column width.
+ * In a partially filled row, growing first consumes unused space; shrinking
+ * leaves a real gap unless the boundary was explicitly connected/row-locked. */
 export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly WidgetPageSection[],id:string,delta:number,fillGaps=true,
   formation:WidgetFormationPreferences=defaultWidgetFormationPreferences,side:"left"|"right"="right"):PageWidget[]{
+  // Keep the legacy parameter for callers; horizontal resizing does not
+  // auto-fill/relocate rows regardless of the vertical gap-filling preference.
+  void fillGaps;
   const widget=items.find(w=>w.id===id);if(!widget||!delta||widgetSizeLocked(widget))return [...items];
   const group=new Map<string,WidgetLayoutBand[]>();
   for(const sectionId of new Set(["",...sections.map(s=>s.id),...items.map(widgetSectionId)]))
@@ -648,39 +662,29 @@ export function resizeWidgetLane(items:readonly PageWidget[],sections:readonly W
   const neighbor=side==="left"?(band.lanes[index-1]??band.lanes[index+1])
     :(band.lanes[index+1]??band.lanes[index-1]);
   const occupied=band.lanes.reduce((total,current)=>total+current.width,0);
-  // Merely sharing a full row does not establish a magnetic relationship.
-  // Connections appear only after a deliberate alignment gesture.
+  const freeSpace=Math.max(0,12-occupied);
+  // Magnetism affects *partially filled* rows; contiguous full-row boundaries
+  // always resize together. Merely resizing a boundary doesn't persist a
+  // magnetic connection or lock either widget's size.
   const linked=formation.magneticSnapping&&widget.config.magneticLinked===true&&
     neighbor?.widgets.some(w=>w.config.magneticLinked===true);
-  const mustShare=rowLocked||linked===true;
-  let pushed=false;
-  if(mustShare&&neighbor&&!neighbor.widgets.some(widgetSizeLocked)){
-    const adjusted=Math.max(MIN_WIDTH-lane.width,Math.min(neighbor.width-MIN_WIDTH,delta));
-    lane.width+=adjusted;neighbor.width-=adjusted;
-  }else if(!mustShare&&!rowLocked){
-    const freeSpace=Math.max(0,12-occupied);
-    const requested=Math.max(MIN_WIDTH,Math.min(12,lane.width+delta));
-    if(requested<=lane.width+freeSpace+.001){
-      lane.width=requested;
-    }else if(neighbor&&!band.spans?.length&&
-      !neighbor.widgets.some(w=>widgetSizeLocked(w)||widgetRowPinned(w))){
-      // Preserve the displaced lane's own width and stack; shift it into a
-      // following band. The resize card takes only as much of the freed row as
-      // requested, leaving any remaining horizontal space genuinely empty.
-      const removedIndex=band.lanes.indexOf(neighbor);
-      band.lanes.splice(removedIndex,1);
-      bands.splice(bands.indexOf(band)+1,0,{
-        id:uniqueBandId(bands,neighbor.widgets[0].id),
-        lanes:[neighbor]
-      });
-      pushed=true;
-      const available=12-band.lanes.reduce((sum,current)=>sum+current.width,0);
-      lane.width=Math.min(12,lane.width+Math.min(delta,Math.max(0,available)));
-    }else{
-      lane.width=Math.min(12,lane.width+freeSpace);
-    }
+  const neighborEditable=!!neighbor&&!neighbor.widgets.some(widgetSizeLocked);
+  const intended=Math.max(MIN_WIDTH,Math.min(12,lane.width+delta))-lane.width;
+  if(intended>0){
+    // A size-locked neighbor cannot be squeezed, but available empty space
+    // can still be claimed without disturbing that neighbor.
+    const fromGap=Math.min(freeSpace,intended);
+    const fromNeighbor=neighborEditable&&neighbor
+      ?Math.min(intended-fromGap,Math.max(0,neighbor.width-MIN_WIDTH)):0;
+    lane.width+=fromGap+fromNeighbor;
+    if(neighbor&&fromNeighbor>0)neighbor.width-=fromNeighbor;
+  }else if(intended<0){
+    const amount=-intended;
+    lane.width-=amount;
+    if(neighbor&&neighborEditable&&(rowLocked||linked||freeSpace<.005))
+      neighbor.width+=amount;
   }
-  if(!pushed&&Math.abs(lane.width-Number(widget.config.layoutWidth??widget.width))<.001)return [...items];
+  if(Math.abs(lane.width-Number(widget.config.layoutWidth??widget.width))<.001)return [...items];
   return publish(sections,items,group);
 }
 

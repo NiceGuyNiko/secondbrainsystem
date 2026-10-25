@@ -4402,3 +4402,15 @@ input[type="range"]{
 }
 .aaa-widget-row-controls:hover,.aaa-widget-row-controls:focus-within{opacity:1}
 .aaa-widget-row-lock{border:0;background:transparent;padding:1px 2px}
+
+/* A shared column boundary has one visible divider in the gutter. The card
+   edges remain draggable, but the old inset bars no longer duplicate it. */
+.aaa-widget-sections-arranging .aaa-widget-side-resize{
+  top:21%;bottom:21%;width:10px;opacity:1;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-left{left:-5px}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-right{right:-5px}
+.aaa-widget-sections-arranging .aaa-widget-side-resize::before{opacity:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:active::before{opacity:.8}

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {placeWidget,removeWidgetAndCompactLayout,reorderWidgetColumn,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetLayoutBands} from "../lib/widget-layout";
+import {placeWidget,removeWidgetAndCompactLayout,reorderWidgetColumn,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetReorderZoneAtPoint,widgetLayoutBands} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
 const section:WidgetPageSection={id:"history",page_id:"world",title:"World History",position:0};
@@ -9,12 +9,18 @@ const widget=(id:string,width:number,position:number):PageWidget=>({
   config:{sectionId:"history"},width,height:2,position
 });
 
-test("dropping on a widget never replaces it: middle stacks, sides insert, bottom creates a row",()=>{
+test("dropping at the bottom of a card stacks in its column; only the row gutter creates a row",()=>{
   assert.equal(widgetDropEdgeAtPoint(400,300,200,75),"above");
   assert.equal(widgetDropEdgeAtPoint(400,300,200,220),"below");
   assert.equal(widgetDropEdgeAtPoint(400,300,12,140),"left");
   assert.equal(widgetDropEdgeAtPoint(400,300,386,140),"right");
-  assert.equal(widgetDropEdgeAtPoint(400,300,200,290),"new-row");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,290),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,298),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,5,5),"above");
+  assert.equal(widgetDropEdgeAtPoint(400,300,5,297),"below");
+  assert.equal(widgetReorderZoneAtPoint(300,150),true);
+  assert.equal(widgetReorderZoneAtPoint(300,25),false);
+  assert.equal(widgetReorderZoneAtPoint(300,282),false);
 });
 
 test("near-bottom column stack and lower full-width row are distinct drops",()=>{
