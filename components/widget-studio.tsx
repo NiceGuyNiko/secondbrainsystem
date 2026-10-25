@@ -1319,6 +1319,7 @@ export default function WidgetStudio(p:Props){
                       Math.max(0,inner.widgets.length-1)*gap))+gap:undefined;
                   return <button className="aaa-widget-lane-divider" type="button"
                     data-aaa-guide={upperSpan?"upper-segment":"full-band"}
+                    data-aaa-junction={junctionY===undefined?undefined:"true"}
                     data-aaa-insert-edge={canInsert?edge:undefined}
                     data-aaa-target-id={canInsert?target?.id:undefined}
                     data-aaa-section-id={canInsert?section.id:undefined}

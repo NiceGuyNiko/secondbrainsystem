@@ -4204,6 +4204,14 @@ input[type="range"]{
 .aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-guide="full-band"]::after{
   top:var(--aaa-junction-y,50%)!important;
 }
+/* The full-band *visual* guide splits into two independent pointer zones at
+   the T junction. Above: structural resize/+; below: the dotted span edge.
+   Its invisible upper hit box must not run through the lower midpoint +. */
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-junction="true"]{
+  top:0!important;bottom:auto!important;
+  height:calc(var(--aaa-junction-y) + 15px)!important;
+  z-index:18;
+}
 .aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-target-active="true"]::before{
   width:4px!important;left:6px!important;opacity:1!important;
   box-shadow:0 0 11px var(--accent)!important;
