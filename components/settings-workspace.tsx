@@ -7,7 +7,7 @@ import type {CompanionPreferences} from "@/lib/companion-config";
 import type {CalendarDateFormat} from "@/lib/calendar-date-format";
 import type { AgendaPreference } from "@/lib/agenda-state";
 import Switch from "./switch";
-import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
+import {useWidgetFormationPreferences} from "@/lib/widget-layout-preferences";
 import type {MobileTooltipMode} from "@/lib/mobile-tooltip-settings";
 import type {WidgetDoubleClickAction} from "@/lib/widget-layout";
 import type { BetaFeatures, EffectiveFeatures, Settings } from "@/lib/settings/model";
@@ -43,7 +43,7 @@ type Props = ComponentProps<typeof AppearanceSettings> & {
   displayName:string; email:string; onProfile:()=>void;
 };
 export default function SettingsWorkspace(p:Props) {
-  const [fillGaps,setFillGaps]=useWidgetGapFill();
+  const [formation,setFormation]=useWidgetFormationPreferences();
   const info=settingsSections.find(s=>s.name===p.section)!;
   if(p.section==="Appearance")return <AppearanceSettings {...p}/>;
   return <section className="aaa-settings aaa-settings-page">
@@ -112,9 +112,17 @@ export default function SettingsWorkspace(p:Props) {
         </div>
         <p className="calendar-muted">Fit content height reveals the whole record view without changing its width. Match neighboring height adjusts the clicked widget. Full-width row changes its placement. You can always use the separate full-width button.</p>
         <h3>Fluid layout</h3>
-        <Switch label="Automatically fill available space" checked={fillGaps} onChange={setFillGaps}
-          description="On by default. When you add, remove or resize columns, the remaining widgets fill gaps. Turn this off to preserve unoccupied width when moving widgets."/>
-        <p className="calendar-muted">Individual widget heights remain independent. This preference applies to Library and Goals canvases in this browser.</p>
+        <Switch label="Fill Freed Space" checked={formation.fillFreedSpace!=="off"}
+          onChange={value=>setFormation({fillFreedSpace:value?"column-rise":"off"})}
+          description="Enable automatic filling after a widget shrinks or a column becomes free. Row and widget locks take priority."/>
+        <label className="aaa-widget-field">Filling method
+          <select value={formation.fillFreedSpace} onChange={e=>setFormation({fillFreedSpace:e.target.value as typeof formation.fillFreedSpace})}>
+            <option value="off">Off · preserve empty space</option>
+            <option value="column-rise">Column Rise</option>
+            <option value="left-to-right">Left-to-Right Reflow</option>
+          </select>
+        </label>
+        <p className="calendar-muted">Individual widget heights remain independent. You can also change snapping and replacement behavior in Developing IT → Widgets.</p>
       </div>
     </section>}
     {p.section==="Calendar & Time"&&<div className="aaa-settings-panel">

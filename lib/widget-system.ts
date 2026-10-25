@@ -71,7 +71,12 @@ export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionI
   const lane=typeof widget.config.layoutLane==="string"?widget.config.layoutLane:null;
   const heightPx=typeof widget.config.heightPx==="number"&&Number.isFinite(widget.config.heightPx)?widget.config.heightPx:null;
   return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{}),
-    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{})};
+    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{}),
+    ...(typeof widget.config.layoutWidth==="number"?{layoutWidth:widget.config.layoutWidth}:{}),
+    ...(widget.config.sizeLocked===true?{sizeLocked:true}:{}),
+    ...(widget.config.rowPinned===true?{rowPinned:true}:{}),
+    ...(widget.config.rowLocked===true?{rowLocked:true}:{}),
+    ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
   return widgetPlacementConfig(widget);
@@ -106,12 +111,17 @@ export type WidgetConfigureTarget={
   autoEditDatabase?:boolean;
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;heightPx?:number;
+  sizeLocked?:boolean;rowPinned?:boolean;rowLocked?:boolean;
+  rowOccupancy?:number;magneticConnections?:string;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   onConfig:(patch:Partial<WidgetConfig>)=>void;
   onSource:(databaseId:string|null,viewId:string|null)=>void;
   onRename:(name:string)=>void;
   onSize?:(width:number,height:number)=>void;
   onHeightPx?:(pixels:number)=>void;
+  onSizeLock?:(locked:boolean)=>void;
+  onRowPin?:(pinned:boolean)=>void;
+  onRowLock?:(locked:boolean)=>void;
   onSaveToDefinition?:()=>void;
   onCreateDatabase?:(name:string)=>Promise<string>;
   onAddProperty?:(databaseId:string,name:string,type:string)=>Promise<void>;

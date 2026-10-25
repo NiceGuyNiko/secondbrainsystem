@@ -4334,3 +4334,44 @@ input[type="range"]{
 .aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-card[class*="aaa-widget-target-"]{
   outline:2px solid var(--accent);outline-offset:2px;
 }
+
+/* V5 widget formation extends the existing black/gold controls. The row
+   tools are overlays so they do not consume a column or change view footprints. */
+.aaa-widget-formation-settings{
+  background:var(--surface,transparent);border:1px solid var(--border);
+  padding:15px 17px;border-radius:12px;margin:12px 0 22px;gap:12px;
+}
+.aaa-widget-formation-settings>strong{display:flex;align-items:center;gap:8px;color:var(--text)}
+.aaa-widget-formation-settings .aaa-widget-config-pair{align-items:end}
+.aaa-widget-formation-settings .aaa-widget-switch{min-height:34px}
+.aaa-widget-layout-constraints{
+  display:flex;flex-direction:column;gap:7px;padding:9px 0 0;border-top:1px solid var(--border);
+}
+.aaa-widget-layout-constraints>p{font-size:11px;color:var(--muted);margin:2px 0;line-height:1.45}
+.aaa-widget-row-controls{
+  position:absolute;top:-22px;right:0;z-index:3;display:flex;align-items:center;
+  gap:7px;font-size:10px;color:var(--muted);pointer-events:auto;
+}
+.aaa-widget-row-lock{
+  display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);
+  color:var(--muted);background:var(--surface,transparent);
+  border-radius:5px;font:inherit;font-size:10px;padding:2px 5px;
+}
+.aaa-widget-row-lock[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.aaa-widget-canvas.aaa-widget-magnetic-active .aaa-widget-lane-divider::before{
+  background:var(--accent-bright)!important;opacity:1!important;
+  box-shadow:0 0 9px var(--accent-soft);
+}
+.aaa-widget-sections-arranging .aaa-widget-card.aaa-widget-target-replace{
+  outline:2px solid var(--accent);outline-offset:2px;position:relative;
+}
+.aaa-widget-sections-arranging .aaa-widget-card.aaa-widget-target-replace::after{
+  content:"Replace position · displaced widget stays saved";
+  position:absolute;inset:35% 10%;border:1px dashed var(--accent);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  text-align:center;background:var(--surface);color:var(--accent);
+  font-size:11px;font-weight:600;pointer-events:none;z-index:8;
+}
+.aaa-widget-canvas.aaa-widget-magnetic-active .aaa-widget-layout-lane-shell{
+  transition:flex-grow .15s ease-out;
+}

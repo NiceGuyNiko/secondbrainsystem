@@ -2,12 +2,13 @@
 import {Fragment,useCallback,useEffect,useRef,useState} from "react";
 import {createPortal} from "react-dom";
 import {ArrowDown,ArrowUp,BookOpen,Check,ChevronDown,ChevronRight,ChevronUp,Copy,Database,Eye,EyeOff,LayoutGrid,Link2,Lock,Unlock,MoreHorizontal,Pencil,Plus,RefreshCw,Search,Settings2,Trash2,Unlink2,X} from "lucide-react";
-import {useWidgetGapFill} from "@/lib/widget-layout-preferences";
+import {useWidgetFormationPreferences} from "@/lib/widget-layout-preferences";
+import {magneticSnapWidth,setWidgetRowLock,widgetBandIdentity,widgetBandLocked,widgetRowOccupancy,widgetRowPinned,widgetSizeLocked} from "@/lib/widget-formation";
 import {supabase} from "@/lib/supabase";
 import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {copyWidgetBlueprint,groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
-import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
+import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,resizeWidgetHeight,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -55,7 +56,8 @@ export default function WidgetStudio(p:Props){
   // unchanged in Use Mode and after reload.
   const [collapsedWidgets,setCollapsedWidgets]=useState<string[]>([]);
   const flipWidgetCollapse=(id:string)=>setCollapsedWidgets(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);
-  const [fillGaps]=useWidgetGapFill();
+  const [formation,setFormation]=useWidgetFormationPreferences();
+  const fillGaps=formation.fillFreedSpace!=="off";
   const [selected,setSelected]=useState<Selection>(null);
   const [creatingPage,setCreatingPage]=useState(false);
   const [newPage,setNewPage]=useState("");
@@ -82,6 +84,7 @@ export default function WidgetStudio(p:Props){
   const spanHandleDrag=useRef<{id:string;side:"left"|"right";x:number;completed:boolean}|null>(null);
   const spanHandleConsumedClick=useRef<string|null>(null);
   const [resizePreview,setResizePreview]=useState<PageWidget[]|null>(null);
+  const [snapGuide,setSnapGuide]=useState(false);
   const [measuredWidgetHeights,setMeasuredWidgetHeights]=useState<Record<string,number>>({});
   const resizePreviewRef=useRef<PageWidget[]|null>(null);
   const resizeStart=useRef<{id:string;x:number;y:number;unitX:number;heightPx:number;axis:"x"|"y"|"both";initial:PageWidget[]}|null>(null);
@@ -368,7 +371,14 @@ export default function WidgetStudio(p:Props){
     const initial=heightMode==="match"&&anchor
       ?{...created,config:{...created.config,fitContent:false,heightPx:widgetHeightPx(anchor)}}
       :created;
-    const placed=placement?placeWidget([...instanceList,initial],pageSections,initial.id,placement,fillGaps):null;
+    const proposed=placement?placeWidget([...instanceList,initial],pageSections,initial.id,placement,fillGaps,formation):null;
+    // If a drop cannot occupy a full or locked row, create a separate band.
+    // Never leave a freshly inserted Supabase placement invisible/orphaned.
+    const placed=proposed&&placement&&
+      !proposed.find(w=>w.id===initial.id)?.config.layoutBand&&placement.targetId
+      ?placeWidget([...instanceList,initial],pageSections,initial.id,
+        {sectionId:placement.sectionId,targetId:placement.targetId,edge:"new-row"},fillGaps,formation)
+      :proposed;
     if(placed){
       for(const widget of placed){
         const old=instanceList.find(previous=>previous.id===widget.id);
@@ -559,7 +569,11 @@ export default function WidgetStudio(p:Props){
       }else if(target.targetId!==movingId){
         if(target.edge==="reorder"&&target.targetId)
           saveLayout(reorderWidgetColumn(instanceList,pageSections,movingId,target.targetId));
-        else saveLayout(placeWidget(instanceList,pageSections,movingId,target,fillGaps));
+        else {
+          const next=placeWidget(instanceList,pageSections,movingId,target,fillGaps,formation);
+          if(next.some((w,index)=>w!==instanceList[index]))saveLayout(next);
+          else setNotice("This row is full or locked. Drop in the center of an unlocked widget to replace it, or choose a new row.");
+        }
       }
     }
     setDrag(null);setDropHint(null);setReorderPreview(null);
@@ -601,7 +615,11 @@ export default function WidgetStudio(p:Props){
     if(reordered)return reordered;
     const bounds=event.currentTarget.getBoundingClientRect();
     const wasNewRow=dropHint?.targetId===widget.id&&dropHint.edge==="new-row";
-    const edge=widgetDropEdgeAtPoint(bounds.width,bounds.height,event.clientX-bounds.left,event.clientY-bounds.top,wasNewRow);
+    const x=event.clientX-bounds.left,y=event.clientY-bounds.top;
+    const movingWidget=instanceList.find(w=>w.id===drag);
+    const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(widget);
+    const edge=x>bounds.width*.3&&x<bounds.width*.7&&y>bounds.height*.3&&y<bounds.height*.7&&
+      outsideBand?"replace":widgetDropEdgeAtPoint(bounds.width,bounds.height,x,y,wasNewRow);
     return {sectionId:widgetSectionId(widget),targetId:widget.id,edge};
   };
   const reorderTargetFor=(widget:PageWidget):WidgetDropTarget|null=>{
@@ -638,7 +656,11 @@ export default function WidgetStudio(p:Props){
     const target=instanceList.find(w=>w.id===targetId);
     if(article&&target&&target.id!==movingId){
       const rect=article.getBoundingClientRect();
-      const edge=widgetDropEdgeAtPoint(rect.width,rect.height,x-rect.left,y-rect.top);
+      const dx=x-rect.left,dy=y-rect.top;
+      const movingWidget=instanceList.find(w=>w.id===movingId);
+      const outsideBand=!movingWidget||widgetBandIdentity(movingWidget)!==widgetBandIdentity(target);
+      const edge=dx>rect.width*.3&&dx<rect.width*.7&&dy>rect.height*.3&&dy<rect.height*.7&&
+        outsideBand?"replace":widgetDropEdgeAtPoint(rect.width,rect.height,dx,dy);
       return {sectionId:widgetSectionId(target),targetId:target.id,edge};
     }
     const canvas=element?.closest<HTMLElement>(".aaa-widget-canvas");
@@ -693,7 +715,7 @@ export default function WidgetStudio(p:Props){
     if(!state)return;
     touchDrag.current=null;
     if(state.active&&!cancel&&state.target&&state.target.targetId!==state.id)
-      saveLayout(placeWidget(instanceList,pageSections,state.id,state.target,fillGaps));
+      saveLayout(placeWidget(instanceList,pageSections,state.id,state.target,fillGaps,formation));
     setDrag(null);setDropHint(null);
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
@@ -709,6 +731,7 @@ export default function WidgetStudio(p:Props){
   };
   const startResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,axis:"x"|"y"|"both")=>{
     e.preventDefault();e.stopPropagation();
+    if(widgetSizeLocked(widget)){setNotice("Unlock this widget's size in Configure before resizing.");return}
     const grid=e.currentTarget.closest(".aaa-widget-canvas");
     const bounds=grid?.getBoundingClientRect();
     if(!bounds)return;
@@ -727,9 +750,20 @@ export default function WidgetStudio(p:Props){
     if(start.axis==="x"&&Math.abs(dx)<5)return;
     if(start.axis==="y"&&Math.abs(dy)<5)return;
     if(start.axis==="both"&&Math.max(Math.abs(dx),Math.abs(dy))<5)return;
-    const x=Math.round(dx/start.unitX);
-    let result=start.axis==="y"||x===0?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps);
-    if(start.axis!=="x")result=result.map(w=>w.id===start.id?{...w,config:{...w.config,fitContent:false,heightPx:Math.max(160,Math.min(1200,Math.round((start.heightPx+dy)/8)*8))}}:w);
+    const selected=start.initial.find(w=>w.id===start.id);
+    const activeBand=selected?widgetBandIdentity(selected):"";
+    const peerEdges=widgetLayoutBands(start.initial)
+      .filter(band=>band.id!==activeBand)
+      .flatMap(band=>band.lanes.reduce((edges:number[],lane)=>{
+        edges.push((edges[edges.length-1]??0)+lane.width);return edges},[]));
+    const nominalWidth=selected?Number(selected.config.layoutWidth??selected.width):6;
+    const snapped=formation.magneticSnapping
+      ?magneticSnapWidth(nominalWidth+dx/start.unitX,peerEdges,start.unitX,formation.snapDistancePx)
+      :{width:nominalWidth+dx/start.unitX,snapped:false};
+    setSnapGuide(snapped.snapped&&start.axis!=="y");
+    const x=Math.round((snapped.snapped?snapped.width-nominalWidth:dx/start.unitX));
+    let result=start.axis==="y"||x===0?start.initial:resizeWidgetLane(start.initial,pageSections,start.id,x,fillGaps,formation);
+    if(start.axis!=="x")result=resizeWidgetHeight(result,pageSections,start.id,start.heightPx+dy,formation);
     if(result===start.initial)return;
     dividerWasResized.current=true;
     resizePreviewRef.current=result;setResizePreview(result);
@@ -741,6 +775,7 @@ export default function WidgetStudio(p:Props){
     if(initial&&resizePreviewRef.current&&resizePreviewRef.current!==initial)
       saveLayout(resizePreviewRef.current);
     resizeStart.current=null;resizePreviewRef.current=null;setResizePreview(null);
+    setSnapGuide(false);
   };
   const definitionOf=(widget:PageWidget)=>data.definitions.find(d=>d.id===widget.definition_id);
   const sourceOf=(widget:PageWidget)=>{
@@ -827,12 +862,26 @@ export default function WidgetStudio(p:Props){
     };
     p.onConfigure({id:selected.id,kind:selected.kind,title:instance?.title||def.name,synced:instance?widgetIsSynced(instance):false,
       databaseId:source.databaseId,viewId:source.viewId,config,
-      width:instance?.width,height:instance?.height,heightPx:instance?widgetHeightPx(instance):undefined,
+      width:instance?Number(instance.config.layoutWidth??instance.width):undefined,
+      height:instance?.height,heightPx:instance?widgetHeightPx(instance):undefined,
+      sizeLocked:instance?widgetSizeLocked(instance):false,
+      rowPinned:instance?widgetRowPinned(instance):false,
+      rowLocked:instance?widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
+        .find(b=>b.id===widgetBandIdentity(instance))?.lanes.some(l=>l.widgets.some(w=>w.config.rowLocked===true)):false,
+      rowOccupancy:instance?widgetRowOccupancy(instanceList,widgetBandIdentity(instance)):undefined,
+      magneticConnections:instance?(formation.magneticSnapping
+        ?widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
+          .find(b=>b.id===widgetBandIdentity(instance))?.lanes.length===1?"No adjacent widget":
+          "Adjacent columns share a magnetic boundary":"Snapping disabled"):undefined,
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
-      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,width-widgetGridSize(instance).width,fillGaps)):undefined,
-      onHeightPx:instance?pixels=>changeInstance(instance.id,{config:{...instance.config,heightPx:Math.max(160,Math.min(1200,Math.round(pixels)))}}):undefined,
+      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,
+        width-Number(instance.config.layoutWidth??instance.width),fillGaps,formation)):undefined,
+      onHeightPx:instance?pixels=>saveLayout(resizeWidgetHeight(instanceList,pageSections,instance.id,pixels,formation)):undefined,
+      onSizeLock:instance?locked=>changeInstance(instance.id,{config:{...instance.config,sizeLocked:locked}}):undefined,
+      onRowPin:instance?pinned=>changeInstance(instance.id,{config:{...instance.config,rowPinned:pinned}}):undefined,
+      onRowLock:instance?locked=>saveLayout(setWidgetRowLock(instanceList,instance.id,locked)):undefined,
       onSaveToDefinition:instance?saveMaster:undefined,
       onCreateDatabase:createSource,onAddProperty:addSourceProperty,onUpdateProperty:updateSourceProperty
     });
@@ -1143,6 +1192,36 @@ export default function WidgetStudio(p:Props){
       <div className="aaa-widget-hero"><div><span className="aaa-widget-eyebrow">DEVELOPING IT / WIDGETS</span><h1>Widget workshop</h1><p>Design reusable ways to read your database records. Configure a master here, then add instances to Library or Goals pages.</p></div>
         <div className="aaa-widget-hero-actions"><button className="aaa-widget-secondary" onClick={()=>setCreatingDatabase(true)}><Database size={16}/> New database</button>
           <button className="aaa-widget-primary" onClick={()=>void createDefinition()} disabled={busy}><Plus size={17}/> New widget</button></div></div>
+      <section className="aaa-widget-formation-settings aaa-widget-config-group" aria-label="Widget layout behavior">
+        <strong><Settings2 size={16}/> Widget formation &amp; layout</strong>
+        <div className="aaa-widget-config-pair">
+          <label className="aaa-widget-switch"><span>Magnetic snapping</span>
+            <input type="checkbox" checked={formation.magneticSnapping}
+              onChange={e=>setFormation({magneticSnapping:e.target.checked})}/></label>
+          <label className="aaa-widget-field">Snap distance (px)
+            <input type="number" min={2} max={40} step={1} disabled={!formation.magneticSnapping}
+              value={formation.snapDistancePx} onChange={e=>setFormation({snapDistancePx:Number(e.target.value)})}/>
+          </label>
+        </div>
+        <div className="aaa-widget-config-pair">
+          <label className="aaa-widget-field">Fill Freed Space
+            <select value={formation.fillFreedSpace}
+              onChange={e=>setFormation({fillFreedSpace:e.target.value as typeof formation.fillFreedSpace})}>
+              <option value="off">Off · preserve empty spaces</option>
+              <option value="column-rise">Column Rise</option>
+              <option value="left-to-right">Left-to-Right Reflow</option>
+            </select>
+          </label>
+          <label className="aaa-widget-field">When replacing a widget
+            <select value={formation.displacement}
+              onChange={e=>setFormation({displacement:e.target.value as typeof formation.displacement})}>
+              <option value="same-column">Move down the same column</option>
+              <option value="next-row">Move to the next row</option>
+            </select>
+          </label>
+        </div>
+        <p className="aaa-widget-config-sub">Configure individual size and row locks from the existing Companion. These layout preferences do not change database records.</p>
+      </section>
       {p.visualStyle==="studio"&&<div className="aaa-widget-lab-stats" aria-label="Widget workshop summary">
         <div><small>MASTER WIDGETS</small><strong>{data.definitions.length}</strong><span>Reusable designs</span></div>
         <div><small>DATABASE SOURCES</small><strong>{data.databases.length}</strong><span>Canonical record sets</span></div>
@@ -1245,7 +1324,7 @@ export default function WidgetStudio(p:Props){
                 <button aria-label={`Remove ${section.title} section`} onClick={()=>void deleteSection(section.id)}><Trash2 size={15}/></button></>}
             </div>}
           </header>
-          {!sectionPrefs[section.id]?.collapsed&&<div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
+          {!sectionPrefs[section.id]?.collapsed&&<div className={`aaa-widget-canvas ${arrange&&drag?"aaa-widget-drop-zone":""} ${snapGuide?"aaa-widget-magnetic-active":""} ${arrange&&dropHint?.sectionId===section.id&&dropHint.edge==="section-end"?"aaa-widget-section-end-highlight":""}`} aria-label={section.title+" widgets"}
             data-aaa-section-id={section.id}
             onDragOver={e=>{if(!arrange||!drag)return;e.preventDefault();hint({sectionId:section.id,targetId:null,edge:"section-end"})}}
             onDrop={e=>{if(!arrange)return;e.preventDefault();commitDrop({sectionId:section.id,targetId:null,edge:"section-end"})}}>
@@ -1301,7 +1380,8 @@ export default function WidgetStudio(p:Props){
                 saveLayout(expandWidgetIntoVacantLane(instanceList,widget.id,side));
               const renderItem=(widget:PageWidget)=><div className={"aaa-widget-layout-item"+(widget.config.fitContent===true?" aaa-widget-layout-fit":"")} key={widget.id}
                 data-aaa-layout-widget-id={widget.id}
-                style={{height:widgetFootprintHeight(widget,arrange,collapsedWidgets.includes(widget.id))??"auto"}}>
+                style={{height:widgetFootprintHeight(widget,arrange,collapsedWidgets.includes(widget.id))??"auto",
+                  marginTop:Math.max(0,Number(widget.config.layoutOffsetPx??0))}}>
                 {widgetCard(widget)}
                 {arrange&&(()=>{
                   const start=widget.config.layoutSpanStart,count=widget.config.layoutSpanCount;
@@ -1377,6 +1457,7 @@ export default function WidgetStudio(p:Props){
                   }}
                   onKeyDown={e=>{
                     if(e.key==="ArrowUp"||e.key==="ArrowDown"){e.preventDefault();
+                      if(widgetSizeLocked(widget)){setNotice("This widget's size is locked.");return}
                       const direction=e.key==="ArrowDown"?24:-24;
                       saveLayout(instanceList.map(item=>item.id===widget.id
                         ?{...item,config:{...item.config,fitContent:false,heightPx:Math.max(160,Math.min(1200,widgetHeightPx(item)+direction))}}:item));
@@ -1474,6 +1555,15 @@ export default function WidgetStudio(p:Props){
               };
               return <div className={"aaa-widget-layout-band "+(dropHint?.edge==="new-row"&&band.lanes.some(l=>l.widgets.some(w=>w.id===dropHint.targetId))?"aaa-widget-band-new-row":"")} key={band.id}
                 style={{paddingBottom:bandPadding}}> 
+                {arrange&&<div className="aaa-widget-row-controls">
+                  <span>{Math.min(100,Math.round(used/12*100))}% occupied</span>
+                  <button type="button" className="aaa-widget-row-lock" aria-pressed={widgetBandLocked(band.lanes.flatMap(l=>l.widgets))}
+                    title={widgetBandLocked(band.lanes.flatMap(l=>l.widgets))?"Unlock this row":"Lock this row"}
+                    onClick={()=>saveLayout(setWidgetRowLock(instanceList,band.lanes[0]?.widgets[0]?.id??"",!widgetBandLocked(band.lanes.flatMap(l=>l.widgets))))}>
+                    {widgetBandLocked(band.lanes.flatMap(l=>l.widgets))?<Lock size={12}/>:<Unlock size={12}/>}
+                    {widgetBandLocked(band.lanes.flatMap(l=>l.widgets))?"Locked":"Flexible"}
+                  </button>
+                </div>}
                 {showOuter&&firstOuter&&<div role="presentation"
                   className={"aaa-widget-outer-column-drop aaa-widget-outer-left"+(dropHint?.edge==="left"&&dropHint.targetId===firstOuter.id?" is-target":"")}
                   title="Drop a widget here to add a column on the left"
