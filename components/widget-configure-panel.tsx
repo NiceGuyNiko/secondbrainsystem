@@ -96,7 +96,7 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
       </select></label><label className="aaa-widget-field">Height (px)
         <input type="number" disabled={selection.sizeLocked} min={160} max={1200} step={8} value={selection.heightPx??280} onChange={e=>selection.onHeightPx?.(Number(e.target.value))} />
       </label></div>}
-      {selection.kind==="instance"&&<div className="aaa-widget-layout-constraints" aria-label="Widget layout constraints">
+      {selection.kind==="instance"&&selection.layoutEditing&&<div className="aaa-widget-layout-constraints" aria-label="Widget layout constraints">
         <label className="aaa-widget-switch"><span>Lock widget size</span>
           <input type="checkbox" checked={selection.sizeLocked===true} onChange={e=>selection.onSizeLock?.(e.target.checked)}/></label>
         <label className="aaa-widget-switch"><span>Pin widget to this row</span>

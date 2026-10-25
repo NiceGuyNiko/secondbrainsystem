@@ -864,7 +864,7 @@ export default function WidgetStudio(p:Props){
       databaseId:source.databaseId,viewId:source.viewId,config,
       width:instance?Number(instance.config.layoutWidth??instance.width):undefined,
       height:instance?.height,heightPx:instance?widgetHeightPx(instance):undefined,
-      sizeLocked:instance?widgetSizeLocked(instance):false,
+      layoutEditing:arrange,sizeLocked:instance?widgetSizeLocked(instance):false,
       rowPinned:instance?widgetRowPinned(instance):false,
       rowLocked:instance?widgetLayoutBands(instanceList.filter(w=>widgetSectionId(w)===widgetSectionId(instance)))
         .find(b=>b.id===widgetBandIdentity(instance))?.lanes.some(l=>l.widgets.some(w=>w.config.rowLocked===true)):false,
@@ -876,9 +876,9 @@ export default function WidgetStudio(p:Props){
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
-      onSize:instance?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,
+      onSize:instance&&arrange?(width)=>saveLayout(resizeWidgetLane(instanceList,pageSections,instance.id,
         width-Number(instance.config.layoutWidth??instance.width),fillGaps,formation)):undefined,
-      onHeightPx:instance?pixels=>saveLayout(resizeWidgetHeight(instanceList,pageSections,instance.id,pixels,formation)):undefined,
+      onHeightPx:instance&&arrange?pixels=>saveLayout(resizeWidgetHeight(instanceList,pageSections,instance.id,pixels,formation)):undefined,
       onSizeLock:instance?locked=>changeInstance(instance.id,{config:{...instance.config,sizeLocked:locked}}):undefined,
       onRowPin:instance?pinned=>changeInstance(instance.id,{config:{...instance.config,rowPinned:pinned}}):undefined,
       onRowLock:instance?locked=>saveLayout(setWidgetRowLock(instanceList,instance.id,locked)):undefined,
@@ -887,7 +887,7 @@ export default function WidgetStudio(p:Props){
     });
   // Selection and persisted state are the only sources for the Companion's controls.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties]);
+  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties,arrange,formation]);
 
   const createRecord=async(databaseId:string,widgetId:string)=>{
     const name=newRecord[widgetId]?.trim();if(!name)return;

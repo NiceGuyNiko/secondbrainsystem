@@ -112,6 +112,7 @@ export type WidgetConfigureTarget={
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;heightPx?:number;
   sizeLocked?:boolean;rowPinned?:boolean;rowLocked?:boolean;
+  layoutEditing?:boolean;
   rowOccupancy?:number;magneticConnections?:string;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   onConfig:(patch:Partial<WidgetConfig>)=>void;
