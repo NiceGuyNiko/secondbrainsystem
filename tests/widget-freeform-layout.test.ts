@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {initialFluidRects,fluidCanvasHeight,fluidOverlaps,placeFluidWidget,
   resizeFluidWidget,fluidPointerRect,insertFluidBeside,alignFluidWidgetEdge,
-  fluidInsertionIntent,liftFluidIntoVacancy,fluidGroupId,setFluidGroup} from "../lib/widget-fluid-layout";
+  fluidInsertionIntent,fluidDropTargetAtPoint,liftFluidIntoVacancy,preferVacantSnap,fluidGroupId,setFluidGroup,
+  fluidSharedBoundaries,resizeFluidSharedBoundary} from "../lib/widget-fluid-layout";
 import {placeWidget} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
@@ -185,4 +186,80 @@ test("a pinned member blocks moving its whole group without disturbing the layou
       fluidDesktop:{x:6,y:0,w:6,h:250}}}
   ],["a","b"],"pinned-group");
   assert.deepEqual(placeFluidWidget(items,"a",{x:0,y:350,w:6,h:250}),items);
+});
+test("a shared purple divider is generated only for physically adjacent widgets",()=>{
+  const left={...w("left",0),config:{sectionId:"history",
+    fluidDesktop:{x:0,y:0,w:4,h:320}}};
+  const right={...w("right",1),config:{sectionId:"history",
+    fluidDesktop:{x:4,y:0,w:8,h:420}}};
+  const pair=[left,right];
+  assert.deepEqual(fluidSharedBoundaries(pair),[
+    {leftId:"left",rightId:"right",x:4,top:0,height:320}]);
+  const detached={...right,config:{...right.config,fluidDesktop:{x:4.25,y:0,w:7.75,h:420}}};
+  assert.deepEqual(fluidSharedBoundaries([left,detached]),[],
+    "proximity alone must not silently synchronize column widths");
+});
+test("dragging a shared divider resizes both neighbors while preserving their total width",()=>{
+  const left={...w("left",0),config:{sectionId:"history",
+    fluidDesktop:{x:0,y:0,w:4,h:320}}};
+  const right={...w("right",1),config:{sectionId:"history",
+    fluidDesktop:{x:4,y:0,w:8,h:420}}};
+  const grown=resizeFluidSharedBoundary([left,right],"left","right",1.5);
+  assert.deepEqual(rect(grown,"left"),{x:0,y:0,w:5.5,h:320});
+  assert.deepEqual(rect(grown,"right"),{x:5.5,y:0,w:6.5,h:420});
+  const shrunk=resizeFluidSharedBoundary([left,right],"left","right",-8);
+  assert.equal(rect(shrunk,"left").w,2);
+  assert.equal(rect(shrunk,"right").w,10);
+  assert.deepEqual(resizeFluidSharedBoundary([left,{...right,config:{...right.config,sizeLocked:true}}],
+    "left","right",1),[left,{...right,config:{...right.config,sizeLocked:true}}]);
+});
+test("target hit-testing remains stable when neighboring cards are visually projected elsewhere",()=>{
+  const saved={eras:{x:0,y:0,w:6,h:320},events:{x:6,y:0,w:6,h:320}};
+  const canvas={left:100,top:100,width:1200};
+  const hit=fluidDropTargetAtPoint(saved,canvas,{x:727,y:250});
+  assert.deepEqual(hit,{id:"events",intent:"left"});
+  assert.deepEqual(fluidDropTargetAtPoint(saved,canvas,{x:115,y:250},["eras"]),null);
+  // During an animation the events DOM card could move to x=9; the original
+  // hit map still returns the same insertion target at the same pointer.
+  assert.deepEqual(fluidDropTargetAtPoint(saved,canvas,{x:727,y:250}),hit);
+});
+test("replacement moves the displaced widget in the projected arrangement",()=>{
+  const pair=[
+    {...w("eras",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:6,h:314}}},
+    {...w("events",1),config:{sectionId:"history",fluidDesktop:{x:6,y:0,w:6,h:314}}},
+    {...w("perspectives",2),config:{sectionId:"history",fluidDesktop:{x:0,y:450,w:6,h:314}}}
+  ];
+  const projected=placeFluidWidget(pair,"perspectives",{x:6,y:0,w:6,h:314});
+  assert.deepEqual(rect(projected,"perspectives"),{x:6,y:0,w:6,h:314});
+  assert.deepEqual(rect(projected,"events"),{x:6,y:328,w:6,h:314});
+  assert.deepEqual(rect(projected,"eras"),rect(pair,"eras"));
+});
+test("bottom resizing stops at the next widget instead of cascading it downward",()=>{
+  const top={...w("top",0),config:{sectionId:"history",
+    fluidDesktop:{x:0,y:0,w:6,h:300}}};
+  const below={...w("below",1),config:{sectionId:"history",
+    fluidDesktop:{x:0,y:350,w:6,h:300}}};
+  const sized=resizeFluidWidget([top,below],"top",{bottom:120});
+  assert.equal(rect(sized,"top").h,336);
+  assert.deepEqual(rect(sized,"below"),rect([top,below],"below"));
+});
+test("double-click chooses a nearby alignment instead of jumping to a distant widget",()=>{
+  const a={...w("a",0),config:{sectionId:"history",
+    fluidDesktop:{x:0,y:0,w:4,h:270}}};
+  const b={...w("b",1),config:{sectionId:"history",
+    fluidDesktop:{x:4,y:0,w:4,h:360}}};
+  const distant={...w("c",2),config:{sectionId:"history",
+    fluidDesktop:{x:8,y:700,w:4,h:400}}};
+  assert.equal(rect(alignFluidWidgetEdge([a,b,distant],"a","bottom"),"a").h,360);
+  const alreadyAligned={...a,config:{...a.config,fluidDesktop:{x:0,y:0,w:4,h:360}}};
+  assert.equal(rect(alignFluidWidgetEdge([alreadyAligned,b,distant],"a","bottom"),"a").h,360,
+    "a second click must not jump to a far-away card");
+});
+test("magnetic alignment never creates a collision when the unsnapped gap was free",()=>{
+  const neighbor={x:5,y:0,w:4,h:314};
+  const raw={x:1,y:0,w:3.8,h:314};
+  const snapped={x:1.3,y:0,w:3.8,h:314};
+  assert.deepEqual(preferVacantSnap(raw,snapped,[neighbor]),raw);
+  const safe={x:1,y:330,w:4,h:314};
+  assert.deepEqual(preferVacantSnap(raw,safe,[neighbor]),safe);
 });

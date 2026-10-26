@@ -8,6 +8,7 @@ import {widgetSizeLocked,widgetRowPinned} from "@/lib/widget-formation";
 export type FluidWidgetRect={x:number;y:number;w:number;h:number};
 export type FluidWidgetPlacement={id:string;rect:FluidWidgetRect};
 export type FluidInsertionIntent="above"|"below"|"left"|"right"|"replace";
+export type FluidSharedBoundary={leftId:string;rightId:string;x:number;top:number;height:number};
 export const FLUID_GAP=14;
 const MIN_W=2;
 const MIN_H=194;
@@ -80,6 +81,46 @@ export function fluidOverlaps(a:FluidWidgetRect,b:FluidWidgetRect,gap=FLUID_GAP)
     a.y<b.y+b.h+gap&&a.y+a.h+gap>b.y;
 }
 
+/** Only exactly adjacent cards get a shared divider. Merely passing near a
+ * neighboring edge never automatically links their sizes. */
+export function fluidSharedBoundaries(items:readonly PageWidget[]):FluidSharedBoundary[]{
+  const positions=initialFluidRects(items);
+  const result:FluidSharedBoundary[]=[];
+  for(const left of items)for(const right of items){
+    if(left.id===right.id||widgetSectionId(left)!==widgetSectionId(right))continue;
+    const a=positions[left.id],b=positions[right.id];
+    if(Math.abs(a.x+a.w-b.x)>.002)continue;
+    const top=Math.max(a.y,b.y),bottom=Math.min(a.y+a.h,b.y+b.h);
+    if(bottom-top<32)continue;
+    result.push({leftId:left.id,rightId:right.id,x:b.x,top,height:bottom-top});
+  }
+  return result;
+}
+
+/** Resize a genuine shared boundary without changing the pair's total width.
+ * The original right edge of the pair stays fixed, as do both widget heights.
+ * Locks and other occupants prevent unsafe changes. */
+export function resizeFluidSharedBoundary(items:readonly PageWidget[],leftId:string,rightId:string,
+  requestedDelta:number):PageWidget[]{
+  const left=items.find(w=>w.id===leftId),right=items.find(w=>w.id===rightId);
+  if(!left||!right||widgetSizeLocked(left)||widgetSizeLocked(right)||
+    widgetSectionId(left)!==widgetSectionId(right))return [...items];
+  const positions=initialFluidRects(items),a=positions[leftId],b=positions[rightId];
+  if(Math.abs(a.x+a.w-b.x)>.002||
+    Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)<32)return [...items];
+  const delta=Math.max(MIN_W-a.w,Math.min(b.w-MIN_W,round(requestedDelta)));
+  if(Math.abs(delta)<.001)return [...items];
+  const nextLeft=clampFluidRect({...a,w:a.w+delta});
+  const nextRight=clampFluidRect({...b,x:b.x+delta,w:b.w-delta});
+  for(const other of items){
+    if(other.id===leftId||other.id===rightId||widgetSectionId(other)!==widgetSectionId(left))continue;
+    const rect=positions[other.id];
+    if(fluidOverlaps(nextLeft,rect)||fluidOverlaps(nextRight,rect))return [...items];
+  }
+  return items.map(item=>item.id===leftId?{...item,config:{...item.config,fluidDesktop:nextLeft}}
+    :item.id===rightId?{...item,config:{...item.config,fluidDesktop:nextRight}}:item);
+}
+
 /** The usable insertion strips reach well into the card, rather than being
  * thin, hard-to-hit borders. Its small center remains an explicit replacement
  * target. The same classifier is used for card and 14px gutter drops. */
@@ -94,6 +135,27 @@ export function fluidInsertionIntent(bounds:{left:number;top:number;width:number
     ["above",y/vertical],["below",(bounds.height-y)/vertical]];
   return edges.filter(([,distance])=>distance<=1)
     .sort((a,b)=>a[1]-b[1])[0]?.[0]??"replace";
+}
+
+/** Hit-test against the saved rectangles, not the animated preview DOM. When
+ * nearby cards move in a live preview, the drop target must not oscillate
+ * because its actual DOM bounding box just changed under the cursor. */
+export function fluidDropTargetAtPoint(positions:Record<string,FluidWidgetRect>,
+  canvas:{left:number;top:number;width:number},pointer:{x:number;y:number},
+  excluded:readonly string[]=[]):{id:string;intent:FluidInsertionIntent}|null{
+  const blocked=new Set(excluded);
+  const candidates=Object.entries(positions).filter(([id])=>!blocked.has(id))
+    .map(([id,r])=>{
+      const left=canvas.left+r.x/12*canvas.width+(r.x>0?7:0);
+      const width=r.w/12*canvas.width-(r.x>0?7:0)-(r.x+r.w<11.999?7:0);
+      const b={left,top:canvas.top+r.y,width,height:r.h};
+      const dx=Math.max(0,b.left-pointer.x,pointer.x-(b.left+b.width));
+      const dy=Math.max(0,b.top-pointer.y,pointer.y-(b.top+b.height));
+      return {id,b,distance:Math.hypot(dx,dy)};
+    })
+    .sort((a,b)=>a.distance-b.distance);
+  const closest=candidates.find(item=>item.distance<=22);
+  return closest?{id:closest.id,intent:fluidInsertionIntent(closest.b,pointer)}:null;
 }
 
 /** A group is a persistent relationship between page widgets, never a new
@@ -203,6 +265,16 @@ export function resizeFluidWidget(items:readonly PageWidget[],id:string,
     nextY=Math.max(minimumY,Math.min(oldBottom-MIN_H,rect.y+top));
     nextHeight=oldBottom-nextY+bottom;
   }
+  // Ordinary bottom-edge resizing stops at the next card in this column.
+  // Deliberate widget relocation still uses collision displacement, but
+  // simply aiming for a nearby bottom alignment must not push a row away.
+  if(bottom>0){
+    const bottomBound=Math.min(Infinity,...Object.entries(initialFluidRects(items))
+      .filter(([peerId])=>peerId!==id).map(([,peer])=>peer)
+      .filter(peer=>peer.x<rect.x+w&&peer.x+peer.w>x&&peer.y>=rect.y+rect.h-.001)
+      .map(peer=>peer.y-FLUID_GAP));
+    if(Number.isFinite(bottomBound))nextHeight=Math.min(nextHeight,bottomBound-nextY);
+  }
   const next=clampFluidRect({x,y:nextY,w:Math.max(MIN_W,Math.min(12-x,w)),h:nextHeight});
   const changed=placeFluidWidget(items,id,next);
   if(changed===items||changed.every((w,i)=>w===items[i]))return [...items];
@@ -269,20 +341,29 @@ export function alignFluidWidgetEdge(items:readonly PageWidget[],id:string,
   if(edge==="left"||edge==="right"){
     const peerEdges=peers.filter(p=>p.y<r.y+r.h&&p.y+p.h>r.y)
       .flatMap(p=>[p.x,p.x+p.w]);
+    const nearest=(current:number,edges:number[])=>edges
+      .filter(value=>Math.abs(value-current)>.04&&Math.abs(value-current)<=4)
+      .sort((a,b)=>Math.abs(a-current)-Math.abs(b-current))[0];
     if(edge==="left"){
-      const candidate=Math.max(0,...peerEdges.filter(x=>x<r.x-.001));
+      const candidate=nearest(r.x,[0,...peerEdges]);
+      if(candidate===undefined)return [...items];
       return resizeFluidWidget(items,id,{left:candidate-r.x});
     }
-    const candidate=Math.min(12,...peerEdges.filter(x=>x>r.x+r.w+.001));
+    const candidate=nearest(r.x+r.w,[...peerEdges,12]);
+    if(candidate===undefined)return [...items];
     return resizeFluidWidget(items,id,{right:candidate-r.x-r.w});
   }
   const aligned=peers.filter(p=>p.x<r.x+r.w&&p.x+p.w>r.x ||
-    Math.abs(p.y-r.y)<50);
+    Math.abs(p.x+p.w-r.x)<.05||Math.abs(p.x-r.x-r.w)<.05);
   if(edge==="top"){
-    const candidate=Math.max(0,...aligned.map(p=>p.y).filter(y=>y<r.y-.001));
+    const candidate=[0,...aligned.map(p=>p.y),...aligned.map(p=>p.y+p.h+FLUID_GAP)]
+      .filter(y=>Math.abs(y-r.y)>4&&Math.abs(y-r.y)<=Math.max(140,r.h*.65))
+      .sort((a,b)=>Math.abs(a-r.y)-Math.abs(b-r.y))[0];
+    if(candidate===undefined)return [...items];
     return resizeFluidWidget(items,id,{top:candidate-r.y});
   }
-  const boundaries=aligned.map(p=>p.y+p.h).filter(y=>Math.abs(y-(r.y+r.h))>4);
+  const boundaries=aligned.flatMap(p=>[p.y+p.h,p.y-FLUID_GAP])
+    .filter(y=>Math.abs(y-(r.y+r.h))>4&&Math.abs(y-(r.y+r.h))<=Math.max(140,r.h*.65));
   const candidate=boundaries.sort((a,b)=>Math.abs(a-(r.y+r.h))-Math.abs(b-(r.y+r.h)))[0];
   return candidate===undefined?[...items]:resizeFluidWidget(items,id,{bottom:candidate-r.y-r.h});
 }
@@ -312,6 +393,15 @@ export function fluidPointerRect(pointer:{x:number;y:number},origin:{left:number
     if(snappedY!==undefined)y=snappedY;
   }
   return clampFluidRect({x,y,w:size.w,h:size.h});
+}
+
+/** Do not turn an otherwise vacant drop into a collision merely because a
+ * nearby edge is inside the magnetic threshold. Explicit center replacement
+ * remains available independently of this free-space preference. */
+export function preferVacantSnap(raw:FluidWidgetRect,snapped:FluidWidgetRect,
+  neighbors:readonly FluidWidgetRect[]):FluidWidgetRect{
+  const occupied=(candidate:FluidWidgetRect)=>neighbors.some(peer=>fluidOverlaps(candidate,peer));
+  return occupied(snapped)&&!occupied(raw)?raw:snapped;
 }
 
 /** If a free-position drop only clips the next widget, use the nearest open
