@@ -263,3 +263,33 @@ test("magnetic alignment never creates a collision when the unsnapped gap was fr
   const safe={x:1,y:330,w:4,h:314};
   assert.deepEqual(preferVacantSnap(raw,safe,[neighbor]),safe);
 });
+
+test("reordering 25% and 75% cards keeps their widths and data links",()=>{
+  const a={...w("moments",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:3,h:314}}};
+  const b={...w("eras",1),config:{sectionId:"history",fluidDesktop:{x:3,y:0,w:9,h:314}}};
+  const result=insertFluidBeside([a,b],"eras","moments","left");
+  assert.equal(result.placed,true);
+  assert.deepEqual(rect(result.items,"eras"),{x:0,y:0,w:9,h:314});
+  assert.deepEqual(rect(result.items,"moments"),{x:9,y:0,w:3,h:314});
+  assert.equal(result.items.find(item=>item.id==="eras")?.definition_id,"source-eras");
+});
+test("side insertion cannot squeeze three widgets into a full row",()=>{
+  const a={...w("a",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:9,h:314}}};
+  const b={...w("b",1),config:{sectionId:"history",fluidDesktop:{x:9,y:0,w:3,h:314}}};
+  const c={...w("c",2),config:{sectionId:"history",fluidDesktop:{x:0,y:400,w:4,h:314}}};
+  const original=[a,b,c],result=insertFluidBeside(original,"c","b","right");
+  assert.equal(result.placed,false);assert.deepEqual(result.items,original);
+});
+test("a continuous divider resizes a tall widget against two stacked neighbors",()=>{
+  const left={...w("left",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:4,h:650}}};
+  const upper={...w("upper",1),config:{sectionId:"history",fluidDesktop:{x:4,y:0,w:8,h:310}}};
+  const lower={...w("lower",2),config:{sectionId:"history",fluidDesktop:{x:4,y:324,w:8,h:326}}};
+  const items=[left,upper,lower];
+  assert.deepEqual(fluidSharedBoundaries(items),[{
+    leftId:"left",rightId:"upper",rightIds:["upper","lower"],x:4,top:0,height:650
+  }]);
+  const resized=resizeFluidSharedBoundary(items,"left","upper",1);
+  assert.deepEqual(rect(resized,"left"),{x:0,y:0,w:5,h:650});
+  assert.deepEqual(rect(resized,"upper"),{x:5,y:0,w:7,h:310});
+  assert.deepEqual(rect(resized,"lower"),{x:5,y:324,w:7,h:326});
+});

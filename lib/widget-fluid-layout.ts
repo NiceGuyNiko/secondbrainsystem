@@ -8,7 +8,7 @@ import {widgetSizeLocked,widgetRowPinned} from "@/lib/widget-formation";
 export type FluidWidgetRect={x:number;y:number;w:number;h:number};
 export type FluidWidgetPlacement={id:string;rect:FluidWidgetRect};
 export type FluidInsertionIntent="above"|"below"|"left"|"right"|"replace";
-export type FluidSharedBoundary={leftId:string;rightId:string;x:number;top:number;height:number};
+export type FluidSharedBoundary={leftId:string;rightId:string;x:number;top:number;height:number;leftIds?:string[];rightIds?:string[]};
 export const FLUID_GAP=14;
 const MIN_W=2;
 const MIN_H=194;
@@ -84,17 +84,44 @@ export function fluidOverlaps(a:FluidWidgetRect,b:FluidWidgetRect,gap=FLUID_GAP)
 /** Only exactly adjacent cards get a shared divider. Merely passing near a
  * neighboring edge never automatically links their sizes. */
 export function fluidSharedBoundaries(items:readonly PageWidget[]):FluidSharedBoundary[]{
-  const positions=initialFluidRects(items);
-  const result:FluidSharedBoundary[]=[];
+  const positions=initialFluidRects(items),edges:FluidSharedBoundary[]=[];
   for(const left of items)for(const right of items){
     if(left.id===right.id||widgetSectionId(left)!==widgetSectionId(right))continue;
     const a=positions[left.id],b=positions[right.id];
     if(Math.abs(a.x+a.w-b.x)>.002)continue;
     const top=Math.max(a.y,b.y),bottom=Math.min(a.y+a.h,b.y+b.h);
     if(bottom-top<32)continue;
-    result.push({leftId:left.id,rightId:right.id,x:b.x,top,height:bottom-top});
+    edges.push({leftId:left.id,rightId:right.id,x:b.x,top,height:bottom-top});
   }
-  return result;
+  // Connected vertical segments act as one divider, even beside a stack.
+  const groups:{x:number;top:number;bottom:number;leftIds:Set<string>;rightIds:Set<string>}[]=[];
+  for(const edge of edges.sort((a,b)=>a.x-b.x||a.top-b.top)){
+    const bottom=edge.top+edge.height;
+    const matching=groups.filter(group=>Math.abs(group.x-edge.x)<.002&&
+      edge.top<=group.bottom+FLUID_GAP+2&&bottom>=group.top-FLUID_GAP-2&&
+      (group.leftIds.has(edge.leftId)||group.rightIds.has(edge.rightId)));
+    if(!matching.length){
+      groups.push({x:edge.x,top:edge.top,bottom,leftIds:new Set([edge.leftId]),
+        rightIds:new Set([edge.rightId])});
+      continue;
+    }
+    const primary=matching[0];
+    primary.top=Math.min(primary.top,edge.top);
+    primary.bottom=Math.max(primary.bottom,bottom);
+    primary.leftIds.add(edge.leftId);primary.rightIds.add(edge.rightId);
+    for(const other of matching.slice(1)){
+      primary.top=Math.min(primary.top,other.top);primary.bottom=Math.max(primary.bottom,other.bottom);
+      for(const id of other.leftIds)primary.leftIds.add(id);
+      for(const id of other.rightIds)primary.rightIds.add(id);
+      groups.splice(groups.indexOf(other),1);
+    }
+  }
+  return groups.map(group=>{
+    const leftIds=[...group.leftIds],rightIds=[...group.rightIds];
+    return {leftId:leftIds[0],rightId:rightIds[0],x:group.x,top:group.top,
+      height:group.bottom-group.top,
+      ...(leftIds.length>1?{leftIds}:{}),...(rightIds.length>1?{rightIds}:{})};
+  });
 }
 
 /** Resize a genuine shared boundary without changing the pair's total width.
@@ -102,23 +129,31 @@ export function fluidSharedBoundaries(items:readonly PageWidget[]):FluidSharedBo
  * Locks and other occupants prevent unsafe changes. */
 export function resizeFluidSharedBoundary(items:readonly PageWidget[],leftId:string,rightId:string,
   requestedDelta:number):PageWidget[]{
-  const left=items.find(w=>w.id===leftId),right=items.find(w=>w.id===rightId);
-  if(!left||!right||widgetSizeLocked(left)||widgetSizeLocked(right)||
-    widgetSectionId(left)!==widgetSectionId(right))return [...items];
-  const positions=initialFluidRects(items),a=positions[leftId],b=positions[rightId];
-  if(Math.abs(a.x+a.w-b.x)>.002||
-    Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)<32)return [...items];
-  const delta=Math.max(MIN_W-a.w,Math.min(b.w-MIN_W,round(requestedDelta)));
+  const boundary=fluidSharedBoundaries(items).find(edge=>
+    (edge.leftIds??[edge.leftId]).includes(leftId)&&
+    (edge.rightIds??[edge.rightId]).includes(rightId));
+  if(!boundary)return [...items];
+  const leftIds=new Set(boundary.leftIds??[boundary.leftId]);
+  const rightIds=new Set(boundary.rightIds??[boundary.rightId]);
+  const ids=new Set([...leftIds,...rightIds]);
+  const participants=items.filter(item=>ids.has(item.id));
+  if(participants.length!==ids.size||participants.some(widgetSizeLocked))return [...items];
+  const positions=initialFluidRects(items);
+  const minDelta=Math.max(...[...leftIds].map(id=>MIN_W-positions[id].w));
+  const maxDelta=Math.min(...[...rightIds].map(id=>positions[id].w-MIN_W));
+  const delta=Math.max(minDelta,Math.min(maxDelta,round(requestedDelta)));
   if(Math.abs(delta)<.001)return [...items];
-  const nextLeft=clampFluidRect({...a,w:a.w+delta});
-  const nextRight=clampFluidRect({...b,x:b.x+delta,w:b.w-delta});
-  for(const other of items){
-    if(other.id===leftId||other.id===rightId||widgetSectionId(other)!==widgetSectionId(left))continue;
-    const rect=positions[other.id];
-    if(fluidOverlaps(nextLeft,rect)||fluidOverlaps(nextRight,rect))return [...items];
+  const updates=new Map<string,FluidWidgetRect>();
+  for(const id of leftIds){const r=positions[id];updates.set(id,clampFluidRect({...r,w:r.w+delta}))}
+  for(const id of rightIds){const r=positions[id];updates.set(id,clampFluidRect({...r,x:r.x+delta,w:r.w-delta}))}
+  for(const [id,next] of updates){
+    const section=widgetSectionId(items.find(item=>item.id===id)!);
+    for(const other of items){
+      if(ids.has(other.id)||widgetSectionId(other)!==section)continue;
+      if(fluidOverlaps(next,positions[other.id]))return [...items];
+    }
   }
-  return items.map(item=>item.id===leftId?{...item,config:{...item.config,fluidDesktop:nextLeft}}
-    :item.id===rightId?{...item,config:{...item.config,fluidDesktop:nextRight}}:item);
+  return items.map(item=>updates.has(item.id)?{...item,config:{...item.config,fluidDesktop:updates.get(item.id)!}}:item);
 }
 
 /** The usable insertion strips reach well into the card, rather than being
@@ -289,44 +324,34 @@ export function insertFluidBeside(items:readonly PageWidget[],movingId:string,
   targetId:string,side:"left"|"right"):{items:PageWidget[];placed:boolean}{
   const source=items.find(item=>item.id===movingId);
   const target=items.find(item=>item.id===targetId);
-  if(!source||!target||source.id===target.id||widgetSectionId(source)!==widgetSectionId(target)||
+  if(!source||!target||source.id===target.id||
+    widgetSectionId(source)!==widgetSectionId(target)||
     widgetRowPinned(source)||widgetRowPinned(target))return {items:[...items],placed:false};
-  const positions=initialFluidRects(items),a=positions[movingId],b=positions[targetId];
-  const otherRects=items.filter(item=>item.id!==movingId&&item.id!==targetId&&
-    widgetSectionId(item)===widgetSectionId(target))
-    .map(item=>positions[item.id])
-    .filter(peer=>peer.y<b.y+b.h&&peer.y+peer.h>b.y);
-  const leftLimit=Math.max(0,...otherRects.filter(peer=>peer.x+peer.w<=b.x+.001).map(peer=>peer.x+peer.w));
-  const rightLimit=Math.min(12,...otherRects.filter(peer=>peer.x>=b.x+b.w-.001).map(peer=>peer.x));
-  const available=rightLimit-leftLimit;
-  let sourceW=a.w,targetW=b.w;
-  if(sourceW+targetW>available+.001){
-    let overflow=sourceW+targetW-available;
-    if(!widgetSizeLocked(target)){
-      const reduction=Math.min(overflow,targetW-MIN_W);
-      targetW-=reduction;overflow-=reduction;
-    }
-    if(overflow>.001&&!widgetSizeLocked(source)){
-      const reduction=Math.min(overflow,sourceW-MIN_W);
-      sourceW-=reduction;overflow-=reduction;
-    }
-    if(overflow>.001)return {items:[...items],placed:false};
+  const positions=initialFluidRects(items),targetRect=positions[targetId];
+  // Reordering moves the widget and its original width, not its column slot.
+  const peers=items.filter(item=>item.id!==movingId&&
+    widgetSectionId(item)===widgetSectionId(target)&&
+    Math.abs(positions[item.id].y-targetRect.y)<=4)
+    .sort((a,b)=>positions[a.id].x-positions[b.id].x);
+  const order=peers.map(item=>item.id),targetIndex=order.indexOf(targetId);
+  order.splice(targetIndex+(side==="right"?1:0),0,movingId);
+  const total=order.reduce((sum,id)=>sum+positions[id].w,0);
+  if(total>12+.001)return {items:[...items],placed:false};
+  const leftMost=Math.min(...peers.map(item=>positions[item.id].x));
+  let x=Math.max(0,Math.min(leftMost,12-total));
+  const proposed=new Map<string,FluidWidgetRect>();
+  for(const id of order){
+    const r=positions[id];proposed.set(id,clampFluidRect({...r,x,y:targetRect.y}));
+    x+=r.w;
   }
-  const pairWidth=sourceW+targetW;
-  let pairX=side==="left"?Math.min(b.x,12-pairWidth):b.x;
-  // If there is already enough vacant space, retain the target's X and width.
-  if(side==="left"&&b.x-sourceW>=leftLimit)pairX=b.x-sourceW;
-  else if(side==="right"&&b.x+pairWidth>rightLimit)pairX=rightLimit-pairWidth;
-  pairX=Math.max(leftLimit,Math.min(rightLimit-pairWidth,pairX));
-  const targetRect=clampFluidRect({...b,x:side==="left"?pairX+sourceW:pairX,w:targetW});
-  const sourceRect=clampFluidRect({...a,x:side==="left"?pairX:pairX+targetW,y:b.y,w:sourceW});
-  const prepared=items.map(item=>item.id===targetId
-    ?{...item,config:{...item.config,fluidDesktop:targetRect}}
-    :item.id===movingId?{...item,config:{...item.config,fluidDesktop:sourceRect}}:item);
-  const resolved=placeFluidWidget(prepared,movingId,sourceRect);
-  if(resolved.some(item=>item.id===movingId&&
-    JSON.stringify(fluidRectOf(item))!==JSON.stringify(sourceRect)))return {items:[...items],placed:false};
-  return {items:resolved,placed:true};
+  for(const [,next] of proposed){
+    for(const other of items){
+      if(proposed.has(other.id)||widgetSectionId(other)!==widgetSectionId(target))continue;
+      if(fluidOverlaps(next,positions[other.id]))return {items:[...items],placed:false};
+    }
+  }
+  return {placed:true,items:items.map(item=>proposed.has(item.id)
+    ?{...item,config:{...item.config,fluidDesktop:proposed.get(item.id)!}}:item)};
 }
 
 /** Explicit handle double-click: align to the closest relevant neighboring

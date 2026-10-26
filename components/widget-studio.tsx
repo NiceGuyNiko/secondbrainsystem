@@ -692,11 +692,11 @@ export default function WidgetStudio(p:Props){
         else {
         const mock:PageWidget={...(source??{id:sourceId,page_id:page?.id??"",definition_id:null,
           kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
-          id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:{x:0,y:0,w,h}}};
+          id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:sourceRect??{x:raw.x,y:raw.y,w,h}}};
         const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
           sourceId,target.id,intent);
         if(fit.placed){projected=initialFluidRects(fit.items);rect=projected[sourceId]}
-        else {intent="replace";rect={...rect,x:peer.x,y:peer.y}}
+        else {intent="below";rect=clampFluidRect({...rect,x:peer.x,y:peer.y+peer.h+FLUID_GAP})}
         }
       }else rect={...rect,x:peer.x,y:peer.y};
     }
@@ -733,9 +733,15 @@ export default function WidgetStudio(p:Props){
       const moved=instanceList.map(w=>(w.id===sourceId||movingGroup!==null&&
         fluidGroupId(w)===movingGroup)?{...w,config:{...w.config,
         sectionId:placement.sectionId}}:w);
-      const updated=placement.targetId&&(placement.intent==="left"||placement.intent==="right")
-        ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
-        :placeFluidWidget(moved,sourceId,placement.rect);
+      // The live projection is authoritative: mouseup must save that exact geometry.
+      const updated=placement.projected&&!movingGroup
+        ?moved.map(item=>{
+          const position=placement.projected?.[item.id];
+          return position?{...item,config:{...item.config,fluidDesktop:position}}:item;
+        })
+        :placement.targetId&&(placement.intent==="left"||placement.intent==="right")
+          ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
+          :placeFluidWidget(moved,sourceId,placement.rect);
       if(updated.some((w,index)=>JSON.stringify(w.config)!==JSON.stringify(instanceList[index]?.config)))saveLayout(updated);
       else setNotice("This widget is locked or the chosen position is occupied by a pinned widget.");
     }
@@ -1745,7 +1751,7 @@ export default function WidgetStudio(p:Props){
                     ] as const).map(handle=><button type="button" key={handle}
                       className={"aaa-widget-fluid-handle aaa-widget-fluid-handle-"+handle}
                       disabled={locked} aria-label={"Resize "+(widget.title||"widget")+" from "+handle.replace("-"," ")}
-                      title={locked?"Widget size is locked":"Drag to resize this widget independently"}
+                      
                       onPointerDown={e=>startFluidResize(e,widget,handle)}
                       onPointerMove={fluidResizeMove}
                       onPointerUp={fluidResizeEnd} onPointerCancel={fluidResizeEnd}
@@ -1764,11 +1770,11 @@ export default function WidgetStudio(p:Props){
                 {arrange&&fluidSharedBoundaries(widgets).map(boundary=>{
                   const a=widgets.find(w=>w.id===boundary.leftId);
                   const b=widgets.find(w=>w.id===boundary.rightId);
-                  const locked=!a||!b||widgetSizeLocked(a)||widgetSizeLocked(b);
+                  const locked=[...(boundary.leftIds??[boundary.leftId]),...(boundary.rightIds??[boundary.rightId])].some(id=>{const item=widgets.find(w=>w.id===id);return !item||widgetSizeLocked(item)});
                   return <button type="button" key={boundary.leftId+"-"+boundary.rightId}
                     className="aaa-widget-fluid-shared-divider" disabled={locked}
                     aria-label={`Resize shared boundary between ${a?.title??"left widget"} and ${b?.title??"right widget"}`}
-                    title={locked?"Unlock both widget sizes to resize this boundary":"Drag to resize both neighboring widgets together"}
+                    
                     style={{left:`${boundary.x/12*100}%`,top:boundary.top,height:boundary.height}}
                     onPointerDown={e=>sharedResizeDown(e,boundary.leftId,boundary.rightId)}
                     onPointerMove={sharedResizeMove} onPointerUp={sharedResizeEnd}
