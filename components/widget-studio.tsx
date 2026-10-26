@@ -9,7 +9,8 @@ import {applyViewRules} from "@/lib/db-engine/view-operators";
 import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hierarchy-numbering";
 import {copyWidgetBlueprint,groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,resizeWidgetHeight,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetReorderZoneAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
-import {initialFluidRects,fluidCanvasHeight,fluidOverlaps,fluidPointerRect,placeFluidWidget,resizeFluidWidget,FLUID_GAP,
+import {initialFluidRects,fluidCanvasHeight,fluidOverlaps,fluidPointerRect,placeFluidWidget,resizeFluidWidget,clampFluidRect,
+  insertFluidBeside,alignFluidWidgetEdge,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
@@ -28,6 +29,7 @@ type Props={
   onEditModeChange?:(editing:boolean)=>void;
   onInspect?:(selection:CompanionInspection)=>void;
   previewMount?:HTMLElement|null;
+  modeToggleMount?:HTMLElement|null;
   onPages?:(items:{id:string;title:string}[])=>void;
   onPage?:(id:string)=>void;
   onConfigure:(target:WidgetConfigureTarget|null)=>void;
@@ -44,6 +46,8 @@ type Snapshot={
 };
 const empty:Snapshot={pages:[],sections:[],instances:[],definitions:[],databases:[],views:[],properties:[],records:[],relations:[],perspectives:[],titles:{}};
 type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"aaa_library_pages";
+type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace";
+type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;targetId?:string};
 
 export default function WidgetStudio(p:Props){
   const [data,setData]=useState<Snapshot>(empty);
@@ -77,10 +81,11 @@ export default function WidgetStudio(p:Props){
   const [expandedRecords,setExpandedRecords]=useState<Record<string,string[]>>({});
   const [drag,setDrag]=useState<string|null>(null);
   const fluidEnabled=p.mode!=="widgets";
-  const [fluidDrop,setFluidDrop]=useState<{sectionId:string;id:string;rect:FluidWidgetRect}|null>(null);
-  const fluidDropRef=useRef<{sectionId:string;id:string;rect:FluidWidgetRect}|null>(null);
+  const [fluidDrop,setFluidDrop]=useState<FluidDrop|null>(null);
+  const fluidDropRef=useRef<FluidDrop|null>(null);
   const fluidDragAnchor=useRef({x:20,y:18});
-  const fluidResizeStart=useRef<{id:string;handle:"left"|"right"|"bottom-left"|"bottom-right"|"bottom";
+  const fluidDragPointerY=useRef<number|null>(null);
+  const fluidResizeStart=useRef<{id:string;handle:"left"|"right"|"top"|"bottom-left"|"bottom-right"|"bottom";
     x:number;y:number;unit:number;initial:PageWidget[]}|null>(null);
   const [dropHint,setDropHint]=useState<WidgetDropTarget|null>(null);
   const [reorderPreview,setReorderPreview]=useState<PageWidget[]|null>(null);
@@ -441,7 +446,8 @@ export default function WidgetStudio(p:Props){
     }finally{setBusy(false)}
   };
   const addDefinition=async(definition:WidgetDefinition,placement?:WidgetDropTarget,
-    heightMode:"preferred"|"match"="preferred",sourceInstance?:PageWidget,fluidPlacement?:FluidWidgetRect)=>{
+    heightMode:"preferred"|"match"="preferred",sourceInstance?:PageWidget,
+    fluidPlacement?:FluidWidgetRect,fluidIntent?:Pick<FluidDrop,"intent"|"targetId">)=>{
     if(!page||busy)return;setBusy(true);
     try{
       // Choosing an existing view creates an independent copy by default.
@@ -467,7 +473,19 @@ export default function WidgetStudio(p:Props){
         .select("id,page_id,definition_id,kind,title,config,width,height,position").single();
       if(error)throw error;
       const {initial,placed}=fluidPlacement
-        ?{initial:row as PageWidget,placed:placeFluidWidget([...instanceList,row as PageWidget],row.id,fluidPlacement)}
+        ?{initial:row as PageWidget,placed:(()=>{
+          const withNew=[...instanceList,row as PageWidget];
+          if(fluidIntent?.targetId&&(fluidIntent.intent==="left"||fluidIntent.intent==="right")){
+            const fit=insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
+            if(fit.placed)return fit.items;
+            // A size lock makes side insertion invalid. Keep the new view
+            // intact and put it below the target instead of overlapping it.
+            const target=initialFluidRects(withNew)[fluidIntent.targetId];
+            if(target)return placeFluidWidget(withNew,row.id,
+              {...fluidPlacement,x:target.x,y:target.y+target.h+FLUID_GAP});
+          }
+          return placeFluidWidget(withNew,row.id,fluidPlacement);
+        })()}
         :preparedPlacement(row as PageWidget,placement,heightMode);
       if(fluidPlacement&&placed){
         const before=new Map(instanceList.map(w=>[w.id,w]));
@@ -581,16 +599,37 @@ export default function WidgetStudio(p:Props){
     }
   };
   const clearFluidDrop=()=>{fluidDropRef.current=null;setFluidDrop(null)};
-  const scrollDuringWidgetDrag=(y:number)=>{
+  const scrollDuringWidgetDrag=useCallback((y:number)=>{
     const viewport=document.querySelector<HTMLElement>(".aaa-working-surface");
     if(!viewport)return;
     const bounds=viewport.getBoundingClientRect();
     const proximity=66;
     if(y<bounds.top+proximity)viewport.scrollTop-=Math.max(4,Math.round((bounds.top+proximity-y)/3));
     else if(y>bounds.bottom-proximity)viewport.scrollTop+=Math.max(4,Math.round((y-bounds.bottom+proximity)/3));
-  };
+  },[]);
+  useEffect(()=>{
+    if(!fluidEnabled||!drag){fluidDragPointerY.current=null;return}
+    const position=(event:DragEvent|PointerEvent)=>{fluidDragPointerY.current=event.clientY};
+    const wheel=(event:WheelEvent)=>{
+      const viewport=document.querySelector<HTMLElement>(".aaa-working-surface");
+      if(viewport&&event.target instanceof Node&&viewport.contains(event.target)){
+        viewport.scrollTop+=event.deltaY;event.preventDefault();
+      }
+    };
+    window.addEventListener("dragover",position);
+    window.addEventListener("pointermove",position);
+    window.addEventListener("wheel",wheel,{passive:false});
+    const ticker=window.setInterval(()=>{
+      if(fluidDragPointerY.current!==null)scrollDuringWidgetDrag(fluidDragPointerY.current);
+    },45);
+    return()=>{window.removeEventListener("dragover",position);
+      window.removeEventListener("pointermove",position);
+      window.removeEventListener("wheel",wheel);window.clearInterval(ticker)};
+  },[drag,fluidEnabled,scrollDuringWidgetDrag]);
   const fluidHoverAtPoint=(x:number,y:number,sourceId:string)=>{
     if(!fluidEnabled)return false;
+    fluidDragPointerY.current=y;
+    scrollDuringWidgetDrag(y);
     const field=document.elementFromPoint(x,y)?.closest<HTMLElement>("[data-aaa-fluid-canvas]");
     if(!field){clearFluidDrop();return false}
     const sectionId=field.dataset.aaaSectionId??"";
@@ -600,35 +639,77 @@ export default function WidgetStudio(p:Props){
       widgetSectionId(widget)===widgetSectionId(source)))[source.id]:null;
     const w=sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
     const h=sourceRect?.h??(source?widgetHeightPx(source):280)+WIDGET_EDITOR_FOOTER_PX;
-    const rect=fluidPointerRect({x,y},field.getBoundingClientRect(),{w,h},fluidDragAnchor.current,
-      Object.entries(initialFluidRects(existing)).filter(([id])=>id!==source?.id).map(([,rect])=>rect),
-      formation.magneticSnapping?formation.snapDistancePx:0);
-    const next={sectionId,id:sourceId,rect};
+    const isCopy=sourceId.startsWith("developer:");
+    const positions=initialFluidRects(existing);
+    let rect=fluidPointerRect({x,y},field.getBoundingClientRect(),{w,h},fluidDragAnchor.current,
+      Object.entries(positions).filter(([id])=>id!==(isCopy?null:source?.id)).map(([,peer])=>peer),
+      formation.quickEdgeSnap?formation.snapDistancePx:0);
+    let intent:FluidDropIntent="free",targetId:string|undefined;
+    const cards=[...field.querySelectorAll<HTMLElement>("[data-aaa-fluid-widget]")]
+      .filter(card=>card.dataset.aaaFluidWidget!==(isCopy?null:source?.id));
+    const direct=document.elementFromPoint(x,y)?.closest<HTMLElement>("[data-aaa-fluid-widget]");
+    // A nearby border counts as a target too: the 14px gutter between two
+    // cards should offer insertion, not an unrelated placement in a new row.
+    const targetCard=(direct&&cards.includes(direct)?direct:null)??cards.map(card=>{
+      const b=card.getBoundingClientRect();
+      const dx=Math.max(0,b.left-x,x-b.right),dy=Math.max(0,b.top-y,y-b.bottom);
+      return {card,distance:Math.hypot(dx,dy)};
+    }).sort((a,b)=>a.distance-b.distance).find(item=>item.distance<=22)?.card;
+    const target=targetCard&&existing.find(widget=>widget.id===targetCard.dataset.aaaFluidWidget);
+    if(target&&target.id!==sourceId){
+      targetId=target.id;
+      const b=targetCard!.getBoundingClientRect();
+      const xInside=Math.max(0,Math.min(b.width,x-b.left));
+      const yInside=Math.max(0,Math.min(b.height,y-b.top));
+      const limitX=Math.min(46,b.width*.21),limitY=Math.min(42,b.height*.19);
+      const edges:[FluidDropIntent,number][]=[
+        ["above",yInside/limitY],["below",(b.height-yInside)/limitY],
+        ["left",xInside/limitX],["right",(b.width-xInside)/limitX]];
+      intent=edges.filter(([,distance])=>distance<=1)
+        .sort((a,b)=>a[1]-b[1])[0]?.[0]??"replace";
+      const peer=positions[target.id];
+      if(intent==="above"||intent==="below"){
+        rect=clampFluidRect({x:peer.x,y:intent==="above"?peer.y:peer.y+peer.h+FLUID_GAP,
+          w:source&&widgetSizeLocked(source)?w:peer.w,h});
+      }else if(intent==="left"||intent==="right"){
+        const mock:PageWidget={...(source??{id:sourceId,page_id:page?.id??"",definition_id:null,
+          kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
+          id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:{x:0,y:0,w,h}}};
+        const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
+          sourceId,target.id,intent);
+        if(fit.placed)rect=initialFluidRects(fit.items)[sourceId];
+        else {intent="replace";rect={...rect,x:peer.x,y:peer.y}}
+      }else rect={...rect,x:peer.x,y:peer.y};
+    }
+    const next:FluidDrop={sectionId,id:sourceId,rect,intent,targetId};
     fluidDropRef.current=next;
     setFluidDrop(prev=>prev?.id===sourceId&&prev.sectionId===sectionId&&
-      prev.rect.x===rect.x&&prev.rect.y===rect.y&&prev.rect.w===rect.w?prev:next);
-    scrollDuringWidgetDrag(y);
+      prev.intent===intent&&prev.targetId===targetId&&prev.rect.x===rect.x&&
+      prev.rect.y===rect.y&&prev.rect.w===rect.w&&prev.rect.h===rect.h?prev:next);
     return true;
   };
-  const commitFluidDrop=async(sourceId:string,placement:{sectionId:string;rect:FluidWidgetRect})=>{
+  const commitFluidDrop=async(sourceId:string,placement:FluidDrop)=>{
     if(sourceId.startsWith("developer:")){
       const sourceKey=sourceId.slice("developer:".length);
       const source=data.instances.find(w=>w.id===sourceKey);
       const definition=data.definitions.find(def=>def.id===(source?.definition_id??sourceKey));
       if(definition)void addDefinition(definition,{sectionId:placement.sectionId,targetId:null,edge:"section-end"},
-        "preferred",source,placement.rect);
+        "preferred",source,placement.rect,{intent:placement.intent,targetId:placement.targetId});
     }else{
       const moved=instanceList.map(w=>w.id===sourceId?{...w,config:{...w.config,
         ...(placement.sectionId?{sectionId:placement.sectionId}:{sectionId:""})}}:w);
-      const updated=placeFluidWidget(moved,sourceId,placement.rect);
+      const updated=placement.targetId&&(placement.intent==="left"||placement.intent==="right")
+        ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
+        :placeFluidWidget(moved,sourceId,placement.rect);
       if(updated.some((w,index)=>JSON.stringify(w.config)!==JSON.stringify(instanceList[index]?.config)))saveLayout(updated);
       else setNotice("This widget is locked or the chosen position is occupied by a pinned widget.");
     }
     setDrag(null);setDropHint(null);setReorderPreview(null);clearFluidDrop();
   };
   const startFluidResize=(e:React.PointerEvent<HTMLButtonElement>,widget:PageWidget,
-    handle:"left"|"right"|"bottom-left"|"bottom-right"|"bottom")=>{
+    handle:"left"|"right"|"top"|"bottom-left"|"bottom-right"|"bottom")=>{
     if(widgetSizeLocked(widget))return;
+    if(e.detail>=2)return;
     e.preventDefault();e.stopPropagation();
     const canvas=e.currentTarget.closest("[data-aaa-fluid-canvas]");
     const width=canvas?.getBoundingClientRect().width;if(!width)return;
@@ -638,14 +719,38 @@ export default function WidgetStudio(p:Props){
   };
   const fluidResizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=fluidResizeStart.current;if(!start)return;
-    const dx=Math.round((e.clientX-start.x)/start.unit*20)/20;
-    const dy=Math.round((e.clientY-start.y)/4)*4;
+    let dx=Math.round((e.clientX-start.x)/start.unit*20)/20;
+    let dy=Math.round(e.clientY-start.y);
     if(Math.abs(e.clientX-start.x)<4&&Math.abs(e.clientY-start.y)<4)return;
     const section=widgetSectionId(start.initial.find(w=>w.id===start.id)!);
     const same=start.initial.filter(w=>widgetSectionId(w)===section);
+    if(formation.quickEdgeSnap){
+      const positions=initialFluidRects(same),current=positions[start.id];
+      const peers=same.filter(w=>w.id!==start.id).map(w=>positions[w.id]);
+      const nearest=(at:number,edges:number[],scale:number)=>edges
+        .map(value=>({value,delta:Math.abs(value-at)*scale}))
+        .filter(item=>item.delta<=formation.snapDistancePx)
+        .sort((a,b)=>a.delta-b.delta)[0]?.value;
+      let snapped=false;
+      if(start.handle.includes("left")||start.handle==="right"||start.handle==="bottom-right"){
+        const edge=start.handle.includes("left")?current.x:current.x+current.w;
+        const aligned=peers.filter(p=>p.y<current.y+current.h&&p.y+p.h>current.y);
+        const snap=nearest(edge+dx,aligned.flatMap(p=>[p.x,p.x+p.w]),start.unit);
+        if(snap!==undefined){dx=snap-edge;snapped=true}
+      }
+      if(start.handle==="top"||start.handle.includes("bottom")){
+        const edge=start.handle==="top"?current.y:current.y+current.h;
+        const aligned=peers.filter(p=>p.x<current.x+current.w&&p.x+p.w>current.x ||
+          Math.abs(p.y-current.y)<24);
+        const snap=nearest(edge+dy,aligned.flatMap(p=>[p.y,p.y+p.h,p.y+p.h+FLUID_GAP]),1);
+        if(snap!==undefined){dy=snap-edge;snapped=true}
+      }
+      setSnapGuide(snapped);
+    }
     const updated=resizeFluidWidget(same,start.id,{
       ...(start.handle.includes("left")?{left:dx}:{}),
       ...(start.handle==="right"||start.handle==="bottom-right"?{right:dx}:{}),
+      ...(start.handle==="top"?{top:dy}:{}),
       ...(start.handle.includes("bottom")?{bottom:dy}:{})});
     const changed=new Map(updated.map(w=>[w.id,w]));
     const next=start.initial.map(w=>changed.get(w.id)??w);
@@ -658,6 +763,7 @@ export default function WidgetStudio(p:Props){
     fluidResizeStart.current=null;
     resizePreviewRef.current=null;
     setResizePreview(null);
+    setSnapGuide(false);
   };
   const commitDrop=(fallback?:WidgetDropTarget,sourceOverride?:string)=>{
     const target=fallback??dropHint;
@@ -1382,10 +1488,13 @@ export default function WidgetStudio(p:Props){
             <input type="checkbox" checked={formation.magneticSnapping}
               onChange={e=>setFormation({magneticSnapping:e.target.checked})}/></label>
           <label className="aaa-widget-field">Snap distance (px)
-            <input type="number" min={2} max={40} step={1} disabled={!formation.magneticSnapping}
+            <input type="number" min={2} max={40} step={1} disabled={!formation.magneticSnapping&&!formation.quickEdgeSnap}
               value={formation.snapDistancePx} onChange={e=>setFormation({snapDistancePx:Number(e.target.value)})}/>
           </label>
         </div>
+        <label className="aaa-widget-switch"><span>Quick edge alignment (no size linking)</span>
+          <input type="checkbox" checked={formation.quickEdgeSnap}
+            onChange={e=>setFormation({quickEdgeSnap:e.target.checked})}/></label>
         <div className="aaa-widget-config-pair">
           <label className="aaa-widget-field">Fill Freed Space
             <select value={formation.fillFreedSpace}
@@ -1430,10 +1539,13 @@ export default function WidgetStudio(p:Props){
           </button>}
         {arrange&&page&&<button className="aaa-widget-secondary" onClick={()=>{setPageDraft(page.title);setRenamingPage(true)}}><Pencil size={15}/> Rename page</button>}
         {arrange&&<button className="aaa-widget-secondary" disabled={busy} onClick={()=>setCreatingDatabase(true)}><Database size={16}/> New database</button>}
-        <button className="aaa-widget-mode-toggle" type="button"
+        {!p.modeToggleMount&&<button className="aaa-widget-mode-toggle" type="button"
           aria-label={arrange?"Switch to View mode":"Switch to Edit mode"} aria-pressed={arrange}
-          onClick={()=>changeMode(!arrange)}>{arrange?<><Eye size={16}/> View</>:<><Pencil size={16}/> Edit</>}</button></div>
+          onClick={()=>changeMode(!arrange)}>{arrange?<><Eye size={16}/> View</>:<><Pencil size={16}/> Edit</>}</button>}</div>
       </div>
+      {p.modeToggleMount&&createPortal(<button className="aaa-widget-mode-toggle aaa-widget-toolbar-mode-toggle" type="button"
+        aria-label={arrange?"Switch to View mode":"Switch to Edit mode"} aria-pressed={arrange}
+        onClick={()=>changeMode(!arrange)}>{arrange?<><Eye size={16}/> View</>:<><Pencil size={16}/> Edit</>}</button>,p.modeToggleMount)}
       <nav className="aaa-widget-page-tabs" aria-label={p.mode==="goals"?"Goals pages":"Library pages"}>
         {pages.map((item,index)=><button key={item.id} className={item.id===page?.id?"active":""} aria-current={item.id===page?.id?"page":undefined}
           onClick={()=>{p.onPage?.(item.id);setRenamingPage(false);setAddWidget(false);setCreatingSection(false)}}>
@@ -1523,6 +1635,9 @@ export default function WidgetStudio(p:Props){
                 top:r.y,height:r.h
               });
               const preview=fluidDrop?.sectionId===section.id?fluidDrop.rect:null;
+              const guideIntent=fluidDrop?.sectionId===section.id?fluidDrop.intent:"free";
+              const guideTarget=fluidDrop?.sectionId===section.id&&fluidDrop.targetId
+                ?positions[fluidDrop.targetId]:null;
               return <div className="aaa-widget-fluid-field" data-aaa-fluid-canvas="true"
                 data-aaa-section-id={section.id} style={{height:Math.max(220,fluidCanvasHeight(positions)+170,
                   preview?preview.y+preview.h+FLUID_GAP:0)}}
@@ -1541,7 +1656,7 @@ export default function WidgetStudio(p:Props){
                     key={widget.id} style={coords(rect)} data-aaa-fluid-widget={widget.id}>
                     {widgetCard(widget,false,true)}
                     {arrange&&!collapsedWidgets.includes(widget.id)&&([
-                      "left","right","bottom-left","bottom-right","bottom"
+                      "left","right","top","bottom-left","bottom-right","bottom"
                     ] as const).map(handle=><button type="button" key={handle}
                       className={"aaa-widget-fluid-handle aaa-widget-fluid-handle-"+handle}
                       disabled={locked} aria-label={"Resize "+(widget.title||"widget")+" from "+handle.replace("-"," ")}
@@ -1550,18 +1665,33 @@ export default function WidgetStudio(p:Props){
                       onPointerMove={fluidResizeMove}
                       onPointerUp={fluidResizeEnd} onPointerCancel={fluidResizeEnd}
                       onDoubleClick={e=>{if(locked)return;e.stopPropagation();
-                        const dx=handle.includes("left")?-rect.x:handle.includes("right")?12-rect.x-rect.w:0;
-                        if(!dx)return;
                         const same=instanceList.filter(w=>widgetSectionId(w)===section.id);
-                        const next=resizeFluidWidget(same,widget.id,handle.includes("left")?{left:dx}:{right:dx});
+                        const edge=handle.includes("left")?"left":handle.includes("right")?"right":
+                          handle==="top"?"top":"bottom";
+                        let next=alignFluidWidgetEdge(same,widget.id,edge);
+                        if(handle.includes("bottom")&&handle!=="bottom")
+                          next=alignFluidWidgetEdge(next,widget.id,"bottom");
                         const changed=new Map(next.map(w=>[w.id,w]));
                         saveLayout(instanceList.map(w=>changed.get(w.id)??w));
                       }}/>) }
                   </div>;
                 })}
+                {arrange&&preview&&guideTarget&&guideIntent!=="replace"&&guideIntent!=="free"&&<div
+                  className={"aaa-widget-fluid-insertion-line aaa-widget-fluid-insertion-"+guideIntent}
+                  data-aaa-drop-intent={guideIntent} aria-hidden="true"
+                  style={guideIntent==="above"||guideIntent==="below"?{
+                    left:`${guideTarget.x/12*100}%`,
+                    width:`${guideTarget.w/12*100}%`,
+                    top:guideIntent==="above"?guideTarget.y-7:guideTarget.y+guideTarget.h+7
+                  }:{
+                    left:`${(guideIntent==="left"?preview.x+preview.w:preview.x)/12*100}%`,
+                    top:guideTarget.y,height:guideTarget.h
+                  }}/>} 
                 {arrange&&preview&&<div className="aaa-widget-fluid-drop-preview"
-                  style={coords(preview)} role="status" aria-label="Widget drop position">
-                  <span>{widgets.some(w=>w.id===drag)?"Move here":"Add widget here"}</span>
+                  data-aaa-drop-intent={guideIntent} style={coords(preview)} role="status" aria-label="Widget drop position">
+                  <span>{guideIntent==="above"?"Insert above":guideIntent==="below"?"Stack below":
+                    guideIntent==="left"||guideIntent==="right"?"Fit beside":guideIntent==="replace"?"Replace position":
+                    widgets.some(w=>w.id===drag)?"Move here":"Add widget here"}</span>
                 </div>}
               </div>;
             })():<>

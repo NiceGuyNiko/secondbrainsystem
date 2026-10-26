@@ -23,8 +23,8 @@ export function fluidRectOf(widget:PageWidget):FluidWidgetRect|null{
 }
 export function clampFluidRect(input:FluidWidgetRect):FluidWidgetRect{
   const w=Math.max(MIN_W,Math.min(12,round(input.w)));
-  return {x:round(Math.max(0,Math.min(12-w,input.x))),y:Math.max(0,Math.round(input.y/4)*4),
-    w,h:Math.max(MIN_H,Math.round(input.h/4)*4)};
+  return {x:round(Math.max(0,Math.min(12-w,input.x))),y:Math.max(0,Math.round(input.y)),
+    w,h:Math.max(MIN_H,Math.round(input.h))};
 }
 const hOf=(w:PageWidget)=>widgetFootprintHeight(w,false)??widgetHeightPx(w)+WIDGET_EDITOR_FOOTER_PX;
 
@@ -95,7 +95,7 @@ export function placeFluidWidget(items:readonly PageWidget[],id:string,target:Fl
       const rect=positions[other.id];
       if(!rect||!fluidOverlaps(current,rect))continue;
       if(widgetRowPinned(other))return [...items];
-      const nextY=Math.round((current.y+current.h+FLUID_GAP)/4)*4;
+      const nextY=Math.ceil(current.y+current.h+FLUID_GAP);
       if(nextY>rect.y){positions[other.id]={...rect,y:nextY};queue.push(other.id)}
     }
   }
@@ -108,11 +108,11 @@ export function placeFluidWidget(items:readonly PageWidget[],id:string,target:Fl
 /** Resize only the selected rectangle. The left edge moves the X origin,
  * while bottom corners change both width and height. No shared-lane resizing. */
 export function resizeFluidWidget(items:readonly PageWidget[],id:string,
-  change:{left?:number;right?:number;bottom?:number}):PageWidget[]{
+  change:{left?:number;right?:number;top?:number;bottom?:number}):PageWidget[]{
   const selected=items.find(w=>w.id===id);
   if(!selected||widgetSizeLocked(selected))return [...items];
   const rect=initialFluidRects(items)[id];if(!rect)return [...items];
-  const left=change.left??0,right=change.right??0,bottom=change.bottom??0;
+  const left=change.left??0,right=change.right??0,top=change.top??0,bottom=change.bottom??0;
   const rightBound=rect.x+rect.w;
   let x=left?Math.max(0,Math.min(rightBound-MIN_W,rect.x+left)):rect.x;
   let w=left?rightBound-x:rect.w+right;
@@ -136,11 +136,98 @@ export function resizeFluidWidget(items:readonly PageWidget[],id:string,
       .map(peer=>peer.x));
     w=Math.min(w,rightLimit-rect.x);
   }
-  const next=clampFluidRect({x,y:rect.y,w:Math.max(MIN_W,Math.min(12-x,w)),h:rect.h+bottom});
+  let nextY=rect.y,nextHeight=rect.h+bottom;
+  if(top){
+    const oldBottom=rect.y+rect.h;
+    const minimumY=Math.max(0,...Object.entries(initialFluidRects(items))
+      .filter(([peerId])=>peerId!==id).map(([,peer])=>peer)
+      .filter(peer=>peer.x<rect.x+rect.w&&peer.x+peer.w>rect.x&&peer.y+peer.h<=rect.y+.001)
+      .map(peer=>peer.y+peer.h+FLUID_GAP));
+    nextY=Math.max(minimumY,Math.min(oldBottom-MIN_H,rect.y+top));
+    nextHeight=oldBottom-nextY+bottom;
+  }
+  const next=clampFluidRect({x,y:nextY,w:Math.max(MIN_W,Math.min(12-x,w)),h:nextHeight});
   const changed=placeFluidWidget(items,id,next);
   if(changed===items||changed.every((w,i)=>w===items[i]))return [...items];
   return changed.map(w=>w.id===id?{...w,config:{...w.config,fitContent:false,
     heightPx:Math.max(160,Math.min(1200,next.h-WIDGET_EDITOR_FOOTER_PX))}}:w);
+}
+
+/** Insert beside a widget only when the pair can share the same horizontal
+ * region. This is an intentional drop operation, never a side-resize side
+ * effect. A locked target stays the exact same size. */
+export function insertFluidBeside(items:readonly PageWidget[],movingId:string,
+  targetId:string,side:"left"|"right"):{items:PageWidget[];placed:boolean}{
+  const source=items.find(item=>item.id===movingId);
+  const target=items.find(item=>item.id===targetId);
+  if(!source||!target||source.id===target.id||widgetSectionId(source)!==widgetSectionId(target)||
+    widgetRowPinned(source)||widgetRowPinned(target))return {items:[...items],placed:false};
+  const positions=initialFluidRects(items),a=positions[movingId],b=positions[targetId];
+  const otherRects=items.filter(item=>item.id!==movingId&&item.id!==targetId&&
+    widgetSectionId(item)===widgetSectionId(target))
+    .map(item=>positions[item.id])
+    .filter(peer=>peer.y<b.y+b.h&&peer.y+peer.h>b.y);
+  const leftLimit=Math.max(0,...otherRects.filter(peer=>peer.x+peer.w<=b.x+.001).map(peer=>peer.x+peer.w));
+  const rightLimit=Math.min(12,...otherRects.filter(peer=>peer.x>=b.x+b.w-.001).map(peer=>peer.x));
+  const available=rightLimit-leftLimit;
+  let sourceW=a.w,targetW=b.w;
+  if(sourceW+targetW>available+.001){
+    let overflow=sourceW+targetW-available;
+    if(!widgetSizeLocked(target)){
+      const reduction=Math.min(overflow,targetW-MIN_W);
+      targetW-=reduction;overflow-=reduction;
+    }
+    if(overflow>.001&&!widgetSizeLocked(source)){
+      const reduction=Math.min(overflow,sourceW-MIN_W);
+      sourceW-=reduction;overflow-=reduction;
+    }
+    if(overflow>.001)return {items:[...items],placed:false};
+  }
+  const pairWidth=sourceW+targetW;
+  let pairX=side==="left"?Math.min(b.x,12-pairWidth):b.x;
+  // If there is already enough vacant space, retain the target's X and width.
+  if(side==="left"&&b.x-sourceW>=leftLimit)pairX=b.x-sourceW;
+  else if(side==="right"&&b.x+pairWidth>rightLimit)pairX=rightLimit-pairWidth;
+  pairX=Math.max(leftLimit,Math.min(rightLimit-pairWidth,pairX));
+  const targetRect=clampFluidRect({...b,x:side==="left"?pairX+sourceW:pairX,w:targetW});
+  const sourceRect=clampFluidRect({...a,x:side==="left"?pairX:pairX+targetW,y:b.y,w:sourceW});
+  const prepared=items.map(item=>item.id===targetId
+    ?{...item,config:{...item.config,fluidDesktop:targetRect}}
+    :item.id===movingId?{...item,config:{...item.config,fluidDesktop:sourceRect}}:item);
+  const resolved=placeFluidWidget(prepared,movingId,sourceRect);
+  if(resolved.some(item=>item.id===movingId&&
+    JSON.stringify(fluidRectOf(item))!==JSON.stringify(sourceRect)))return {items:[...items],placed:false};
+  return {items:resolved,placed:true};
+}
+
+/** Explicit handle double-click: align to the closest relevant neighboring
+ * boundary, while respecting occupied space and independent size locks. */
+export function alignFluidWidgetEdge(items:readonly PageWidget[],id:string,
+  edge:"left"|"right"|"top"|"bottom"):PageWidget[]{
+  const selected=items.find(item=>item.id===id);
+  if(!selected||widgetSizeLocked(selected))return [...items];
+  const positions=initialFluidRects(items),r=positions[id];
+  const peers=items.filter(item=>item.id!==id&&widgetSectionId(item)===widgetSectionId(selected))
+    .map(item=>positions[item.id]);
+  if(edge==="left"||edge==="right"){
+    const peerEdges=peers.filter(p=>p.y<r.y+r.h&&p.y+p.h>r.y)
+      .flatMap(p=>[p.x,p.x+p.w]);
+    if(edge==="left"){
+      const candidate=Math.max(0,...peerEdges.filter(x=>x<r.x-.001));
+      return resizeFluidWidget(items,id,{left:candidate-r.x});
+    }
+    const candidate=Math.min(12,...peerEdges.filter(x=>x>r.x+r.w+.001));
+    return resizeFluidWidget(items,id,{right:candidate-r.x-r.w});
+  }
+  const aligned=peers.filter(p=>p.x<r.x+r.w&&p.x+p.w>r.x ||
+    Math.abs(p.y-r.y)<50);
+  if(edge==="top"){
+    const candidate=Math.max(0,...aligned.map(p=>p.y).filter(y=>y<r.y-.001));
+    return resizeFluidWidget(items,id,{top:candidate-r.y});
+  }
+  const boundaries=aligned.map(p=>p.y+p.h).filter(y=>Math.abs(y-(r.y+r.h))>4);
+  const candidate=boundaries.sort((a,b)=>Math.abs(a-(r.y+r.h))-Math.abs(b-(r.y+r.h)))[0];
+  return candidate===undefined?[...items]:resizeFluidWidget(items,id,{bottom:candidate-r.y-r.h});
 }
 
 /** Match the pointer to a horizontal placement without forcing artificial
@@ -150,12 +237,14 @@ export function fluidPointerRect(pointer:{x:number;y:number},origin:{left:number
   existing:readonly FluidWidgetRect[]=[],snapPx=0):FluidWidgetRect{
   const unit=origin.width/12;
   let x=Math.round(((pointer.x-origin.left-anchor.x)/unit)*4)/4;
-  let y=Math.max(0,Math.round((pointer.y-origin.top-anchor.y)/4)*4);
+  let y=Math.max(0,Math.round(pointer.y-origin.top-anchor.y));
   if(snapPx>0){
     const xEdges=existing.flatMap(r=>[r.x,r.x+r.w]);
-    const yEdges=existing.flatMap(r=>[r.y,r.y+r.h+FLUID_GAP]);
-    const snappedX=xEdges.find(edge=>Math.abs(edge-x)*unit<=snapPx);
-    const snappedY=yEdges.find(edge=>Math.abs(edge-y)<=snapPx);
+    const yEdges=existing.flatMap(r=>[r.y,r.y+r.h,r.y+r.h+FLUID_GAP]);
+    const snappedX=xEdges.filter(edge=>Math.abs(edge-x)*unit<=snapPx)
+      .sort((a,b)=>Math.abs(a-x)-Math.abs(b-x))[0];
+    const snappedY=yEdges.filter(edge=>Math.abs(edge-y)<=snapPx)
+      .sort((a,b)=>Math.abs(a-y)-Math.abs(b-y))[0];
     if(snappedX!==undefined)x=snappedX;
     if(snappedY!==undefined)y=snappedY;
   }

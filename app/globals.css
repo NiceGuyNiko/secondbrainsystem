@@ -2799,6 +2799,12 @@ input[type="range"]{
   background:var(--bg);
   box-shadow:0 1px 0 var(--border);
 }
+.aaa-page-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:32px}
+.aaa-page-widget-mode-mount{display:flex;align-items:center;min-height:32px}
+.aaa-page-toolbar .aaa-widget-toolbar-mode-toggle{display:inline-flex;align-items:center;justify-content:center;
+  min-width:82px;height:34px;padding:5px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text)}
+.aaa-page-toolbar .aaa-widget-toolbar-mode-toggle:hover{border-color:var(--accent)}
 @media(max-width:767px){
   .aaa-page-toolbar{top:0;}
   .aaa-widget-style-options{grid-template-columns:1fr;}
@@ -4435,6 +4441,17 @@ input[type="range"]{
 .aaa-widget-fluid-drop-preview>span{
   background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:6px 11px;
 }
+.aaa-widget-fluid-insertion-line{
+  position:absolute;z-index:14;pointer-events:none;border-radius:5px;
+  background:var(--accent-bright,var(--accent));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);
+}
+.aaa-widget-fluid-insertion-above,.aaa-widget-fluid-insertion-below{height:3px}
+.aaa-widget-fluid-insertion-left,.aaa-widget-fluid-insertion-right{width:3px}
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="above"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="below"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="left"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="right"]{border-style:dotted}
 .aaa-widget-fluid-item .aaa-widget-height-divider,
 .aaa-widget-fluid-item .aaa-widget-resize-corner,
 .aaa-widget-fluid-item .aaa-widget-span-edge-resize{display:none!important}
@@ -4448,6 +4465,13 @@ input[type="range"]{
 }
 .aaa-widget-fluid-handle-left{left:-6px}
 .aaa-widget-fluid-handle-right{right:-6px}
+.aaa-widget-fluid-handle-top{
+  top:-6px;left:calc(50% - 25px);width:50px;height:12px;
+  border-radius:6px;cursor:ns-resize;
+}
+.aaa-widget-fluid-handle-top::after{
+  content:"";position:absolute;left:10px;right:10px;top:5px;height:2px;background:var(--accent-bright);
+}
 .aaa-widget-fluid-handle-bottom-left,.aaa-widget-fluid-handle-bottom-right{
   bottom:-6px;width:23px;height:23px;border-radius:6px;
 }
@@ -4485,3 +4509,15 @@ input[type="range"]{
 .aaa-collapsed .aaa-sidebar .aaa-context-scroll::-webkit-scrollbar{display:none}
 .aaa-sidebar .aaa-brand-toggle:focus:not(:focus-visible),
 .aaa-sidebar .aaa-desktop-collapse-control:focus:not(:focus-visible){outline:none;box-shadow:none}
+
+/* Toggle/Pin companions cover the full Library canvas instead of changing
+   widget widths. Permanent Column mode deliberately still reserves space. */
+@media(min-width:768px){
+  .aaa-calendar-host>.aaa-hybrid-companion.aaa-hybrid-overlay,
+  .aaa-calendar-host>.aaa-hybrid-companion.aaa-hybrid-pinned-overlay{
+    position:absolute;top:0;right:0;bottom:0;height:100%;flex:none;
+    max-width:min(720px,calc(100% - 64px));z-index:60;
+    box-shadow:-12px 0 55px #0006;
+  }
+}
+@media(max-width:680px){.aaa-widget-fluid-insertion-line{display:none}}

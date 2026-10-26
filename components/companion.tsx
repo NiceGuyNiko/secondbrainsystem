@@ -296,9 +296,12 @@ export default function Companion(p:Props){
       onRefresh={loadThoughts} onCapture={captureThought} onOpenThought={p.onOpenThought}/>;
   };
   if(p.mode==="closed")return null;
+  const pinnedOverlay=p.mode==="pinned"&&p.preference!=="column";
   return <>
     {p.mode==="overlay"&&<button className={"aaa-companion-backdrop"+(dragCollapsed?" aaa-companion-drag-collapsed":"")} aria-label="Close The Companion" onClick={()=>p.onMode("closed")}/>}
-    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode+(dragCollapsed&&p.mode==="overlay"?" aaa-companion-drag-collapsed":"")} aria-label="The Companion"
+    <aside ref={panel} className={"aaa-hybrid-companion aaa-hybrid-"+p.mode+
+      (pinnedOverlay?" aaa-hybrid-pinned-overlay":"")+
+      (dragCollapsed&&(p.mode==="overlay"||pinnedOverlay)?" aaa-companion-drag-collapsed":"")} aria-label="The Companion"
       style={{width:previewWidth+"px",flexBasis:previewWidth+"px"}}>
       {p.mode==="pinned"&&p.options.resizableColumn&&<div className="aaa-companion-width-resizer"
         role="separator" aria-label="Resize Companion width" aria-orientation="vertical" tabIndex={0}

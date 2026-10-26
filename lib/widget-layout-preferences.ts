@@ -11,12 +11,13 @@ export type WidgetDisplacement="same-column"|"next-row";
 export type WidgetGapBehavior="off"|"column-rise"|"left-to-right";
 export type WidgetFormationPreferences={
   magneticSnapping:boolean;
+  quickEdgeSnap:boolean;
   snapDistancePx:number;
   fillFreedSpace:WidgetGapBehavior;
   displacement:WidgetDisplacement;
 };
 export const defaultWidgetFormationPreferences:WidgetFormationPreferences={
-  magneticSnapping:false,snapDistancePx:14,fillFreedSpace:"column-rise",displacement:"same-column"
+  magneticSnapping:false,quickEdgeSnap:true,snapDistancePx:14,fillFreedSpace:"column-rise",displacement:"same-column"
 };
 export function readWidgetFormationPreferences():WidgetFormationPreferences{
   if(typeof window==="undefined")return defaultWidgetFormationPreferences;
@@ -25,6 +26,7 @@ export function readWidgetFormationPreferences():WidgetFormationPreferences{
     const previousFill=readWidgetGapFill();
     return {
       magneticSnapping:typeof stored.magneticSnapping==="boolean"?stored.magneticSnapping:false,
+      quickEdgeSnap:typeof stored.quickEdgeSnap==="boolean"?stored.quickEdgeSnap:true,
       snapDistancePx:typeof stored.snapDistancePx==="number"&&Number.isFinite(stored.snapDistancePx)
         ?Math.min(40,Math.max(2,stored.snapDistancePx)):14,
       fillFreedSpace:["off","column-rise","left-to-right"].includes(stored.fillFreedSpace)

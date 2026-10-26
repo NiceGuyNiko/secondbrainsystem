@@ -102,6 +102,7 @@ function Workspace() {
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
   const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
   const [widgetInspection,setWidgetInspection]=useState<CompanionInspection|null>(null);
+  const [widgetModeMount,setWidgetModeMount]=useState<HTMLSpanElement|null>(null);
   const [widgetPreviewMount,setWidgetPreviewMount]=useState<HTMLDivElement|null>(null);
   const onWidgetPreviewMount=useCallback((node:HTMLDivElement|null)=>setWidgetPreviewMount(old=>old===node?old:node),[]);
   const [libraryEditIntent,setLibraryEditIntent]=useState(0);
@@ -758,9 +759,12 @@ function Workspace() {
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
-                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button aaa-companion-return-target" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion · drop a widget here to return it to Developer" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}
-                  onDragOver={e=>{if(isPageWidgetDrag(e.dataTransfer)){e.preventDefault();e.dataTransfer.dropEffect="move"}}}
-                  onDrop={e=>{if(!isPageWidgetDrag(e.dataTransfer))return;e.preventDefault();returnPageWidgetToDeveloper(e.dataTransfer)}}><PanelRightOpen size={20}/></button>}
+                <div className="aaa-page-toolbar-actions">
+                  {(section==="Library"||section==="Goals")&&<span className="aaa-page-widget-mode-mount" ref={setWidgetModeMount}/>}
+                  {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button aaa-companion-return-target" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion · drop a widget here to return it to Developer" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}
+                    onDragOver={e=>{if(isPageWidgetDrag(e.dataTransfer)){e.preventDefault();e.dataTransfer.dropEffect="move"}}}
+                    onDrop={e=>{if(!isPageWidgetDrag(e.dataTransfer))return;e.preventDefault();returnPageWidgetToDeveloper(e.dataTransfer)}}><PanelRightOpen size={20}/></button>}
+                </div>
 
               </div>
               {section === "Developing IT" && contextId === "databases" && isDemo ? (
@@ -787,6 +791,7 @@ function Workspace() {
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
                   developerActive={preferences.companion.primary==="developer"}
                   previewMount={widgetPreviewMount}
+                  modeToggleMount={widgetModeMount}
                   editIntent={libraryEditIntent} onEditModeChange={editing=>{
                     if(!editing&&preferences.companion.primary==="developer")setCompanion({primary:"view"});
                   }} onInspect={setWidgetInspection}
