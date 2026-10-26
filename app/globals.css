@@ -4469,7 +4469,7 @@ input[type="range"]{
 @media(max-width:680px){
   .aaa-widget-fluid-field{height:auto!important;display:flex;flex-direction:column;gap:14px}
   .aaa-widget-fluid-item{position:relative!important;top:auto!important;left:auto!important;
-    width:100%!important;height:310px!important;flex:0 0 auto}
+    width:100%!important;flex:0 0 auto}
   .aaa-widget-fluid-drop-preview{display:none}
 }
 
