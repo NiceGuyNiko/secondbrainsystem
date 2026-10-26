@@ -9,8 +9,9 @@ test("Agenda modes reopen with their specified presentation",()=>{
     assert.equal(openAgenda("toggle",last),last?"pinned":"overlay");
   }
   assert.equal(canPin("column","pinned"),false);
+  assert.equal(canPin("column","overlay"),false);
   assert.equal(canPin("pin","overlay"),true);
-  assert.equal(canPin("pin","pinned"),false);
+  assert.equal(canPin("pin","pinned"),true);
   assert.equal(canPin("toggle","overlay"),true);
   assert.equal(canPin("toggle","pinned"),true);
 });

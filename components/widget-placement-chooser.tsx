@@ -24,6 +24,7 @@ export default function WidgetPlacementChooser({band,target,definitions,onCancel
   const count=band.lanes.length;
   const isColumn=target.edge==="left"||target.edge==="right";
   const isSplit=target.edge==="split-span-left"||target.edge==="split-span-right";
+  const isLowerAdjacent=target.edge==="lower-adjacent-left"||target.edge==="lower-adjacent-right";
   const isRange=target.edge==="span-below";
   const [start,setStart]=useState(target.spanStartLane??0);
   const [span,setSpan]=useState(target.spanLaneCount??count);
@@ -31,7 +32,7 @@ export default function WidgetPlacementChooser({band,target,definitions,onCancel
   const [heightMode,setHeightMode]=useState<"preferred"|"match">("preferred");
   const [spanMode,setSpanMode]=useState<"keep"|"expand">(
     target.extendSpanWidgetId?"expand":"keep");
-  const [widthMode,setWidthMode]=useState<"equal"|"group"|"25"|"50"|"75">("equal");
+  const [widthMode,setWidthMode]=useState<"equal"|"group"|"25"|"50"|"75">(target.preserveGroupWidth?"group":"equal");
   const ranges=widgetColumnRanges(count).map(range=>({start:range.start,span:range.count}));
   const selectedRange=ranges.some(range=>range.start===start&&range.span===span)
     ?{start,span}:{start:0,span:count};
@@ -57,6 +58,7 @@ export default function WidgetPlacementChooser({band,target,definitions,onCancel
     onConfirm({target:resolved,definitionId:source==="new"?null:source,heightMode});
   };
   const label=isColumn?"Add a column":isSplit?"Divide a combined widget":
+    isLowerAdjacent?"Fill the lower empty space":
     isRange?"Choose a column range":
     target.edge==="new-row"||target.edge==="new-row-before"?"Add a full-width row":
     "Stack a widget";
@@ -118,6 +120,10 @@ export default function WidgetPlacementChooser({band,target,definitions,onCancel
         <strong>Existing physical columns stay in place</strong>
         <p>The new widget takes the {target.edge==="split-span-left"?"left":"right"} edge column
           of this combined region. The existing widget retains the remaining columns.</p>
+      </div>}
+      {isLowerAdjacent&&<div className="aaa-widget-placement-field">
+        <strong>Independent lower-row placement</strong>
+        <p>Place a widget beside this lower widget, in the available space below the neighboring upper card. The upper columns keep their widths.</p>
       </div>}
       <div className="aaa-widget-placement-field">
         <label htmlFor="aaa-widget-placement-source"><strong>Widget source</strong></label>

@@ -43,7 +43,7 @@ export const defaultPreferences: ProfilePreferences = {
   widgetHeaderPosition:"top",
   widgetCornerDoubleClick:"fit-content",
   widgetBottomDoubleClick:"match-height",
-  agendaPreference: "toggle",
+  agendaPreference: "column",
   lastPinned: false,
   companion: defaultCompanion,
   startDay: "Monday",

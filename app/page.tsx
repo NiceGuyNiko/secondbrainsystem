@@ -11,6 +11,8 @@ import PlanningWorkspace from "@/components/planning-workspace";
 import DatabasesWorkspace from "@/components/databases-workspace";
 import StagingDatabaseLab from "@/components/database-staging-lab";
 import WidgetStudio from "@/components/widget-studio";
+import {isPageWidgetDrag,returnPageWidgetToDeveloper} from "@/lib/widget-drag";
+import type {CompanionInspection} from "@/lib/companion-config";
 import {widgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetProperty,type WidgetView,type WidgetDefinition} from "@/lib/widget-system";
 import DatabaseLabErrorBoundary from "@/components/database-lab-error-boundary";
 import { supabase } from "@/lib/supabase";
@@ -99,6 +101,12 @@ function Workspace() {
   const [settingsSection,setSettingsSection]=useState<SettingsSection>("General");
   const [companionRecord,setCompanionRecord]=useState<CompanionTarget|null>(null);
   const [widgetConfiguration,setWidgetConfiguration]=useState<WidgetConfigureTarget|null>(null);
+  const [widgetInspection,setWidgetInspection]=useState<CompanionInspection|null>(null);
+  const [widgetModeMount,setWidgetModeMount]=useState<HTMLSpanElement|null>(null);
+  const [widgetPreviewMount,setWidgetPreviewMount]=useState<HTMLDivElement|null>(null);
+  const onWidgetPreviewMount=useCallback((node:HTMLDivElement|null)=>setWidgetPreviewMount(old=>old===node?old:node),[]);
+  const [libraryEditIntent,setLibraryEditIntent]=useState(0);
+  useEffect(()=>setWidgetInspection(null),[section,contextId]);
   const [widgetPages,setWidgetPages]=useState<{library:ContextItem[];goals:ContextItem[]}>({library:[],goals:[]});
   const [newWidgetPageIntent,setNewWidgetPageIntent]=useState(0);
   const updateWidgetPages=useCallback((area:"library"|"goals",items:ContextItem[])=>setWidgetPages(prev=>JSON.stringify(prev[area])===JSON.stringify(items)?prev:{...prev,[area]:items}),[]);
@@ -175,6 +183,7 @@ function Workspace() {
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
   },[engineEnabled,section,contextId,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
+  const effectiveAgendaPreference=agendaPreference;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
   const setCompanion = (patch:Partial<CompanionPreferences>)=>setPreferences(p=>({companion:{...p.companion,...patch}}));
@@ -198,10 +207,10 @@ function Workspace() {
     task?: { id: string; title: string; workingId?: string };
   }>();
   const changeAgenda=useCallback((next:AgendaMode)=>{
-    setAgendaMode(next=== "closed"?"closed":agendaPreference==="column"?"pinned":next);
-    if(next!=="closed"&&agendaPreference==="toggle")setLastPinned(next==="pinned");
-  },[agendaPreference,setLastPinned]);
-  const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):"closed");
+    setAgendaMode(next);
+    if(next!=="closed"&&effectiveAgendaPreference==="toggle")setLastPinned(next==="pinned");
+  },[effectiveAgendaPreference,setLastPinned]);
+  const toggleAgenda=()=>changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):"closed");
   const buildWidgetFromDatabase=async(databaseId:string)=>{
     if(!databaseId)return;
     try{
@@ -265,11 +274,11 @@ function Workspace() {
           await refresh();
         }
       });
-      changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode);
+      changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):agendaMode);
       setNotice(`${db.name} widget created in Developing IT → Widgets. Configure it here while keeping the database open.`);
     }catch(e){setNotice(e instanceof Error?e.message:String(e))}
   };
-  useEffect(()=>{setAgendaMode(m=>m==="closed"?m:openAgenda(agendaPreference,lastPinned));},[agendaPreference,lastPinned]);
+  useEffect(()=>{setAgendaMode(m=>m==="closed"?m:openAgenda(effectiveAgendaPreference,lastPinned));},[effectiveAgendaPreference,lastPinned]);
   // Leaving a beta destination when its switch (or Developer Mode) is turned off. Nothing is deleted.
   useEffect(()=>{
     if((section==="Fluid Calendar"&&!effective.fluidCalendar)||(section==="Think About It"&&!effective.thinkAboutIt)){
@@ -731,21 +740,31 @@ function Workspace() {
           command={command}
           agendaMode={agendaMode}
           onAgendaMode={changeAgenda}
-          agendaPreference={agendaPreference}
+          agendaPreference={effectiveAgendaPreference}
           onToggleAgenda={toggleAgenda}
           onOpenThought={openThought}
-          companion={preferences.companion}
+          companion={isDemo?{...preferences.companion,tabDisplay:"icons"}:preferences.companion}
           onCompanion={setCompanion}
           companionTarget={companionTarget}
           companionProfileKey={userId+":"+settings.account.activeProfileId}
           widgetConfiguration={widgetConfiguration}
           onCloseWidgetConfiguration={()=>setWidgetConfiguration(null)}
+          widgetInspection={widgetInspection}
+          onWidgetPreviewMount={onWidgetPreviewMount}
+          onActivateDeveloper={()=>{
+            if(section==="Library"||section==="Goals")setLibraryEditIntent(value=>value+1);
+          }}
         >
           {!calendarSection && (
             <>
               <div className="aaa-page-toolbar">
                 <span>{ownedPageTitle(displayName, section)}</span>
-                {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}><PanelRightOpen size={20}/></button>}
+                <div className="aaa-page-toolbar-actions">
+                  {(section==="Library"||section==="Goals")&&<span className="aaa-page-widget-mode-mount" ref={setWidgetModeMount}/>}
+                  {preferences.companion.launcher==="top"&&<button type="button" className="calendar-panel pr11-toolbar-icon aaa-companion-toolbar-button aaa-companion-return-target" aria-label={agendaMode==="closed"?"Open The Companion":"Close The Companion"} title="The Companion · drop a widget here to return it to Developer" aria-expanded={agendaMode!=="closed"} onClick={toggleAgenda}
+                    onDragOver={e=>{if(isPageWidgetDrag(e.dataTransfer)){e.preventDefault();e.dataTransfer.dropEffect="move"}}}
+                    onDrop={e=>{if(!isPageWidgetDrag(e.dataTransfer))return;e.preventDefault();returnPageWidgetToDeveloper(e.dataTransfer)}}><PanelRightOpen size={20}/></button>}
+                </div>
 
               </div>
               {section === "Developing IT" && contextId === "databases" && isDemo ? (
@@ -770,9 +789,20 @@ function Workspace() {
                 <WidgetStudio key={section} mode={section==="Library"?"library":section==="Goals"?"goals":"widgets"} visualStyle={preferences.widgetStyle} headerPosition={preferences.widgetHeaderPosition}
                   cornerDoubleClick={preferences.widgetCornerDoubleClick} bottomDoubleClick={preferences.widgetBottomDoubleClick}
                   activePageId={contextId} newPageIntent={newWidgetPageIntent}
+                  developerActive={preferences.companion.primary==="developer"}
+                  previewMount={widgetPreviewMount}
+                  modeToggleMount={widgetModeMount}
+                  editIntent={libraryEditIntent} onEditModeChange={editing=>{
+                    if(!editing&&preferences.companion.primary==="developer")setCompanion({primary:"view"});
+                  }} onInspect={setWidgetInspection}
                   onPages={items=>updateWidgetPages(section==="Goals"?"goals":"library",items)} onPage={id=>setContextId(id)}
                   onConfigure={setWidgetConfiguration}
-                  onOpenConfigure={()=>changeAgenda(agendaMode==="closed"?openAgenda(agendaPreference,lastPinned):agendaMode)}
+                  onOpenConfigure={()=>changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):agendaMode)}
+                  onOpenDeveloper={()=>{
+                    setCompanion({primary:"developer"});
+                    changeAgenda(agendaMode==="closed"?openAgenda(effectiveAgendaPreference,lastPinned):agendaMode);
+                    setLibraryEditIntent(value=>value+1);
+                  }}
                   onOpenRecord={openThought} onPlanningContext={setPlanningContext}
                   onSchedule={task=>setCommand({id:Date.now(),type:"new",task})}/>
               ) : section === "Settings" ? (

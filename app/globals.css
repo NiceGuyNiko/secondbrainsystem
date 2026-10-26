@@ -2799,6 +2799,12 @@ input[type="range"]{
   background:var(--bg);
   box-shadow:0 1px 0 var(--border);
 }
+.aaa-page-toolbar-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:32px}
+.aaa-page-widget-mode-mount{display:flex;align-items:center;min-height:32px}
+.aaa-page-toolbar .aaa-widget-toolbar-mode-toggle{display:inline-flex;align-items:center;justify-content:center;
+  min-width:82px;height:34px;padding:5px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text)}
+.aaa-page-toolbar .aaa-widget-toolbar-mode-toggle:hover{border-color:var(--accent)}
 @media(max-width:767px){
   .aaa-page-toolbar{top:0;}
   .aaa-widget-style-options{grid-template-columns:1fr;}
@@ -3977,6 +3983,79 @@ input[type="range"]{
    purple stroke and centered text. The inside edge guides use a lighter idle
    treatment so they don't obscure titles, cards, or widget footer controls. */
 
+/* Library page edit controls: the mode switch occupies one fixed location, and
+   the single structural column divider owns the visible + insertion marker. */
+.aaa-widget-hero-actions>.aaa-widget-mode-toggle{
+  flex:0 0 92px;min-width:92px;display:inline-flex;align-items:center;
+  justify-content:center;gap:7px;padding:9px 12px;
+  color:var(--text);background:var(--surface-2);
+  border:1px solid var(--accent);border-radius:9px;
+  font-size:12px;font-weight:750;cursor:pointer;
+}
+.aaa-widget-hero-actions>.aaa-widget-mode-toggle:focus-visible,
+.aaa-widget-section-collapse:focus-visible{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+.aaa-widget-section-heading-main{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.aaa-widget-section-heading-main>div{min-width:0}
+.aaa-widget-section-label-editor{display:flex;align-items:center;gap:4px;margin-bottom:5px}
+.aaa-widget-section-label-editor input{max-width:155px;min-width:75px;background:var(--bg);color:var(--text);
+  border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11px}
+.aaa-widget-section-label-editor button{display:grid;place-items:center;width:23px;height:23px;
+  border:1px solid var(--border);border-radius:5px;cursor:pointer}
+.aaa-widget-section-collapse{
+  display:grid;place-items:center;flex:0 0 25px;width:25px;height:25px;
+  margin-top:4px;background:transparent;color:var(--accent-text);
+  border:1px solid var(--border);border-radius:6px;cursor:pointer;
+}
+.aaa-widget-tips-toggle{
+  cursor:pointer;color:var(--muted);font-size:11px;
+  border:1px solid var(--border);border-radius:6px;padding:5px 9px;
+  background:var(--surface);
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop::after{
+  opacity:0!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:hover::after,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-local-column-drop:focus-visible::after{
+  opacity:.85!important;
+}
+
+/* Developer and View are contextual Companion tools, not separate page overlays. */
+.aaa-companion-library-tool{display:flex;flex-direction:column;gap:13px;padding:15px;color:var(--text)}
+.aaa-companion-tool-intro{display:flex;align-items:center;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.aaa-companion-tool-intro svg{color:var(--accent-text);flex-shrink:0}
+.aaa-companion-tool-intro>div{display:flex;flex-direction:column;gap:2px}
+.aaa-companion-tool-intro strong{font-size:14px}
+.aaa-companion-tool-intro small{font-size:11px;color:var(--muted)}
+.aaa-companion-library-tool section{min-width:0;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:13px}
+.aaa-companion-library-tool h3{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750;margin:0 0 9px}
+.aaa-companion-library-tool p{font-size:12px;line-height:1.5;color:var(--muted);margin:4px 0 10px}
+.aaa-companion-library-tool section>small{font-size:10px;letter-spacing:.08em;color:var(--accent-text)}
+.aaa-companion-dev-widget{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--accent);border-radius:8px;background:var(--surface-2)}
+.aaa-companion-dev-widget>svg{color:var(--accent-text);flex-shrink:0}
+.aaa-companion-dev-widget>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.aaa-companion-dev-widget strong{font-size:12px;overflow-wrap:anywhere}
+.aaa-companion-dev-widget small{font-size:10px;color:var(--muted)}
+.aaa-companion-library-tool .aaa-companion-dev-future{font-size:11px;margin-top:10px}
+.aaa-companion-dev-notes textarea{display:block;resize:vertical;min-height:135px;width:100%;padding:10px;
+  border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);
+  font:inherit;font-size:12px;line-height:1.5}
+.aaa-companion-dev-notes>small{display:block;margin-top:7px;font-size:10px;color:var(--muted)}
+.aaa-companion-library-tool ul{display:flex;flex-direction:column;list-style:none;padding:0;margin:0;gap:0}
+.aaa-companion-library-tool li{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 0;border-bottom:1px solid var(--border);font-size:12px}
+.aaa-companion-library-tool li:last-child{border-bottom:0}
+.aaa-companion-library-tool li small{font-size:10px;color:var(--muted)}
+.aaa-companion-view-panel dl{margin:10px 0 0}
+.aaa-companion-view-panel dl div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)}
+.aaa-companion-view-panel dt,.aaa-companion-view-panel dd{font-size:12px;margin:0}
+.aaa-companion-view-panel dt{color:var(--muted)}
+.aaa-companion-view-panel dd{text-align:right;overflow-wrap:anywhere}
+
 /* Narrow-widget More actions remain IN THE SAME HEADER ROW. No purple-framed
    flyout below the card; the title yields space and the centered six-dot
    handle hides only while these actions are expanded. */
@@ -3999,7 +4078,7 @@ input[type="range"]{
     margin:0!important;
     border:0!important;
     border-radius:0!important;
-    background:var(--surface)!important;
+    background:transparent!important;
     box-shadow:none!important;
     z-index:47;
   }
@@ -4016,4 +4095,495 @@ input[type="range"]{
   .aaa-widget-card-head>.aaa-widget-card-actions.aaa-widget-actions-open>.aaa-widget-drag-handle{
     display:none!important;
   }
+}
+
+/* Library UI refinement: the mode switch is anchored in the same physical
+   position in both modes, regardless of how many editing actions are shown. */
+.aaa-widget-studio .aaa-widget-hero{position:relative}
+.aaa-widget-studio .aaa-widget-hero-actions{padding-right:104px;min-height:38px}
+.aaa-widget-studio .aaa-widget-hero-actions>.aaa-widget-mode-toggle{
+  position:absolute;right:0;top:0;margin:0;width:92px;height:38px;z-index:2;
+}
+@media(max-width:640px){
+  .aaa-widget-studio .aaa-widget-hero{padding-top:44px}
+  .aaa-widget-studio .aaa-widget-hero-actions{padding-right:0}
+}
+
+/* The small eyebrow and larger heading behave as independent Notion-style
+   text blocks. Their editing affordance appears only on hover or focus. */
+.aaa-widget-section-text-blocks{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit{
+  min-width:55px;max-width:100%;border-radius:4px;outline:0;cursor:text;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:hover{background:var(--ui-hover)}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:focus{
+  box-shadow:0 1px 0 var(--accent-text);background:var(--accent-soft);
+}
+.aaa-widget-section-text-blocks>.aaa-widget-inline-edit:empty::before{
+  content:attr(data-placeholder);opacity:.4;pointer-events:none;
+}
+.aaa-widget-section-text-blocks>h2{min-height:1.25em}
+
+/* Blend cards should show only the scroll thumb. Neither the dark track nor
+   browser scrollbar arrows should introduce an extra panel at either end. */
+.aaa-widget-style-blend .aaa-widget-card-body,
+.aaa-widget-style-blend .aaa-widget-table-scroll{
+  scrollbar-width:thin!important;scrollbar-color:var(--accent) transparent!important;
+  scrollbar-gutter:auto;
+}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar{width:6px;height:6px}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-track,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-track{background:transparent!important;border:0}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-thumb,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-thumb{
+  border:0;border-radius:99px;background:var(--accent)!important;
+}
+.aaa-widget-style-blend .aaa-widget-card-body::-webkit-scrollbar-button,
+.aaa-widget-style-blend .aaa-widget-table-scroll::-webkit-scrollbar-button{
+  display:none!important;width:0!important;height:0!important;
+}
+
+/* Developer tool: widget preview first, source settings second, notes tucked
+   into a small optional banner below them. */
+.aaa-companion-developer-view{gap:10px;padding:10px}
+.aaa-companion-developer-view .aaa-companion-dev-preview{padding:0;overflow:hidden}
+.aaa-companion-developer-view .aaa-companion-dev-widget{
+  display:grid;grid-template-columns:30px minmax(0,1fr);gap:2px 8px;
+  align-items:center;padding:12px;border:0;border-bottom:1px solid var(--border);
+  border-radius:0;background:transparent;cursor:grab;
+}
+.aaa-companion-dev-widget:active{cursor:grabbing}
+.aaa-companion-dev-widget .aaa-companion-dev-drag-grip{grid-row:1/3;grid-column:1;display:grid;place-items:center;color:var(--accent-text)}
+.aaa-companion-dev-widget>strong{grid-column:2;font-size:12px}
+.aaa-companion-dev-widget>small{grid-column:2;font-size:10px;color:var(--muted)}
+.aaa-companion-dev-preview-body{display:grid;gap:7px;padding:12px}
+.aaa-companion-dev-preview-record{
+  display:grid;grid-template-columns:minmax(0,1fr) 14px;gap:3px;
+  border:1px solid var(--border);border-radius:9px;background:var(--surface-2);padding:10px;
+}
+.aaa-companion-dev-preview-record strong{font-size:11px;grid-column:1;overflow-wrap:anywhere}
+.aaa-companion-dev-preview-record small{font-size:10px;color:var(--muted);grid-column:1;overflow-wrap:anywhere}
+.aaa-companion-dev-preview-record svg{grid-column:2;grid-row:1/3;align-self:center;color:var(--muted)}
+.aaa-companion-dev-preview-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:105px;gap:9px;padding:13px;color:var(--muted);font-size:11px;text-align:center}
+.aaa-companion-dev-preview-empty svg{color:var(--muted)}
+.aaa-companion-developer-view .aaa-companion-dev-drag-help{font-size:10px;padding:0 12px 10px;margin:0}
+.aaa-companion-dev-source{padding:12px!important}
+.aaa-companion-dev-source .aaa-widget-config{padding:0;overflow:visible;min-height:0}
+.aaa-companion-dev-source .aaa-widget-config h2{font-size:13px}
+.aaa-companion-dev-source-summary dl{margin:0 0 10px}
+.aaa-companion-dev-source-summary dl div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)}
+.aaa-companion-dev-source-summary dt,.aaa-companion-dev-source-summary dd{font-size:11px;margin:0}
+.aaa-companion-dev-source-summary dt{color:var(--muted)}
+.aaa-companion-dev-notes{padding:0!important}
+.aaa-companion-dev-notes-toggle{display:flex;align-items:center;gap:7px;width:100%;padding:10px 12px;text-align:left}
+.aaa-companion-dev-notes-toggle strong{font-size:11px;flex:1}
+.aaa-companion-dev-notes-toggle small{font-size:10px;color:var(--muted)}
+.aaa-companion-dev-notes>p,.aaa-companion-dev-notes>textarea,.aaa-companion-dev-notes>small{margin:8px 12px 12px;width:calc(100% - 24px)}
+.aaa-companion-drag-collapsed{opacity:0!important;pointer-events:none!important}
+.aaa-companion-return-target:hover,.aaa-companion-return-target:focus-visible{outline:2px solid var(--accent)}
+.aaa-page-widget-in-flight .aaa-companion-return-target{
+  outline:2px dashed var(--accent)!important;outline-offset:3px;
+  background:var(--accent-soft)!important;
+}
+.aaa-widget-page-section .aaa-widget-guide-label{display:flex;align-items:center;gap:3px;justify-content:center}
+
+/* A lower stacked widget can claim the free width beside it, forming a T,
+   without changing the widths of the widgets above. */
+.aaa-widget-span-grow{position:absolute;z-index:38;top:50%;width:22px;height:38px;
+  display:grid;place-items:center;transform:translateY(-50%);border:1px solid var(--accent);
+  background:var(--surface);color:var(--accent-text);border-radius:7px;opacity:0;
+  transition:opacity .15s ease,background .15s ease}
+.aaa-widget-span-grow-left{left:-10px}
+.aaa-widget-span-grow-left svg{transform:rotate(180deg)}
+.aaa-widget-span-grow-right{right:-10px}
+.aaa-widget-layout-item:hover>.aaa-widget-span-grow,
+.aaa-widget-span-grow:focus-visible{opacity:1}
+.aaa-widget-span-grow:hover{background:var(--accent-soft)}
+@media(pointer:coarse){.aaa-widget-span-grow{opacity:1}}
+
+/* Fluid divider zones: 1 is constrained to the upper grouped row; 2 marks
+   the junction but resizes/inserts across the full band. Neither overlays
+   the independent lower-row add control (3) or its draggable dotted edge (4). */
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-guide="full-band"]::after{
+  top:var(--aaa-junction-y,50%)!important;
+}
+/* The full-band *visual* guide splits into two independent pointer zones at
+   the T junction. Above: structural resize/+; below: the dotted span edge.
+   Its invisible upper hit box must not run through the lower midpoint +. */
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-junction="true"]{
+  top:0!important;bottom:auto!important;
+  height:calc(var(--aaa-junction-y) + 15px)!important;
+  z-index:18;
+}
+.aaa-widget-sections-arranging .aaa-widget-lane-divider[data-aaa-target-active="true"]::before{
+  width:4px!important;left:6px!important;opacity:1!important;
+  box-shadow:0 0 11px var(--accent)!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-cluster-columns:has(.aaa-widget-lane-divider[data-aaa-guide="upper-segment"][data-aaa-target-active="true"]){
+  outline:2px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  outline-offset:4px;
+  background:color-mix(in srgb,var(--accent) 8%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-layout-band:has(.aaa-widget-lane-divider[data-aaa-guide="full-band"][data-aaa-target-active="true"]){
+  outline:2px dashed color-mix(in srgb,var(--accent) 55%,transparent);
+  outline-offset:4px;
+}
+/* The old full-height local-column button covered the middle resize arrow.
+   Replace it with a narrow draggable dotted stroke; its only interactive
+   width is the strip itself, allowing the + to sit on top at the midpoint. */
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize{
+  appearance:none;position:absolute;top:7px;bottom:7px;
+  width:14px;height:auto;margin:0;padding:0;border:0;background:transparent;
+  z-index:40;cursor:ew-resize;touch-action:none;
+}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-left{left:-12px}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-right{right:-12px}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize::before{
+  content:"";position:absolute;top:0;bottom:0;left:6px;width:2px;
+  border-radius:2px;opacity:.75;
+  background:repeating-linear-gradient(to bottom,var(--accent) 0px,var(--accent) 4px,transparent 4px,transparent 8px);
+}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize:focus-visible::before{
+  width:3px;opacity:1;box-shadow:0 0 7px var(--accent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop{
+  appearance:none;position:absolute;top:50%;width:22px;height:27px;
+  padding:0;margin:0;transform:translateY(-50%);
+  border:0;border-radius:7px;background:var(--bg);color:var(--accent-text);
+  z-index:43;cursor:copy;display:grid;place-items:center;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent);
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-left{left:-16px}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-right{right:-16px}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop::after{
+  content:"+";font-size:17px;line-height:20px;font-weight:700;
+}
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop:hover,
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop.is-target,
+.aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop:focus-visible{
+  color:var(--text);background:var(--accent-soft);
+  box-shadow:0 0 0 2px var(--accent),0 0 12px color-mix(in srgb,var(--accent) 55%,transparent);
+}
+@media(pointer:coarse){
+  .aaa-widget-sections-arranging .aaa-widget-span-edge-resize{width:19px}
+  .aaa-widget-sections-arranging .aaa-widget-lower-adjacent-drop{width:28px;height:31px}
+}
+
+/* The Library canvas has resize rails; creation lives in the Companion workshop. */
+.aaa-widget-sections-arranging .aaa-widget-top-new-row,
+.aaa-widget-sections-arranging .aaa-widget-top-column-stack,
+.aaa-widget-sections-arranging .aaa-widget-combine-choice,
+.aaa-widget-sections-arranging .aaa-widget-span-insertion{pointer-events:none;cursor:default}
+.aaa-widget-sections-arranging .aaa-widget-guide-label,
+.aaa-widget-sections-arranging .aaa-widget-combine-label{display:none!important}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop{pointer-events:none;cursor:default}
+.aaa-widget-sections-arranging .aaa-widget-band-row-drop::before{display:none}
+.aaa-widget-sections-arranging .aaa-widget-stack-resizer{cursor:ns-resize;touch-action:none}
+.aaa-widget-sections-arranging .aaa-widget-stack-resizer:hover .aaa-widget-divider-stroke{background:var(--accent)}
+.aaa-widget-sections-arranging .aaa-widget-card[draggable="true"]{cursor:grab}
+.aaa-widget-sections-arranging .aaa-widget-card[draggable="true"]:active{cursor:grabbing}
+
+/* One canonical configuration editor and one canonical widget rendered in View. */
+.aaa-companion-developer-workshop{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.aaa-companion-workshop-heading{display:flex;flex-direction:column;gap:3px;padding:12px 14px 8px;flex-shrink:0}
+.aaa-companion-workshop-heading>span{display:flex;gap:8px;align-items:center;font-size:14px;font-weight:700}
+.aaa-companion-workshop-heading small{font-size:11px;color:var(--muted)}
+.aaa-companion-workshop-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 12px 9px;flex-shrink:0;border-bottom:1px solid var(--line)}
+.aaa-companion-workshop-tab,.aaa-companion-workshop-new{display:inline-flex;align-items:center;gap:6px;max-width:100%;min-width:0;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--text);font-size:12px}
+.aaa-companion-workshop-tab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aaa-companion-workshop-tab.active{background:var(--accent-soft);border-color:var(--accent)}
+.aaa-companion-workshop-new{cursor:pointer}
+.aaa-companion-workshop-new:hover{border-color:var(--accent);background:var(--hover)}
+.aaa-companion-workshop-config{display:flex;flex:1;min-height:0;overflow:hidden}
+.aaa-companion-workshop-config>.aaa-widget-config{height:100%;min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain}
+.aaa-companion-workshop-empty{padding:18px;display:flex;flex-direction:column;align-items:start;gap:14px;font-size:12px;color:var(--muted)}
+.aaa-companion-workshop-empty button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--hover);border-radius:8px;padding:8px;color:var(--text);cursor:pointer}
+.aaa-companion-developer-workshop>.aaa-companion-dev-notes{flex-shrink:0;max-height:38%;overflow:auto}
+.aaa-companion-live-preview-view{height:100%;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.aaa-companion-live-preview-view>.aaa-companion-tool-intro{flex-shrink:0}
+.aaa-companion-preview-viewport{flex:1;min-height:0;overflow:auto;padding:8px}
+.aaa-companion-live-widget{max-width:100%;min-width:0;display:flex;flex-direction:column}
+.aaa-companion-live-widget>.aaa-widget-card{width:100%;height:100%;min-width:0;flex:1}
+.aaa-widget-live-preview-card .aaa-widget-preview-grip{cursor:grab;display:flex;justify-content:center;align-items:center;opacity:.8;padding:3px}
+.aaa-widget-live-preview-card:active .aaa-widget-preview-grip{cursor:grabbing}
+.aaa-companion-preview-empty-text{font-size:12px;color:var(--muted);padding:10px}
+
+/* In Edit mode the guides are inert for clicking, but workshop drags may use
+   them as placement targets. They only intercept a pointer during a drag. */
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop{
+  pointer-events:none;cursor:default;
+}
+.aaa-widget-sections-arranging .aaa-widget-outer-column-drop::after{display:none!important}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-top-new-row,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-top-column-stack,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-combine-choice,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-span-insertion,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-band-row-drop,
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-outer-column-drop{
+  pointer-events:auto;cursor:copy;
+}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-outer-column-drop.is-target::before{
+  width:4px!important;opacity:1!important;
+}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-band-row-drop .aaa-widget-divider-stroke{
+  pointer-events:none;
+}
+.aaa-companion-live-preview-view .aaa-companion-preview-viewport{
+  flex:1 1 0;min-height:0;overflow-x:auto;overflow-y:auto;overscroll-behavior:contain;
+}
+.aaa-companion-live-preview-view .aaa-companion-live-widget{flex-shrink:0}
+.aaa-widget-live-preview-card .aaa-widget-preview-grip{touch-action:none;user-select:none;-webkit-user-select:none}
+.aaa-widget-sections-arranging .aaa-widget-canvas.aaa-widget-drop-zone .aaa-widget-card[class*="aaa-widget-target-"]{
+  outline:2px solid var(--accent);outline-offset:2px;
+}
+
+/* V5 widget formation extends the existing black/gold controls. The row
+   tools are overlays so they do not consume a column or change view footprints. */
+.aaa-widget-formation-settings{
+  background:var(--surface,transparent);border:1px solid var(--border);
+  padding:15px 17px;border-radius:12px;margin:12px 0 22px;gap:12px;
+}
+.aaa-widget-formation-settings>strong{display:flex;align-items:center;gap:8px;color:var(--text)}
+.aaa-widget-formation-settings .aaa-widget-config-pair{align-items:end}
+.aaa-widget-formation-settings .aaa-widget-switch{min-height:34px}
+.aaa-widget-layout-constraints{
+  display:flex;flex-direction:column;gap:7px;padding:9px 0 0;border-top:1px solid var(--border);
+}
+.aaa-widget-layout-constraints>p{font-size:11px;color:var(--muted);margin:2px 0;line-height:1.45}
+.aaa-widget-row-controls{
+  position:absolute;top:-22px;right:0;z-index:3;display:flex;align-items:center;
+  gap:7px;font-size:10px;color:var(--muted);pointer-events:auto;
+}
+.aaa-widget-row-lock{
+  display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);
+  color:var(--muted);background:var(--surface,transparent);
+  border-radius:5px;font:inherit;font-size:10px;padding:2px 5px;
+}
+.aaa-widget-row-lock[aria-pressed="true"]{color:var(--accent);border-color:var(--accent)}
+.aaa-widget-canvas.aaa-widget-magnetic-active .aaa-widget-lane-divider::before{
+  background:var(--accent-bright)!important;opacity:1!important;
+  box-shadow:0 0 9px var(--accent-soft);
+}
+.aaa-widget-sections-arranging .aaa-widget-card.aaa-widget-target-replace{
+  outline:2px solid var(--accent);outline-offset:2px;position:relative;
+}
+.aaa-widget-sections-arranging .aaa-widget-card.aaa-widget-target-replace::after{
+  content:"Replace position · displaced widget stays saved";
+  position:absolute;inset:35% 10%;border:1px dashed var(--accent);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;
+  text-align:center;background:var(--surface);color:var(--accent);
+  font-size:11px;font-weight:600;pointer-events:none;z-index:8;
+}
+.aaa-widget-canvas.aaa-widget-magnetic-active .aaa-widget-layout-lane-shell{
+  transition:flex-grow .15s ease-out;
+}
+
+/* Direct card-edge resizing, distinct from the six-dot move handle. */
+.aaa-widget-sections-arranging .aaa-widget-side-resize{
+  position:absolute;top:19%;bottom:19%;width:11px;z-index:16;
+  padding:0;border:0;border-radius:5px;background:transparent;
+  cursor:ew-resize;touch-action:none;opacity:.45;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-left{left:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-right{right:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize::before{
+  content:"";position:absolute;left:4px;top:20%;bottom:20%;width:2px;
+  border-radius:99px;background:var(--accent);opacity:.55;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:active::before{
+  opacity:1;box-shadow:0 0 7px var(--accent-soft);width:3px;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:disabled{cursor:not-allowed;opacity:.16}
+.aaa-widget-sections-arranging .aaa-widget-span-edge-resize{display:none}
+.aaa-widget-row-controls{
+  top:-21px;right:2px;gap:6px;padding:1px 5px;
+  border:1px solid var(--border);border-radius:7px;
+  background:var(--surface);opacity:.76;
+}
+.aaa-widget-row-controls:hover,.aaa-widget-row-controls:focus-within{opacity:1}
+.aaa-widget-row-lock{border:0;background:transparent;padding:1px 2px}
+
+/* A shared column boundary has one visible divider in the gutter. The card
+   edges remain draggable, but the old inset bars no longer duplicate it. */
+.aaa-widget-sections-arranging .aaa-widget-side-resize{
+  top:21%;bottom:21%;width:10px;opacity:1;
+}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-left{left:-5px}
+.aaa-widget-sections-arranging .aaa-widget-side-resize-right{right:-5px}
+.aaa-widget-sections-arranging .aaa-widget-side-resize::before{opacity:0}
+.aaa-widget-sections-arranging .aaa-widget-side-resize:hover::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:focus-visible::before,
+.aaa-widget-sections-arranging .aaa-widget-side-resize:active::before{opacity:.8}
+
+/* Free widget canvas: each widget owns its footprint. Legacy band/row markup
+   remains available to Developing IT; Library and Goals use independent X/Y. */
+.aaa-widget-canvas:has(.aaa-widget-fluid-field){display:block;overflow:visible;min-width:0}
+.aaa-widget-fluid-field{position:relative;width:100%;min-height:55px;isolation:isolate}
+.aaa-widget-fluid-item{position:absolute;min-width:0;box-sizing:border-box;z-index:1;overflow:visible}
+.aaa-widget-fluid-live-projecting .aaa-widget-fluid-item:not(.aaa-widget-fluid-drag-source){
+  transition:left 130ms ease-out,top 130ms ease-out,width 130ms ease-out,height 130ms ease-out;
+}
+.aaa-widget-fluid-live-projecting .aaa-widget-fluid-drag-source{z-index:9;pointer-events:none}
+.aaa-widget-fluid-live-projecting .aaa-widget-fluid-displaced>.aaa-widget-card{
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 21%,transparent);
+}
+.aaa-widget-fluid-item>.aaa-widget-card{height:100%!important;min-height:0;overflow:hidden}
+.aaa-widget-fluid-item.aaa-widget-fluid-obstructed>.aaa-widget-card{
+  outline:1px dashed var(--accent);outline-offset:3px;
+}
+.aaa-widget-fluid-item>.aaa-widget-card.aaa-widget-multi-selected{
+  outline:2px solid var(--accent-bright,var(--accent));outline-offset:3px;
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 14%,transparent);
+}
+.aaa-widget-group-actions{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap}
+.aaa-widget-group-actions>span{color:var(--accent-text);font-weight:650}
+.aaa-widget-group-actions button{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+.aaa-widget-group-actions button:disabled{opacity:.38;cursor:not-allowed}
+.aaa-widget-group-actions button:hover:not(:disabled){border-color:var(--accent)}
+.aaa-widget-group-marker{display:inline-flex;align-items:center;color:var(--accent);opacity:.8}
+.aaa-widget-fluid-drop-preview{
+  position:absolute;z-index:12;pointer-events:none;box-sizing:border-box;
+  border:2px dashed var(--accent-bright,var(--accent));
+  background:color-mix(in srgb,var(--accent) 11%,transparent);
+  border-radius:var(--ui-radius,10px);display:grid;place-items:center;
+  color:var(--accent-text);font-size:12px;font-weight:650;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 7%,transparent);
+}
+.aaa-widget-fluid-drop-preview>span{
+  background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:6px 11px;
+}
+.aaa-widget-fluid-drop-preview.aaa-widget-fluid-real-preview{
+  z-index:11;background:transparent;box-shadow:none;border:2px dotted var(--accent);
+}
+.aaa-widget-fluid-origin-placeholder{position:absolute;z-index:2;pointer-events:none;
+  box-sizing:border-box;border:1px dashed color-mix(in srgb,var(--accent) 42%,transparent);
+  border-radius:var(--ui-radius,10px);background:color-mix(in srgb,var(--accent) 5%,transparent);
+  display:flex;align-items:flex-start;justify-content:center;padding:9px;
+}
+.aaa-widget-fluid-origin-placeholder span{font-size:10px;color:var(--muted);opacity:.76}
+.aaa-widget-fluid-shared-divider{position:absolute;z-index:17;box-sizing:border-box;
+  width:14px;transform:translateX(-50%);padding:0;border:0;background:transparent;
+  cursor:ew-resize;touch-action:none;display:flex;align-items:stretch;justify-content:center}
+.aaa-widget-fluid-shared-divider::before{content:"";display:block;width:3px;height:100%;
+  border-radius:999px;background:color-mix(in srgb,var(--accent-bright,var(--accent)) 65%,transparent);
+  opacity:.65;transition:width .12s ease,opacity .12s ease,background .12s ease}
+.aaa-widget-fluid-shared-divider:hover::before,
+.aaa-widget-fluid-shared-divider:focus-visible::before,
+.aaa-widget-fluid-shared-divider:active::before{width:6px;opacity:1;
+  background:var(--accent-bright,var(--accent));box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 14%,transparent)}
+.aaa-widget-fluid-shared-divider:disabled{cursor:not-allowed}
+.aaa-widget-fluid-shared-divider:disabled::before{opacity:.25}
+.aaa-widget-fluid-group-ghost{position:absolute;z-index:12;pointer-events:none;box-sizing:border-box;
+  border:2px dashed var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent);
+  color:var(--accent-text);border-radius:var(--ui-radius,10px);display:flex;align-items:center;
+  justify-content:center;gap:6px;font-size:11px;font-weight:650;opacity:.75}
+.aaa-widget-fluid-projected-peer{position:absolute;z-index:13;pointer-events:none;box-sizing:border-box;
+  border:2px dotted var(--accent-bright,var(--accent));border-radius:var(--ui-radius,10px);
+  background:color-mix(in srgb,var(--accent) 9%,transparent)}
+.aaa-widget-fluid-insertion-line{
+  position:absolute;z-index:14;pointer-events:none;border-radius:5px;
+  background:var(--accent-bright,var(--accent));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);
+}
+.aaa-widget-fluid-insertion-above,.aaa-widget-fluid-insertion-below{height:3px}
+.aaa-widget-fluid-insertion-left,.aaa-widget-fluid-insertion-right{width:3px}
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="above"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="below"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="left"],
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="right"]{border-style:dotted}
+.aaa-widget-fluid-item .aaa-widget-height-divider,
+.aaa-widget-fluid-item .aaa-widget-resize-corner,
+.aaa-widget-fluid-item .aaa-widget-span-edge-resize{display:none!important}
+.aaa-widget-fluid-handle{position:absolute;z-index:16;background:transparent;border:0;padding:0;
+  touch-action:none;opacity:0;transition:opacity .1s ease}
+.aaa-widget-fluid-handle:hover,.aaa-widget-fluid-handle:focus-visible,
+.aaa-widget-fluid-handle:active{opacity:1;background:color-mix(in srgb,var(--accent) 13%,transparent)}
+.aaa-widget-fluid-handle:disabled{cursor:not-allowed;opacity:0}
+.aaa-widget-fluid-handle-left,.aaa-widget-fluid-handle-right{
+  top:23%;height:54%;width:12px;cursor:ew-resize;border-radius:6px;
+}
+.aaa-widget-fluid-handle-left{left:-6px}
+.aaa-widget-fluid-handle-right{right:-6px}
+.aaa-widget-fluid-handle-top{
+  top:-6px;left:calc(50% - 25px);width:50px;height:12px;
+  border-radius:6px;cursor:ns-resize;
+}
+.aaa-widget-fluid-handle-top::after{
+  content:"";position:absolute;left:10px;right:10px;top:5px;height:2px;background:var(--accent-bright);
+}
+.aaa-widget-fluid-handle-bottom-left,.aaa-widget-fluid-handle-bottom-right{
+  bottom:-6px;width:23px;height:23px;border-radius:6px;
+}
+.aaa-widget-fluid-handle-bottom-left{left:-6px;cursor:nesw-resize}
+.aaa-widget-fluid-handle-bottom-right{right:-6px;cursor:nwse-resize}
+.aaa-widget-fluid-handle-bottom{
+  bottom:-6px;left:calc(50% - 25px);width:50px;height:12px;
+  border-radius:6px;cursor:ns-resize;
+}
+.aaa-widget-fluid-handle-bottom-left::after,.aaa-widget-fluid-handle-bottom-right::after{
+  content:"";position:absolute;bottom:4px;width:10px;height:10px;
+  border-bottom:2px solid var(--accent-bright);border-radius:1px;
+}
+.aaa-widget-fluid-handle-bottom-left::after{left:4px;border-left:2px solid var(--accent-bright)}
+.aaa-widget-fluid-handle-bottom-right::after{right:4px;border-right:2px solid var(--accent-bright)}
+.aaa-widget-fluid-handle-bottom::after{
+  content:"";position:absolute;left:10px;right:10px;top:5px;height:2px;background:var(--accent-bright);
+}
+@media(max-width:680px){
+  .aaa-widget-fluid-field{height:auto!important;display:flex;flex-direction:column;gap:14px}
+  .aaa-widget-fluid-item{position:relative!important;top:auto!important;left:auto!important;
+    width:100%!important;flex:0 0 auto}
+  .aaa-widget-fluid-drop-preview{display:none}
+}
+
+/* Keep collapsed navigation icons centered and scrolling functional without
+   bulky arrows, a horizontal track, or scrollbars that shift icon positions. */
+.aaa-sidebar nav[aria-label="Main navigation"],.aaa-sidebar .aaa-context-scroll{overflow-x:hidden}
+.aaa-sidebar .aaa-context-scroll{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar{width:5px;height:0}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-track{background:transparent}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-button{display:none;width:0;height:0}
+.aaa-collapsed .aaa-sidebar .aaa-context-scroll{scrollbar-width:none;overflow-x:hidden}
+.aaa-collapsed .aaa-sidebar .aaa-context-scroll::-webkit-scrollbar{display:none}
+.aaa-sidebar .aaa-brand-toggle:focus:not(:focus-visible),
+.aaa-sidebar .aaa-desktop-collapse-control:focus:not(:focus-visible){outline:none;box-shadow:none}
+
+/* Toggle/Pin companions cover the full Library canvas instead of changing
+   widget widths. Permanent Column mode deliberately still reserves space. */
+@media(min-width:768px){
+  .aaa-calendar-host>.aaa-hybrid-companion.aaa-hybrid-overlay,
+  .aaa-calendar-host>.aaa-hybrid-companion.aaa-hybrid-pinned-overlay{
+    position:absolute;top:0;right:0;bottom:0;height:100%;flex:none;
+    max-width:min(720px,calc(100% - 64px));z-index:60;
+    box-shadow:-12px 0 55px #0006;
+  }
+}
+@media(max-width:680px){.aaa-widget-fluid-insertion-line,.aaa-widget-fluid-shared-divider,
+  .aaa-widget-fluid-origin-placeholder{display:none}}
+
+/* A failed side insertion must look invalid, not silently become a stack. */
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="blocked"]{
+  border-color:var(--danger,#bf6c72)!important;
+  background:color-mix(in srgb,var(--danger,#bf6c72) 14%,transparent)!important;
+  color:var(--text)!important;
+}
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="blocked"] span{
+  background:var(--surface-2);color:var(--text);
+  border:1px solid var(--danger,#bf6c72);border-radius:6px;padding:6px 9px;
+}
+/* Narrow cards keep their section control without overlapping helper copy. */
+.aaa-widget-fluid-item .aaa-widget-card-resize{gap:8px;overflow:hidden}
+.aaa-widget-fluid-item .aaa-widget-card-resize label{flex:0 1 auto;min-width:0}
+.aaa-widget-fluid-item .aaa-widget-card-resize select{max-width:min(135px,100%);min-width:0}
+.aaa-widget-fluid-item .aaa-widget-height-caption{
+  display:block;min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;text-align:right;
 }

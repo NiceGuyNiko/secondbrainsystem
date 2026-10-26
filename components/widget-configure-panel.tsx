@@ -90,12 +90,26 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
     <div className="aaa-widget-config-group"><strong>Appearance &amp; size</strong>
       <div className="aaa-widget-config-pair"><label className="aaa-widget-field">Density<select value={cfg.density} onChange={e=>change({density:e.target.value as WidgetConfig["density"]})}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
       <label className="aaa-widget-field">Accent<select value={cfg.color} onChange={e=>change({color:e.target.value as WidgetConfig["color"]})}><option value="theme">Theme</option><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option></select></label></div>
-      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>
+      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select disabled={selection.sizeLocked} value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>
         {[3,4,6,8,9,12].map(x=><option key={x} value={x}>{x===12?"Full · 100%":x===3?"Small · 25%":x===4?"Third · 33%":x===6?"Medium · 50%":x===8?"Wide · 67%":"Large · 75%"}</option>)}
         {![3,4,6,8,9,12].includes(selection.width??6)&&<option value={selection.width}>{Math.round((selection.width??6)/12*100)}% custom</option>}
       </select></label><label className="aaa-widget-field">Height (px)
-        <input type="number" min={160} max={1200} step={8} value={selection.heightPx??280} onChange={e=>selection.onHeightPx?.(Number(e.target.value))} />
+        <input type="number" disabled={selection.sizeLocked} min={160} max={1200} step={8} value={selection.heightPx??280} onChange={e=>selection.onHeightPx?.(Number(e.target.value))} />
       </label></div>}
+      {selection.kind==="instance"&&selection.layoutEditing&&<div className="aaa-widget-layout-constraints" aria-label="Widget layout constraints">
+        <label className="aaa-widget-switch"><span>Lock widget size</span>
+          <input type="checkbox" checked={selection.sizeLocked===true} onChange={e=>selection.onSizeLock?.(e.target.checked)}/></label>
+        <label className="aaa-widget-switch"><span>Pin widget to this row</span>
+          <input type="checkbox" checked={selection.rowPinned===true} onChange={e=>selection.onRowPin?.(e.target.checked)}/></label>
+        <label className="aaa-widget-switch"><span>Lock the entire row</span>
+          <input type="checkbox" checked={selection.rowLocked===true} onChange={e=>selection.onRowLock?.(e.target.checked)}/></label>
+        <label className="aaa-widget-switch"><span>Connect neighboring magnetic edges</span>
+          <input type="checkbox" checked={selection.magneticLinked===true}
+            onChange={e=>selection.onMagneticLink?.(e.target.checked)}/></label>
+        <p role="status">{selection.rowLocked?"Locked row":"Flexible row"} · {selection.rowOccupancy??100}% occupied
+          {" · "}{selection.magneticConnections??"No magnetic connection"}</p>
+        {selection.sizeLocked&&<p>Width and height are fixed. Unlock the widget before resizing it or using its space for another column.</p>}
+      </div>}
       {selection.onHeightPx&&<p>Width snaps to useful column sizes. Drag the corner for fluid height and width adjustments; neighboring stacks keep their own heights.</p>}
       {selection.synced&&<p className="aaa-widget-sync-notice">Widget Sync is on. Configuration changes here update every member of this sync group. Position, section, width and height stay local to each page.</p>}
     </div>

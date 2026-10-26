@@ -55,6 +55,13 @@ export type WidgetDefinition={id:string;name:string;database_id:string|null;view
 export type LibraryPage={id:string;area:"library"|"goals";title:string;position:number};
 export type WidgetPageSection={id:string;page_id:string;title:string;position:number};
 export type PageWidget={id:string;page_id:string;definition_id:string|null;kind:"database"|"goals";title:string|null;config:Record<string,unknown>;width:number;height:number;position:number};
+/** A dragged View must copy the rendered widget's effective source and edits,
+ * even if the page instance has never published them to its reusable master. */
+export function copyWidgetBlueprint(definition:WidgetDefinition,source:{databaseId:string|null;viewId:string|null},
+  effectiveConfig:WidgetConfig,instance?:PageWidget){
+  return {name:instance?.title?.trim()||definition.name?.trim()||"Untitled widget",
+    database_id:source.databaseId||null,view_id:source.viewId||null,config:effectiveConfig};
+}
 export function widgetIsSynced(widget:PageWidget){return widget.config?.syncMode==="synced"}
 export function widgetSectionId(widget:PageWidget):string{
   return typeof widget.config?.sectionId==="string"?widget.config.sectionId:"";
@@ -64,7 +71,16 @@ export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionI
   const lane=typeof widget.config.layoutLane==="string"?widget.config.layoutLane:null;
   const heightPx=typeof widget.config.heightPx==="number"&&Number.isFinite(widget.config.heightPx)?widget.config.heightPx:null;
   return {...(sectionId?{sectionId}:{}),...(widgetIsSynced(widget)?{syncMode:"synced"}:{}),
-    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{})};
+    ...(band?{layoutBand:band}:{}),...(lane?{layoutLane:lane}:{}),...(heightPx?{heightPx}:{}),
+    ...(typeof widget.config.layoutWidth==="number"?{layoutWidth:widget.config.layoutWidth}:{}),
+    ...(widget.config.sizeLocked===true?{sizeLocked:true}:{}),
+    ...(widget.config.magneticLinked===true?{magneticLinked:true}:{}),
+    ...(widget.config.rowPinned===true?{rowPinned:true}:{}),
+    ...(widget.config.rowLocked===true?{rowLocked:true}:{}),
+    ...(widget.config.fluidDesktop&&typeof widget.config.fluidDesktop==="object"&&!Array.isArray(widget.config.fluidDesktop)
+      ?{fluidDesktop:widget.config.fluidDesktop}:{}),
+    ...(typeof widget.config.fluidGroupId==="string"?{fluidGroupId:widget.config.fluidGroupId}:{}),
+    ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
   return widgetPlacementConfig(widget);
@@ -99,12 +115,20 @@ export type WidgetConfigureTarget={
   autoEditDatabase?:boolean;
   databaseId:string|null;viewId:string|null;config:WidgetConfig;
   width?:number;height?:number;heightPx?:number;
+  sizeLocked?:boolean;rowPinned?:boolean;rowLocked?:boolean;
+  magneticLinked?:boolean;
+  layoutEditing?:boolean;
+  rowOccupancy?:number;magneticConnections?:string;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   onConfig:(patch:Partial<WidgetConfig>)=>void;
   onSource:(databaseId:string|null,viewId:string|null)=>void;
   onRename:(name:string)=>void;
   onSize?:(width:number,height:number)=>void;
   onHeightPx?:(pixels:number)=>void;
+  onSizeLock?:(locked:boolean)=>void;
+  onRowPin?:(pinned:boolean)=>void;
+  onRowLock?:(locked:boolean)=>void;
+  onMagneticLink?:(linked:boolean)=>void;
   onSaveToDefinition?:()=>void;
   onCreateDatabase?:(name:string)=>Promise<string>;
   onAddProperty?:(databaseId:string,name:string,type:string)=>Promise<void>;

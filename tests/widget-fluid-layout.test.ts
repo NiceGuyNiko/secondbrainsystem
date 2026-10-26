@@ -1,12 +1,26 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {placeWidget,widgetLayoutBands} from "../lib/widget-layout";
+import {placeWidget,removeWidgetAndCompactLayout,reorderWidgetColumn,widgetFootprintHeight,widgetDropEdgeAtPoint,widgetReorderZoneAtPoint,widgetLayoutBands} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
 const section:WidgetPageSection={id:"history",page_id:"world",title:"World History",position:0};
 const widget=(id:string,width:number,position:number):PageWidget=>({
   id,page_id:"world",definition_id:id,kind:"database",title:id,
   config:{sectionId:"history"},width,height:2,position
+});
+
+test("dropping at the bottom of a card stacks in its column; only the row gutter creates a row",()=>{
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,75),"above");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,220),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,12,140),"left");
+  assert.equal(widgetDropEdgeAtPoint(400,300,386,140),"right");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,290),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,200,298),"below");
+  assert.equal(widgetDropEdgeAtPoint(400,300,5,5),"above");
+  assert.equal(widgetDropEdgeAtPoint(400,300,5,297),"below");
+  assert.equal(widgetReorderZoneAtPoint(300,150),true);
+  assert.equal(widgetReorderZoneAtPoint(300,25),false);
+  assert.equal(widgetReorderZoneAtPoint(300,282),false);
 });
 
 test("near-bottom column stack and lower full-width row are distinct drops",()=>{
@@ -32,4 +46,44 @@ test("gap fill enabled is default; opting out preserves empty lane space",()=>{
   assert.deepEqual(auto[0].lanes.map(l=>l.width),[6,6]);
   assert.deepEqual(manual[0].lanes.map(l=>l.width),[4,4]);
   assert.deepEqual(manual[1].lanes.map(l=>l.width),[12]);
+});
+
+test("deleting a column compacts the remaining lanes without a ghost fourth track",()=>{
+  const four=["a","b","c","d"].map((id,i)=>({...widget(id,3,i),
+    config:{sectionId:"history",layoutBand:"shared",layoutLane:"lane-"+id}}));
+  const three=removeWidgetAndCompactLayout(four,[section],"c");
+  const [band]=widgetLayoutBands(three);
+  assert.deepEqual(band.lanes.map(lane=>lane.widgets.map(w=>w.id)),[["a"],["b"],["d"]]);
+  assert.deepEqual(band.lanes.map(lane=>lane.width),[4,4,4]);
+  assert.equal(three.length,3);
+  assert.equal(three.find(w=>w.id==="d")?.config.layoutLane,"lane-d");
+});
+
+test("dragging a full widget container shifts four occupied columns without adding a fifth",()=>{
+  const four=["a","b","c","d"].map((id,i)=>({...widget(id,3,i),
+    config:{sectionId:"history",layoutBand:"shared",layoutLane:"lane-"+id}}));
+  const second=reorderWidgetColumn(four,[section],"d","b");
+  assert.deepEqual(widgetLayoutBands(second)[0].lanes.map(l=>l.widgets[0].id),["a","d","b","c"]);
+  const first=reorderWidgetColumn(second,[section],"d","a");
+  assert.deepEqual(widgetLayoutBands(first)[0].lanes.map(l=>l.widgets[0].id),["d","a","b","c"]);
+  assert.equal(widgetLayoutBands(first)[0].lanes.length,4);
+  assert.deepEqual(widgetLayoutBands(first)[0].lanes.map(l=>l.width),[3,3,3,3]);
+  assert.deepEqual(first.map(w=>w.id).sort(),["a","b","c","d"]);
+});
+
+test("deleting one stacked widget preserves its sibling lane and three-column widths",()=>{
+  const four=[widget("a",4,0),widget("b",4,1),widget("c",4,2),widget("d",4,3)]
+    .map((w,i)=>({...w,config:{sectionId:"history",layoutBand:"shared",layoutLane:i===3?"lane-a":"lane-"+w.id}}));
+  const remaining=removeWidgetAndCompactLayout(four,[section],"a");
+  const lanes=widgetLayoutBands(remaining)[0].lanes;
+  assert.deepEqual(lanes.map(l=>l.widgets.map(w=>w.id)),[["d"],["b"],["c"]]);
+  assert.deepEqual(lanes.map(l=>l.width),[4,4,4]);
+});
+
+test("View and Edit keep identical fixed-height widget footprints",()=>{
+  const short=widget("short",4,0);
+  const tall={...widget("tall",4,1),config:{sectionId:"history",heightPx:608}};
+  for(const item of [short,tall])
+    assert.equal(widgetFootprintHeight(item,true),widgetFootprintHeight(item,false));
+  assert.equal(widgetFootprintHeight(short,true,true),58);
 });

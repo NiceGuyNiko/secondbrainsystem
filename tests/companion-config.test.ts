@@ -23,10 +23,18 @@ test("old preview's default Context-first layout migrates only once",()=>{
  assert.equal(migrated.layout,"single");
  assert.equal(migrated.primary,"agenda");
  assert.equal(migrated.secondary,"context");
- assert.equal(migrated.uiVersion,2);
+ assert.equal(migrated.uiVersion,3);
+ assert.equal(migrated.tabDisplay,"icons");
  const intentional=parseCompanion({...migrated,primary:"context",secondary:"agenda"});
  assert.equal(intentional.primary,"context");
  assert.equal(intentional.secondary,"agenda");
+});
+
+test("Developer and View tools persist and existing icon preferences stay configurable",()=>{
+ const next=parseCompanion({...defaultCompanion,primary:"developer",secondary:"view",tabDisplay:"icon-labels"});
+ assert.equal(next.primary,"developer");
+ assert.equal(next.secondary,"view");
+ assert.equal(next.tabDisplay,"icon-labels");
 });
 
 test("matching-tool preference allows two simultaneous Agenda panes",()=>{

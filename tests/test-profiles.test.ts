@@ -23,11 +23,11 @@ const theme = (s: Settings, preset: string) => updateActivePreferences(s, (p) =>
 test("Profiles keep independent settings", () => {
   let s = theme(enabled(), "black-gold");
   const light = withProfile(s, "Light test");
-  s = updateActivePreferences(theme(light.settings, "slate"), () => ({ themeMode: "light", agendaPreference: "column", sidebarCollapsed: true, hiddenCalendars: ["Work"], betaFeatures: { fluidCalendar: true, thinkAboutIt: false } }));
+  s = updateActivePreferences(theme(light.settings, "slate"), () => ({ themeMode: "light", agendaPreference: "toggle", sidebarCollapsed: true, hiddenCalendars: ["Work"], betaFeatures: { fluidCalendar: true, thinkAboutIt: false } }));
   const primary = primaryOf(s);
   assert.equal(primary.preferences.appearance.preset, "black-gold", "editing the test profile left Primary alone");
   assert.equal(primary.preferences.themeMode, "manual");
-  assert.equal(primary.preferences.agendaPreference, "toggle");
+  assert.equal(primary.preferences.agendaPreference, "column");
   assert.deepEqual(primary.preferences.hiddenCalendars, []);
   assert.equal(effectiveFeatures(s).fluidCalendar, true);
   s = switchProfile(s, primary.id);
@@ -35,6 +35,7 @@ test("Profiles keep independent settings", () => {
   assert.equal(effectiveFeatures(s).fluidCalendar, false, "beta choices follow the profile");
   s = switchProfile(s, light.id);
   assert.equal(activeProfile(s).preferences.appearance.preset, "slate");
+  assert.equal(activeProfile(s).preferences.agendaPreference, "toggle");
   assert.equal(activeProfile(s).preferences.sidebarCollapsed, true);
 });
 

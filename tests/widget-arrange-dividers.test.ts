@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {expandWidgetToSectionWidth,placeWidget,resizeWidgetLane,widgetLayoutBands} from "../lib/widget-layout";
+import {setWidgetRowLock} from "../lib/widget-formation";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 const section:WidgetPageSection={id:"writing",page_id:"library",title:"Writing",position:0};
 const w=(id:string,width:number,position:number,heightPx=400):PageWidget=>({
@@ -10,7 +11,7 @@ const w=(id:string,width:number,position:number,heightPx=400):PageWidget=>({
 test("vertical divider resizes adjacent columns without altering independent heights",()=>{
   const original=[w("left",12,0,630),w("right",12,1,240)];
   const sideBySide=placeWidget(original,[section],"right",{sectionId:"writing",targetId:"left",edge:"right"});
-  const resized=resizeWidgetLane(sideBySide,[section],"left",1);
+  const resized=resizeWidgetLane(setWidgetRowLock(sideBySide,"left",true),[section],"left",1);
   const lanes=widgetLayoutBands(resized)[0].lanes;
   assert.deepEqual(lanes.map(l=>l.width),[7,5]);
   assert.deepEqual(lanes.map(l=>l.widgets[0].config.heightPx),[630,240]);
