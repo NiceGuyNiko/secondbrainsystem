@@ -47,7 +47,7 @@ type Snapshot={
 };
 const empty:Snapshot={pages:[],sections:[],instances:[],definitions:[],databases:[],views:[],properties:[],records:[],relations:[],perspectives:[],titles:{}};
 type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"aaa_library_pages";
-type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace";
+type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace"|"blocked";
 type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;
   targetId?:string;projected?:Record<string,FluidWidgetRect>};
 
@@ -696,7 +696,7 @@ export default function WidgetStudio(p:Props){
         const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
           sourceId,target.id,intent);
         if(fit.placed){projected=initialFluidRects(fit.items);rect=projected[sourceId]}
-        else {intent="below";rect=clampFluidRect({...rect,x:peer.x,y:peer.y+peer.h+FLUID_GAP})}
+        else {intent="blocked";rect=raw;projected=positions}
         }
       }else rect={...rect,x:peer.x,y:peer.y};
     }
@@ -721,6 +721,11 @@ export default function WidgetStudio(p:Props){
     return true;
   };
   const commitFluidDrop=async(sourceId:string,placement:FluidDrop)=>{
+    if(placement.intent==="blocked"){
+      setNotice("No room beside this widget. Drop in open space or use the center to replace its position.");
+      setDrag(null);setDropHint(null);setReorderPreview(null);clearFluidDrop();
+      return;
+    }
     if(sourceId.startsWith("developer:")){
       const sourceKey=sourceId.slice("developer:".length);
       const source=data.instances.find(w=>w.id===sourceKey);
@@ -1719,9 +1724,9 @@ export default function WidgetStudio(p:Props){
               });
               const preview=fluidDrop?.sectionId===section.id?fluidDrop.rect:null;
               const projected=fluidDrop?.sectionId===section.id?fluidDrop.projected:undefined;
-              const sourceVisiblyProjected=!!preview&&!!drag&&!drag.startsWith("developer:")&&
-                widgets.some(widget=>widget.id===drag);
               const guideIntent=fluidDrop?.sectionId===section.id?fluidDrop.intent:"free";
+              const sourceVisiblyProjected=!!preview&&!!drag&&guideIntent!=="blocked"&&!drag.startsWith("developer:")&&
+                widgets.some(widget=>widget.id===drag);
               const guideTarget=fluidDrop?.sectionId===section.id&&fluidDrop.targetId
                 ?positions[fluidDrop.targetId]:null;
               return <div className={"aaa-widget-fluid-field"+(arrange&&preview?" aaa-widget-fluid-live-projecting":"")}
@@ -1795,7 +1800,7 @@ export default function WidgetStudio(p:Props){
                   (sourceVisiblyProjected?" aaa-widget-fluid-real-preview":"")}
                   data-aaa-drop-intent={guideIntent} style={coords(preview)} role="status" aria-label="Widget drop position">
                   {!sourceVisiblyProjected&&<span>{guideIntent==="above"?"Insert above":guideIntent==="below"?"Stack below":
-                    guideIntent==="left"||guideIntent==="right"?"Fit beside":guideIntent==="replace"?"Replace position":
+                    guideIntent==="left"||guideIntent==="right"?"Fit beside":guideIntent==="blocked"?"No room here":guideIntent==="replace"?"Replace position":
                     widgets.some(w=>w.id===drag)?"Move here":"Add widget here"}</span>}
                 </div>}
                 {arrange&&preview&&sourceVisiblyProjected&&drag&&positions[drag]&&

@@ -4568,3 +4568,22 @@ input[type="range"]{
 }
 @media(max-width:680px){.aaa-widget-fluid-insertion-line,.aaa-widget-fluid-shared-divider,
   .aaa-widget-fluid-origin-placeholder{display:none}}
+
+/* A failed side insertion must look invalid, not silently become a stack. */
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="blocked"]{
+  border-color:var(--danger,#bf6c72)!important;
+  background:color-mix(in srgb,var(--danger,#bf6c72) 14%,transparent)!important;
+  color:var(--text)!important;
+}
+.aaa-widget-fluid-drop-preview[data-aaa-drop-intent="blocked"] span{
+  background:var(--surface-2);color:var(--text);
+  border:1px solid var(--danger,#bf6c72);border-radius:6px;padding:6px 9px;
+}
+/* Narrow cards keep their section control without overlapping helper copy. */
+.aaa-widget-fluid-item .aaa-widget-card-resize{gap:8px;overflow:hidden}
+.aaa-widget-fluid-item .aaa-widget-card-resize label{flex:0 1 auto;min-width:0}
+.aaa-widget-fluid-item .aaa-widget-card-resize select{max-width:min(135px,100%);min-width:0}
+.aaa-widget-fluid-item .aaa-widget-height-caption{
+  display:block;min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;text-align:right;
+}
