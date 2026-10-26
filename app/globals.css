@@ -4414,3 +4414,74 @@ input[type="range"]{
 .aaa-widget-sections-arranging .aaa-widget-side-resize:hover::before,
 .aaa-widget-sections-arranging .aaa-widget-side-resize:focus-visible::before,
 .aaa-widget-sections-arranging .aaa-widget-side-resize:active::before{opacity:.8}
+
+/* Free widget canvas: each widget owns its footprint. Legacy band/row markup
+   remains available to Developing IT; Library and Goals use independent X/Y. */
+.aaa-widget-canvas:has(.aaa-widget-fluid-field){display:block;overflow:visible;min-width:0}
+.aaa-widget-fluid-field{position:relative;width:100%;min-height:55px;isolation:isolate}
+.aaa-widget-fluid-item{position:absolute;min-width:0;box-sizing:border-box;z-index:1;overflow:visible}
+.aaa-widget-fluid-item>.aaa-widget-card{height:100%!important;min-height:0;overflow:hidden}
+.aaa-widget-fluid-item.aaa-widget-fluid-obstructed>.aaa-widget-card{
+  outline:1px dashed var(--accent);outline-offset:3px;
+}
+.aaa-widget-fluid-drop-preview{
+  position:absolute;z-index:12;pointer-events:none;box-sizing:border-box;
+  border:2px dashed var(--accent-bright,var(--accent));
+  background:color-mix(in srgb,var(--accent) 11%,transparent);
+  border-radius:var(--ui-radius,10px);display:grid;place-items:center;
+  color:var(--accent-text);font-size:12px;font-weight:650;
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 7%,transparent);
+}
+.aaa-widget-fluid-drop-preview>span{
+  background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:6px 11px;
+}
+.aaa-widget-fluid-item .aaa-widget-height-divider,
+.aaa-widget-fluid-item .aaa-widget-resize-corner,
+.aaa-widget-fluid-item .aaa-widget-span-edge-resize{display:none!important}
+.aaa-widget-fluid-handle{position:absolute;z-index:16;background:transparent;border:0;padding:0;
+  touch-action:none;opacity:0;transition:opacity .1s ease}
+.aaa-widget-fluid-handle:hover,.aaa-widget-fluid-handle:focus-visible,
+.aaa-widget-fluid-handle:active{opacity:1;background:color-mix(in srgb,var(--accent) 13%,transparent)}
+.aaa-widget-fluid-handle:disabled{cursor:not-allowed;opacity:0}
+.aaa-widget-fluid-handle-left,.aaa-widget-fluid-handle-right{
+  top:23%;height:54%;width:12px;cursor:ew-resize;border-radius:6px;
+}
+.aaa-widget-fluid-handle-left{left:-6px}
+.aaa-widget-fluid-handle-right{right:-6px}
+.aaa-widget-fluid-handle-bottom-left,.aaa-widget-fluid-handle-bottom-right{
+  bottom:-6px;width:23px;height:23px;border-radius:6px;
+}
+.aaa-widget-fluid-handle-bottom-left{left:-6px;cursor:nesw-resize}
+.aaa-widget-fluid-handle-bottom-right{right:-6px;cursor:nwse-resize}
+.aaa-widget-fluid-handle-bottom{
+  bottom:-6px;left:calc(50% - 25px);width:50px;height:12px;
+  border-radius:6px;cursor:ns-resize;
+}
+.aaa-widget-fluid-handle-bottom-left::after,.aaa-widget-fluid-handle-bottom-right::after{
+  content:"";position:absolute;bottom:4px;width:10px;height:10px;
+  border-bottom:2px solid var(--accent-bright);border-radius:1px;
+}
+.aaa-widget-fluid-handle-bottom-left::after{left:4px;border-left:2px solid var(--accent-bright)}
+.aaa-widget-fluid-handle-bottom-right::after{right:4px;border-right:2px solid var(--accent-bright)}
+.aaa-widget-fluid-handle-bottom::after{
+  content:"";position:absolute;left:10px;right:10px;top:5px;height:2px;background:var(--accent-bright);
+}
+@media(max-width:680px){
+  .aaa-widget-fluid-field{height:auto!important;display:flex;flex-direction:column;gap:14px}
+  .aaa-widget-fluid-item{position:relative!important;top:auto!important;left:auto!important;
+    width:100%!important;height:310px!important;flex:0 0 auto}
+  .aaa-widget-fluid-drop-preview{display:none}
+}
+
+/* Keep collapsed navigation icons centered and scrolling functional without
+   bulky arrows, a horizontal track, or scrollbars that shift icon positions. */
+.aaa-sidebar nav[aria-label="Main navigation"],.aaa-sidebar .aaa-context-scroll{overflow-x:hidden}
+.aaa-sidebar .aaa-context-scroll{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar{width:5px;height:0}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-track{background:transparent}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+.aaa-sidebar .aaa-context-scroll::-webkit-scrollbar-button{display:none;width:0;height:0}
+.aaa-collapsed .aaa-sidebar .aaa-context-scroll{scrollbar-width:none;overflow-x:hidden}
+.aaa-collapsed .aaa-sidebar .aaa-context-scroll::-webkit-scrollbar{display:none}
+.aaa-sidebar .aaa-brand-toggle:focus:not(:focus-visible),
+.aaa-sidebar .aaa-desktop-collapse-control:focus:not(:focus-visible){outline:none;box-shadow:none}

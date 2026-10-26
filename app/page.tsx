@@ -182,7 +182,7 @@ function Workspace() {
     void refreshStagingDatabases().catch(e=>setNotice(e instanceof Error?e.message:"Could not load database navigation."));
   },[engineEnabled,section,contextId,refreshStagingDatabases]);
   const { agendaPreference, lastPinned, startDay, clock, eventDateFormat, hiddenCalendars: hidden, appearance, sidebarCollapsed: collapsed } = preferences;
-  const effectiveAgendaPreference=isDemo?"column":agendaPreference;
+  const effectiveAgendaPreference=agendaPreference;
   const setPreferences = useCallback((patch: (p: ProfilePreferences) => Partial<ProfilePreferences>) => update((s) => updateActivePreferences(s, patch)), [update]);
   const setAgendaPreference = (agendaPreference: AgendaPreference) => setPreferences(() => ({ agendaPreference }));
   const setCompanion = (patch:Partial<CompanionPreferences>)=>setPreferences(p=>({companion:{...p.companion,...patch}}));

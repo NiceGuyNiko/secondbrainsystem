@@ -4,7 +4,7 @@ export function openAgenda(preference: AgendaPreference, pinned: boolean): Prese
   return preference === "column" || (preference === "toggle" && pinned) ? "pinned" : "overlay";
 }
 export function canPin(preference: AgendaPreference, mode: Presentation) {
-  // Column is still the launch/default presentation, but the user can
-  // temporarily unpin it into a pull-out without changing Settings.
-  return preference === "column" || preference === "toggle" || (preference === "pin" && mode === "overlay");
+  // The permanent Column presentation has no pin/unpin controls. Toggle
+  // remembers its last docked state; Pin starts as a pullout and may dock.
+  return mode!=="closed"&&(preference === "toggle" || preference === "pin");
 }
