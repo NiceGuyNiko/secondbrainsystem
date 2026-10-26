@@ -79,6 +79,7 @@ export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionI
     ...(widget.config.rowLocked===true?{rowLocked:true}:{}),
     ...(widget.config.fluidDesktop&&typeof widget.config.fluidDesktop==="object"&&!Array.isArray(widget.config.fluidDesktop)
       ?{fluidDesktop:widget.config.fluidDesktop}:{}),
+    ...(typeof widget.config.fluidGroupId==="string"?{fluidGroupId:widget.config.fluidGroupId}:{}),
     ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{

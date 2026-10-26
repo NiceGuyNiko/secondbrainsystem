@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {initialFluidRects,fluidCanvasHeight,fluidOverlaps,placeFluidWidget,
-  resizeFluidWidget,fluidPointerRect,insertFluidBeside,alignFluidWidgetEdge} from "../lib/widget-fluid-layout";
+  resizeFluidWidget,fluidPointerRect,insertFluidBeside,alignFluidWidgetEdge,
+  fluidInsertionIntent,liftFluidIntoVacancy,fluidGroupId,setFluidGroup} from "../lib/widget-fluid-layout";
 import {placeWidget} from "../lib/widget-layout";
 import type {PageWidget,WidgetPageSection} from "../lib/widget-system";
 
@@ -120,4 +121,68 @@ test("double-click alignment matches the adjacent widget's bottom edge",()=>{
   const next=alignFluidWidgetEdge([short,tall],"short","bottom");
   assert.equal(rect(next,"short").h,402);
   assert.deepEqual(rect(next,"tall"),rect([short,tall],"tall"));
+});
+test("magnetic dragging can align its trailing right and bottom edges, not only its origin",()=>{
+  const peer={x:6,y:350,w:3,h:250};
+  const aligned=fluidPointerRect({x:403,y:400},{left:100,top:100,width:1200},
+    {w:3,h:236},{x:0,y:0},[peer],16);
+  assert.equal(aligned.x,3,"the dragged widget's right edge should meet the neighbor's left");
+  const bottom=fluidPointerRect({x:201,y:458},{left:100,top:100,width:1200},
+    {w:3,h:236},{x:0,y:0},[peer],16);
+  assert.equal(bottom.y,364,"bottom-to-bottom alignment should be available");
+});
+test("gutter and broad side drop zones are reachable without replacing a widget",()=>{
+  const b={left:100,top:100,width:240,height:300};
+  assert.equal(fluidInsertionIntent(b,{x:113,y:245}),"left");
+  assert.equal(fluidInsertionIntent(b,{x:180,y:245}),"left");
+  assert.equal(fluidInsertionIntent(b,{x:310,y:245}),"right");
+  assert.equal(fluidInsertionIntent(b,{x:220,y:110}),"above");
+  assert.equal(fluidInsertionIntent(b,{x:220,y:386}),"below");
+  assert.equal(fluidInsertionIntent(b,{x:220,y:245}),"replace");
+});
+test("a nearly occupied gap pulls the incoming widget up without pushing the next card down",()=>{
+  const next={x:0,y:600,w:6,h:320};
+  const near={x:0,y:320,w:6,h:300};
+  const lifted=liftFluidIntoVacancy(near,[next]);
+  assert.deepEqual(lifted,{...near,y:286});
+  assert.equal(fluidOverlaps(lifted,next),false);
+  assert.deepEqual(liftFluidIntoVacancy({x:8,y:320,w:4,h:300},[next]),
+    {x:8,y:320,w:4,h:300},"free adjacent space should not rise");
+  assert.deepEqual(liftFluidIntoVacancy({x:0,y:850,w:6,h:300},[next]),
+    {x:0,y:850,w:6,h:300},"distant requested drops should not jump to the top");
+});
+test("dragging a group maintains each member's independent size and relative alignment",()=>{
+  const a={...w("a",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:3,h:260}}};
+  const b={...w("b",1),config:{sectionId:"history",fluidDesktop:{x:3,y:0,w:5,h:410}}};
+  const c={...w("c",2),config:{sectionId:"history",fluidDesktop:{x:8,y:0,w:4,h:310}}};
+  const grouped=setFluidGroup([a,b,c],["a","b","c"],"grp-1");
+  assert.equal(grouped.every(item=>fluidGroupId(item)==="grp-1"),true);
+  const moved=placeFluidWidget(grouped,"b",{x:3,y:520,w:5,h:410});
+  assert.deepEqual(["a","b","c"].map(id=>rect(moved,id).y),[520,520,520]);
+  assert.deepEqual(["a","b","c"].map(id=>rect(moved,id).w),[3,5,4]);
+  assert.deepEqual(["a","b","c"].map(id=>rect(moved,id).h),[260,410,310]);
+  assert.equal(moved.every(item=>fluidGroupId(item)==="grp-1"),true);
+  assert.equal(setFluidGroup(moved,["a","b","c"],null).every(item=>!fluidGroupId(item)),true);
+});
+test("inserting above one group member displaces its entire row, never only that column",()=>{
+  const group=[
+    {...w("a",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:4,h:300}}},
+    {...w("b",1),config:{sectionId:"history",fluidDesktop:{x:4,y:0,w:4,h:300}}},
+    {...w("c",2),config:{sectionId:"history",fluidDesktop:{x:8,y:0,w:4,h:300}}}
+  ];
+  const incoming={...w("top",3),config:{sectionId:"history",fluidDesktop:{x:0,y:420,w:3,h:200}}};
+  const grouped=setFluidGroup([...group,incoming],["a","b","c"],"linked-row");
+  const inserted=placeFluidWidget(grouped,"top",{x:0,y:0,w:3,h:200});
+  assert.equal(rect(inserted,"top").y,0);
+  assert.deepEqual(["a","b","c"].map(id=>rect(inserted,id).y),[214,214,214]);
+  assert.equal(inserted.find(item=>item.id==="b")?.definition_id,"source-b");
+  assert.ok(["a","b","c"].every(id=>!fluidOverlaps(rect(inserted,"top"),rect(inserted,id))));
+});
+test("a pinned member blocks moving its whole group without disturbing the layout",()=>{
+  const items=setFluidGroup([
+    {...w("a",0),config:{sectionId:"history",fluidDesktop:{x:0,y:0,w:6,h:250}}},
+    {...w("b",1),config:{sectionId:"history",rowPinned:true,
+      fluidDesktop:{x:6,y:0,w:6,h:250}}}
+  ],["a","b"],"pinned-group");
+  assert.deepEqual(placeFluidWidget(items,"a",{x:0,y:350,w:6,h:250}),items);
 });

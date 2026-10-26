@@ -10,7 +10,7 @@ import {chronologyAddresses,perspectiveChronologyLabel} from "@/lib/db-engine/hi
 import {copyWidgetBlueprint,groupPageWidgets,placementConfigAfterPublish,widgetConfig,widgetGridSize,widgetHeightPx,widgetIsSynced,widgetPlacementConfig,widgetSectionId,type WidgetConfig,type WidgetConfigureTarget,type WidgetDatabase,type WidgetDefinition,type WidgetProperty,type WidgetRecord,type WidgetRelation,type WidgetView,type WidgetPageSection,type LibraryPage,type PageWidget} from "@/lib/widget-system";
 import {widgetVisualHierarchy,widgetVisualTracks,applyWidgetDoubleClickAction,expandWidgetIntoVacantLane,placeWidget,reorderWidgetColumn,removeWidgetAndCompactLayout,resizeWidgetLane,resizeWidgetHeight,widgetDoubleClickDescription,widgetDropEdgeAtPoint,widgetReorderZoneAtPoint,widgetLayoutBands,widgetFootprintHeight,WIDGET_EDITOR_FOOTER_PX,type WidgetVisualNode,type WidgetDoubleClickAction,type WidgetDropTarget,type WidgetLayoutLane,type WidgetLayoutBand} from "@/lib/widget-layout";
 import {initialFluidRects,fluidCanvasHeight,fluidOverlaps,fluidPointerRect,placeFluidWidget,resizeFluidWidget,clampFluidRect,
-  insertFluidBeside,alignFluidWidgetEdge,FLUID_GAP,
+  insertFluidBeside,alignFluidWidgetEdge,fluidInsertionIntent,liftFluidIntoVacancy,fluidGroupId,setFluidGroup,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
@@ -47,7 +47,8 @@ type Snapshot={
 const empty:Snapshot={pages:[],sections:[],instances:[],definitions:[],databases:[],views:[],properties:[],records:[],relations:[],perspectives:[],titles:{}};
 type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"aaa_library_pages";
 type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace";
-type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;targetId?:string};
+type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;
+  targetId?:string;projected?:Record<string,FluidWidgetRect>};
 
 export default function WidgetStudio(p:Props){
   const [data,setData]=useState<Snapshot>(empty);
@@ -80,6 +81,7 @@ export default function WidgetStudio(p:Props){
   // Opening one record must not collapse its neighbors.
   const [expandedRecords,setExpandedRecords]=useState<Record<string,string[]>>({});
   const [drag,setDrag]=useState<string|null>(null);
+  const [selectedWidgetIds,setSelectedWidgetIds]=useState<string[]>([]);
   const fluidEnabled=p.mode!=="widgets";
   const [fluidDrop,setFluidDrop]=useState<FluidDrop|null>(null);
   const fluidDropRef=useRef<FluidDrop|null>(null);
@@ -204,8 +206,24 @@ export default function WidgetStudio(p:Props){
     setSectionPrefs(next);
     try{if(page?.id)localStorage.setItem("aaa-section-display-v1:"+page.id,JSON.stringify(next))}catch{}
   };
-  const changeMode=(editing:boolean)=>{setArrange(editing);p.onEditModeChange?.(editing)};
+  const changeMode=(editing:boolean)=>{setArrange(editing);if(!editing)setSelectedWidgetIds([]);p.onEditModeChange?.(editing)};
   const instanceList=data.instances.filter(w=>w.page_id===page?.id).sort((a,b)=>a.position-b.position);
+  const selectedPageWidgets=instanceList.filter(widget=>selectedWidgetIds.includes(widget.id));
+  const selectedCanGroup=selectedPageWidgets.length>=2&&
+    new Set(selectedPageWidgets.map(widgetSectionId)).size===1;
+  const groupSelectedWidgets=()=>{
+    if(!selectedCanGroup)return;
+    const changed=setFluidGroup(instanceList,selectedPageWidgets.map(widget=>widget.id),crypto.randomUUID());
+    saveLayout(changed);setSelectedWidgetIds([]);
+    setNotice("Widgets grouped. Drag any member to move the group together.");
+  };
+  const ungroupSelectedWidgets=()=>{
+    const groups=new Set(selectedPageWidgets.map(fluidGroupId).filter((id):id is string=>!!id));
+    if(!groups.size)return;
+    const ids=instanceList.filter(widget=>groups.has(fluidGroupId(widget)??"")).map(widget=>widget.id);
+    saveLayout(setFluidGroup(instanceList,ids,null));setSelectedWidgetIds([]);
+    setNotice("The widgets are independent again.");
+  };
   const allWidgetsCollapsed=instanceList.length>0&&instanceList.every(w=>collapsedWidgets.includes(w.id));
   const toggleAllWidgetCollapse=()=>setCollapsedWidgets(old=>allWidgetsCollapsed?old.filter(id=>!instanceList.some(w=>w.id===id))
     :[...new Set([...old,...instanceList.map(w=>w.id)])]);
@@ -635,6 +653,9 @@ export default function WidgetStudio(p:Props){
     const sectionId=field.dataset.aaaSectionId??"";
     const existing=instanceList.filter(w=>widgetSectionId(w)===sectionId);
     const source=instanceList.find(w=>w.id===sourceId.replace(/^developer:/,""));
+    const movingGroup=source?fluidGroupId(source):null;
+    const belongsToMovingGroup=(id:string)=>source?.id===id||
+      movingGroup!==null&&instanceList.some(widget=>widget.id===id&&fluidGroupId(widget)===movingGroup);
     const sourceRect=source?initialFluidRects(instanceList.filter(widget=>
       widgetSectionId(widget)===widgetSectionId(source)))[source.id]:null;
     const w=sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
@@ -642,11 +663,12 @@ export default function WidgetStudio(p:Props){
     const isCopy=sourceId.startsWith("developer:");
     const positions=initialFluidRects(existing);
     let rect=fluidPointerRect({x,y},field.getBoundingClientRect(),{w,h},fluidDragAnchor.current,
-      Object.entries(positions).filter(([id])=>id!==(isCopy?null:source?.id)).map(([,peer])=>peer),
+      Object.entries(positions).filter(([id])=>isCopy||!belongsToMovingGroup(id)).map(([,peer])=>peer),
       formation.quickEdgeSnap?formation.snapDistancePx:0);
     let intent:FluidDropIntent="free",targetId:string|undefined;
+    let projected:Record<string,FluidWidgetRect>|undefined;
     const cards=[...field.querySelectorAll<HTMLElement>("[data-aaa-fluid-widget]")]
-      .filter(card=>card.dataset.aaaFluidWidget!==(isCopy?null:source?.id));
+      .filter(card=>isCopy||!belongsToMovingGroup(card.dataset.aaaFluidWidget??""));
     const direct=document.elementFromPoint(x,y)?.closest<HTMLElement>("[data-aaa-fluid-widget]");
     // A nearby border counts as a target too: the 14px gutter between two
     // cards should offer insertion, not an unrelated placement in a new row.
@@ -659,29 +681,33 @@ export default function WidgetStudio(p:Props){
     if(target&&target.id!==sourceId){
       targetId=target.id;
       const b=targetCard!.getBoundingClientRect();
-      const xInside=Math.max(0,Math.min(b.width,x-b.left));
-      const yInside=Math.max(0,Math.min(b.height,y-b.top));
-      const limitX=Math.min(46,b.width*.21),limitY=Math.min(42,b.height*.19);
-      const edges:[FluidDropIntent,number][]=[
-        ["above",yInside/limitY],["below",(b.height-yInside)/limitY],
-        ["left",xInside/limitX],["right",(b.width-xInside)/limitX]];
-      intent=edges.filter(([,distance])=>distance<=1)
-        .sort((a,b)=>a[1]-b[1])[0]?.[0]??"replace";
+      intent=fluidInsertionIntent(b,{x,y});
       const peer=positions[target.id];
       if(intent==="above"||intent==="below"){
         rect=clampFluidRect({x:peer.x,y:intent==="above"?peer.y:peer.y+peer.h+FLUID_GAP,
-          w:source&&widgetSizeLocked(source)?w:peer.w,h});
+          // Stacking never inherits the other card's width: the content of
+          // each widget determines the width it was individually given.
+          w,h});
       }else if(intent==="left"||intent==="right"){
+        // Moving an existing group never shrinks an individual group member
+        // just because the cursor crossed another card's insertion strip.
+        if(movingGroup&&!isCopy){intent="free"}
+        else {
         const mock:PageWidget={...(source??{id:sourceId,page_id:page?.id??"",definition_id:null,
           kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
           id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:{x:0,y:0,w,h}}};
         const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
           sourceId,target.id,intent);
-        if(fit.placed)rect=initialFluidRects(fit.items)[sourceId];
+        if(fit.placed){projected=initialFluidRects(fit.items);rect=projected[sourceId]}
         else {intent="replace";rect={...rect,x:peer.x,y:peer.y}}
+        }
       }else rect={...rect,x:peer.x,y:peer.y};
     }
-    const next:FluidDrop={sectionId,id:sourceId,rect,intent,targetId};
+    if(intent==="free"&&formation.fillFreedSpace!=="off"&&!movingGroup){
+      rect=liftFluidIntoVacancy(rect,Object.entries(positions)
+        .filter(([id])=>isCopy||!belongsToMovingGroup(id)).map(([,peer])=>peer));
+    }
+    const next:FluidDrop={sectionId,id:sourceId,rect,intent,targetId,projected};
     fluidDropRef.current=next;
     setFluidDrop(prev=>prev?.id===sourceId&&prev.sectionId===sectionId&&
       prev.intent===intent&&prev.targetId===targetId&&prev.rect.x===rect.x&&
@@ -696,8 +722,11 @@ export default function WidgetStudio(p:Props){
       if(definition)void addDefinition(definition,{sectionId:placement.sectionId,targetId:null,edge:"section-end"},
         "preferred",source,placement.rect,{intent:placement.intent,targetId:placement.targetId});
     }else{
-      const moved=instanceList.map(w=>w.id===sourceId?{...w,config:{...w.config,
-        ...(placement.sectionId?{sectionId:placement.sectionId}:{sectionId:""})}}:w);
+      const original=instanceList.find(widget=>widget.id===sourceId);
+      const movingGroup=original?fluidGroupId(original):null;
+      const moved=instanceList.map(w=>(w.id===sourceId||movingGroup!==null&&
+        fluidGroupId(w)===movingGroup)?{...w,config:{...w.config,
+        sectionId:placement.sectionId}}:w);
       const updated=placement.targetId&&(placement.intent==="left"||placement.intent==="right")
         ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
         :placeFluidWidget(moved,sourceId,placement.rect);
@@ -1328,10 +1357,13 @@ export default function WidgetStudio(p:Props){
       p.onInspect?.(inspectionFor(widget));
       if(!preview&&arrange&&p.developerActive&&def&&selected?.id!==widget.id)setSelected({kind:"instance",id:widget.id});
     };
-    return <article key={widget.id} draggable={editing||preview} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${editing?"aaa-widget-arranging":""} ${preview?"aaa-widget-live-preview-card":""} ${folded?"aaa-widget-folded":""} ${hideChrome?"aaa-widget-chrome-locked":""} ${p.headerPosition==="bottom"?"aaa-widget-header-bottom":""} ${fitContent?"aaa-widget-fit-content":""} ${drag===widget.id?"aaa-widget-dragging":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
+    return <article key={widget.id} draggable={editing||preview} className={`aaa-widget-card aaa-widget-color-${cfg.color} aaa-widget-density-${cfg.density} ${editing?"aaa-widget-arranging":""} ${preview?"aaa-widget-live-preview-card":""} ${folded?"aaa-widget-folded":""} ${hideChrome?"aaa-widget-chrome-locked":""} ${p.headerPosition==="bottom"?"aaa-widget-header-bottom":""} ${fitContent?"aaa-widget-fit-content":""} ${drag===widget.id?"aaa-widget-dragging":""} ${editing&&selectedWidgetIds.includes(widget.id)?"aaa-widget-multi-selected":""} ${dropHint?.targetId===widget.id?"aaa-widget-target-"+dropHint.edge:""}`}
       data-aaa-widget-id={widget.id}
       style={{height:"100%",minHeight:0}}
-      onClickCapture={inspect}
+      onClickCapture={e=>{if(editing&&fluidCard&&(e.ctrlKey||e.metaKey)){
+          e.preventDefault();e.stopPropagation();
+          setSelectedWidgetIds(ids=>ids.includes(widget.id)?ids.filter(id=>id!==widget.id):[...ids,widget.id]);
+        }else inspect()}}
       onDragStart={e=>{if(preview){
           if(previewPointer.current){e.preventDefault();return}
           if(!def){e.preventDefault();return}
@@ -1368,6 +1400,7 @@ export default function WidgetStudio(p:Props){
           onClick={()=>{if(expandedWidgetActions===widget.id)setExpandedWidgetActions(null)}}>
           {editing&&<><button type="button" title={folded?"Expand widget":"Collapse widget"} aria-label={(folded?"Expand ":"Collapse ")+title}
             aria-expanded={!folded} onClick={()=>flipWidgetCollapse(widget.id)}>{folded?<ChevronDown size={16}/>:<ChevronUp size={16}/>}</button>
+            {fluidCard&&fluidGroupId(widget)&&<span title="Grouped widget · Ctrl-click to select and ungroup" aria-label="Grouped widget" className="aaa-widget-group-marker"><Link2 size={13}/></span>}
             <button type="button" title={chromeLocked?"Unlock widget controls in Use Mode":"Lock widget controls in Use Mode"}
               aria-label={(chromeLocked?"Unlock ":"Lock ")+title+" controls"} aria-pressed={chromeLocked}
               onClick={()=>changeInstance(widget.id,{config:{...widget.config,chromeLocked:!chromeLocked}})}>
@@ -1577,7 +1610,14 @@ export default function WidgetStudio(p:Props){
         {arrange&&<div className="aaa-widget-section-toolbar"><button type="button" className="aaa-widget-tips-toggle"
           aria-expanded={sectionToolsVisible} onClick={()=>setSectionToolsVisible(open=>!open)}>
           {sectionToolsVisible?"Hide editing tips":"Show editing tips"}</button>
-          {sectionToolsVisible&&<span>Drag widgets to insertion lines, or drag their corner and dividers to resize.</span>}</div>}
+          {sectionToolsVisible&&<span>Drag widgets to insertion lines, or drag their corner and dividers to resize. Ctrl-click (⌘ on Mac) to select widgets for grouping.</span>}
+          {selectedPageWidgets.length>0&&<div className="aaa-widget-group-actions" role="group" aria-label="Selected widget grouping actions">
+            <span>{selectedPageWidgets.length} selected</span>
+            <button type="button" disabled={!selectedCanGroup} onClick={groupSelectedWidgets}><Link2 size={14}/> Group</button>
+            <button type="button" disabled={!selectedPageWidgets.some(widget=>fluidGroupId(widget))}
+              onClick={ungroupSelectedWidgets}><Unlink2 size={14}/> Ungroup</button>
+            <button type="button" aria-label="Clear selected widgets" onClick={()=>setSelectedWidgetIds([])}><X size={14}/></button>
+          </div>}</div>}
         {creatingSection&&<form className="aaa-widget-create-row" onSubmit={e=>{e.preventDefault();void createSection()}}>
           <input autoFocus aria-label="New section name" placeholder="e.g. World History, Project Progress…" maxLength={100} value={newSection} onChange={e=>setNewSection(e.target.value)}/>
           <button type="submit" disabled={!newSection.trim()||busy}><Check size={15}/> Create section</button>
@@ -1635,11 +1675,17 @@ export default function WidgetStudio(p:Props){
                 top:r.y,height:r.h
               });
               const preview=fluidDrop?.sectionId===section.id?fluidDrop.rect:null;
+              const projected=fluidDrop?.sectionId===section.id?fluidDrop.projected:undefined;
+              const groupSource=drag&&!drag.startsWith("developer:")
+                ?widgets.find(widget=>widget.id===drag):undefined;
+              const groupId=groupSource?fluidGroupId(groupSource):null;
+              const groupProjection=preview&&groupId&&groupSource
+                ?initialFluidRects(placeFluidWidget(widgets,groupSource.id,preview)):null;
               const guideIntent=fluidDrop?.sectionId===section.id?fluidDrop.intent:"free";
               const guideTarget=fluidDrop?.sectionId===section.id&&fluidDrop.targetId
                 ?positions[fluidDrop.targetId]:null;
               return <div className="aaa-widget-fluid-field" data-aaa-fluid-canvas="true"
-                data-aaa-section-id={section.id} style={{height:Math.max(220,fluidCanvasHeight(positions)+170,
+                data-aaa-section-id={section.id} style={{height:Math.max(220,fluidCanvasHeight(projected??positions)+170,
                   preview?preview.y+preview.h+FLUID_GAP:0)}}
                 onDragOver={e=>{if(!arrange||!drag)return;e.preventDefault();
                   fluidHoverAtPoint(e.clientX,e.clientY,drag)}}
@@ -1693,6 +1739,13 @@ export default function WidgetStudio(p:Props){
                     guideIntent==="left"||guideIntent==="right"?"Fit beside":guideIntent==="replace"?"Replace position":
                     widgets.some(w=>w.id===drag)?"Move here":"Add widget here"}</span>
                 </div>}
+                {arrange&&preview&&projected&&widgets.filter(w=>w.id!==drag&&projected[w.id]&&
+                  JSON.stringify(projected[w.id])!==JSON.stringify(positions[w.id]))
+                  .map(w=><div className="aaa-widget-fluid-projected-peer" key={"projected-"+w.id}
+                    style={coords(projected[w.id])} aria-hidden="true"/>)}
+                {arrange&&groupProjection&&widgets.filter(w=>w.id!==drag&&fluidGroupId(w)===groupId)
+                  .map(w=><div className="aaa-widget-fluid-group-ghost" key={"group-"+w.id}
+                    style={coords(groupProjection[w.id])} aria-hidden="true"><Link2 size={14}/> Grouped</div>)}
               </div>;
             })():<>
             {arrange&&widgets.length>0&&(()=>{

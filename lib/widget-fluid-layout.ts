@@ -7,6 +7,7 @@ import {widgetSizeLocked,widgetRowPinned} from "@/lib/widget-formation";
  * these rectangles have no implicit shared width or row membership. */
 export type FluidWidgetRect={x:number;y:number;w:number;h:number};
 export type FluidWidgetPlacement={id:string;rect:FluidWidgetRect};
+export type FluidInsertionIntent="above"|"below"|"left"|"right"|"replace";
 export const FLUID_GAP=14;
 const MIN_W=2;
 const MIN_H=194;
@@ -79,26 +80,82 @@ export function fluidOverlaps(a:FluidWidgetRect,b:FluidWidgetRect,gap=FLUID_GAP)
     a.y<b.y+b.h+gap&&a.y+a.h+gap>b.y;
 }
 
+/** The usable insertion strips reach well into the card, rather than being
+ * thin, hard-to-hit borders. Its small center remains an explicit replacement
+ * target. The same classifier is used for card and 14px gutter drops. */
+export function fluidInsertionIntent(bounds:{left:number;top:number;width:number;height:number},
+  pointer:{x:number;y:number}):FluidInsertionIntent{
+  const x=Math.max(0,Math.min(bounds.width,pointer.x-bounds.left));
+  const y=Math.max(0,Math.min(bounds.height,pointer.y-bounds.top));
+  const side=Math.min(110,bounds.width*.39);
+  const vertical=Math.min(120,bounds.height*.30);
+  const edges:[FluidInsertionIntent,number][]=[
+    ["left",x/side],["right",(bounds.width-x)/side],
+    ["above",y/vertical],["below",(bounds.height-y)/vertical]];
+  return edges.filter(([,distance])=>distance<=1)
+    .sort((a,b)=>a[1]-b[1])[0]?.[0]??"replace";
+}
+
+/** A group is a persistent relationship between page widgets, never a new
+ * master definition or a shared database record. */
+export function fluidGroupId(widget:PageWidget):string|null{
+  return typeof widget.config.fluidGroupId==="string"&&widget.config.fluidGroupId.length>0
+    ?widget.config.fluidGroupId:null;
+}
+
+export function setFluidGroup(items:readonly PageWidget[],ids:readonly string[],groupId:string|null):PageWidget[]{
+  const chosen=new Set(ids);
+  if(groupId){
+    const members=items.filter(item=>chosen.has(item.id));
+    if(members.length<2||new Set(members.map(widgetSectionId)).size!==1)return [...items];
+  }
+  return items.map(item=>chosen.has(item.id)?{...item,config:{...item.config,
+    fluidGroupId:groupId??undefined}}:item);
+}
+
 /** Move a single widget to precisely the requested freeform position. Other
  * widgets retain their X and size; only real collisions cascade downwards. */
 export function placeFluidWidget(items:readonly PageWidget[],id:string,target:FluidWidgetRect):PageWidget[]{
   const source=items.find(w=>w.id===id);
   if(!source||widgetRowPinned(source))return [...items];
   const positions=initialFluidRects(items);
-  positions[id]=clampFluidRect(target);
-  const queue=[id];
+  const group=fluidGroupId(source);
+  const moving=items.filter(item=>item.id===id||group!==null&&fluidGroupId(item)===group&&
+    widgetSectionId(item)===widgetSectionId(source));
+  if(moving.some(widgetRowPinned))return [...items];
+  const movingIds=new Set(moving.map(item=>item.id));
+  const anchor=positions[id];
+  const minX=Math.min(...moving.map(item=>positions[item.id].x));
+  const requested=clampFluidRect(target);
+  const maxX=Math.max(...moving.map(item=>positions[item.id].x+
+    (item.id===id?requested.w:positions[item.id].w)));
+  const dx=Math.max(-minX,Math.min(12-maxX,requested.x-anchor.x));
+  const dy=Math.max(-Math.min(...moving.map(item=>positions[item.id].y)),requested.y-anchor.y);
+  for(const member of moving){
+    const old=positions[member.id];
+    positions[member.id]=clampFluidRect({...old,x:old.x+dx,y:old.y+dy,
+      ...(member.id===id?{w:requested.w,h:requested.h}:{})});
+  }
+  const queue=moving.map(item=>item.id);
   let steps=0;
-  while(queue.length&&steps++<items.length*items.length+1){
+  while(queue.length&&steps++<items.length*items.length*4+1){
     const currentId=queue.shift()!,current=positions[currentId];
     for(const other of items){
-      if(other.id===currentId||other.id===id||widgetSectionId(other)!==widgetSectionId(source))continue;
+      if(other.id===currentId||movingIds.has(other.id)||widgetSectionId(other)!==widgetSectionId(source))continue;
       const rect=positions[other.id];
       if(!rect||!fluidOverlaps(current,rect))continue;
-      if(widgetRowPinned(other))return [...items];
-      const nextY=Math.ceil(current.y+current.h+FLUID_GAP);
-      if(nextY>rect.y){positions[other.id]={...rect,y:nextY};queue.push(other.id)}
+      const linked=fluidGroupId(other);
+      const displaced=items.filter(item=>item.id===other.id||linked!==null&&
+        fluidGroupId(item)===linked&&widgetSectionId(item)===widgetSectionId(source));
+      if(displaced.some(widgetRowPinned))return [...items];
+      const shift=Math.ceil(current.y+current.h+FLUID_GAP-rect.y);
+      if(shift>0)for(const member of displaced){
+        positions[member.id]={...positions[member.id],y:positions[member.id].y+shift};
+        if(!queue.includes(member.id))queue.push(member.id);
+      }
     }
   }
+  if(queue.length)return [...items];
   return items.map(item=>{
     const rect=positions[item.id];if(!rect)return item;
     return {...item,config:{...item.config,fluidDesktop:rect}};
@@ -239,8 +296,14 @@ export function fluidPointerRect(pointer:{x:number;y:number},origin:{left:number
   let x=Math.round(((pointer.x-origin.left-anchor.x)/unit)*4)/4;
   let y=Math.max(0,Math.round(pointer.y-origin.top-anchor.y));
   if(snapPx>0){
-    const xEdges=existing.flatMap(r=>[r.x,r.x+r.w]);
-    const yEdges=existing.flatMap(r=>[r.y,r.y+r.h,r.y+r.h+FLUID_GAP]);
+    // Match *either* edge of the dragged rectangle to either neighboring
+    // edge. Snapping only its upper-left corner misses most side-by-side fits.
+    const xEdges=[0,12-size.w,...existing.flatMap(r=>
+      [r.x,r.x+r.w,r.x-size.w,r.x+r.w-size.w])]
+      .filter(edge=>edge>=0&&edge+size.w<=12+.001);
+    const yEdges=[0,...existing.flatMap(r=>
+      [r.y,r.y+r.h+FLUID_GAP,r.y-size.h-FLUID_GAP,r.y+r.h-size.h])]
+      .filter(edge=>edge>=0);
     const snappedX=xEdges.filter(edge=>Math.abs(edge-x)*unit<=snapPx)
       .sort((a,b)=>Math.abs(a-x)-Math.abs(b-x))[0];
     const snappedY=yEdges.filter(edge=>Math.abs(edge-y)<=snapPx)
@@ -249,4 +312,22 @@ export function fluidPointerRect(pointer:{x:number;y:number},origin:{left:number
     if(snappedY!==undefined)y=snappedY;
   }
   return clampFluidRect({x,y,w:size.w,h:size.h});
+}
+
+/** If a free-position drop only clips the next widget, use the nearest open
+ * space directly above it instead of needlessly cascading that next widget
+ * downward. Never lift farther than the user's local drag context, and leave
+ * explicit insertion/replacement targets untouched. */
+export function liftFluidIntoVacancy(target:FluidWidgetRect,peers:readonly FluidWidgetRect[]):FluidWidgetRect{
+  const initial=clampFluidRect(target);
+  let candidate=initial;
+  const maxLift=Math.max(100,initial.h*.65);
+  for(let pass=0;pass<=peers.length;pass++){
+    const colliding=peers.filter(peer=>fluidOverlaps(candidate,peer));
+    if(!colliding.length)return candidate;
+    const nextY=Math.floor(Math.min(...colliding.map(peer=>peer.y-candidate.h-FLUID_GAP)));
+    if(nextY<0||initial.y-nextY>maxLift)return initial;
+    candidate={...candidate,y:nextY};
+  }
+  return initial;
 }

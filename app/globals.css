@@ -4430,6 +4430,17 @@ input[type="range"]{
 .aaa-widget-fluid-item.aaa-widget-fluid-obstructed>.aaa-widget-card{
   outline:1px dashed var(--accent);outline-offset:3px;
 }
+.aaa-widget-fluid-item>.aaa-widget-card.aaa-widget-multi-selected{
+  outline:2px solid var(--accent-bright,var(--accent));outline-offset:3px;
+  box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 14%,transparent);
+}
+.aaa-widget-group-actions{display:flex;align-items:center;gap:7px;margin-left:auto;flex-wrap:wrap}
+.aaa-widget-group-actions>span{color:var(--accent-text);font-weight:650}
+.aaa-widget-group-actions button{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;
+  border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer}
+.aaa-widget-group-actions button:disabled{opacity:.38;cursor:not-allowed}
+.aaa-widget-group-actions button:hover:not(:disabled){border-color:var(--accent)}
+.aaa-widget-group-marker{display:inline-flex;align-items:center;color:var(--accent);opacity:.8}
 .aaa-widget-fluid-drop-preview{
   position:absolute;z-index:12;pointer-events:none;box-sizing:border-box;
   border:2px dashed var(--accent-bright,var(--accent));
@@ -4441,6 +4452,13 @@ input[type="range"]{
 .aaa-widget-fluid-drop-preview>span{
   background:var(--surface);border:1px solid var(--accent);border-radius:6px;padding:6px 11px;
 }
+.aaa-widget-fluid-group-ghost{position:absolute;z-index:12;pointer-events:none;box-sizing:border-box;
+  border:2px dashed var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent);
+  color:var(--accent-text);border-radius:var(--ui-radius,10px);display:flex;align-items:center;
+  justify-content:center;gap:6px;font-size:11px;font-weight:650;opacity:.75}
+.aaa-widget-fluid-projected-peer{position:absolute;z-index:13;pointer-events:none;box-sizing:border-box;
+  border:2px dotted var(--accent-bright,var(--accent));border-radius:var(--ui-radius,10px);
+  background:color-mix(in srgb,var(--accent) 9%,transparent)}
 .aaa-widget-fluid-insertion-line{
   position:absolute;z-index:14;pointer-events:none;border-radius:5px;
   background:var(--accent-bright,var(--accent));
