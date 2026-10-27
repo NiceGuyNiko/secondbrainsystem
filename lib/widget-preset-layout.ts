@@ -160,6 +160,6 @@ export function presetUpdatePreferred(items:readonly PageWidget[],id:string,widt
   const target=items.find(w=>w.id===id);
   if(!target||widgetSizeLocked(target)||!PRESET_WIDTHS.includes(width as PresetWidth))return [...items];
   const current=initialFluidRects(items)[id];
-  const next=movePresetWidget(items,id,{...current,w:presetToUnits(width)});
+  const next=placeFluidWidget(items,id,{...current,x:round(Math.min(current.x,12-presetToUnits(width))),w:presetToUnits(width)});
   return next.map(w=>w.id===id?{...w,config:{...w.config,presetPreferredWidth:width}}:w);
 }
