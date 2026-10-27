@@ -336,13 +336,22 @@ export function insertFluidBeside(items:readonly PageWidget[],movingId:string,
   const order=peers.map(item=>item.id),targetIndex=order.indexOf(targetId);
   order.splice(targetIndex+(side==="right"?1:0),0,movingId);
   const total=order.reduce((sum,id)=>sum+positions[id].w,0);
-  if(total>12+.001)return {items:[...items],placed:false};
+  // A single unlocked full-width neighbor can give the incoming widget room
+  // without moving it to a different row. Legacy multi-neighbor rows retain
+  // their original no-shrink contract; opt-in preset layout handles them.
+  const shrinkSingle=total>12+.001&&peers.length===1&&!widgetSizeLocked(target);
+  const shrunkWidth=12-positions[movingId].w;
+  if(total>12+.001&&(!shrinkSingle||shrunkWidth<MIN_W))
+    return {items:[...items],placed:false};
+  const adjustedTotal=shrinkSingle?12:total;
   const leftMost=Math.min(...peers.map(item=>positions[item.id].x));
-  let x=Math.max(0,Math.min(leftMost,12-total));
+  let x=Math.max(0,Math.min(leftMost,12-adjustedTotal));
   const proposed=new Map<string,FluidWidgetRect>();
   for(const id of order){
-    const r=positions[id];proposed.set(id,clampFluidRect({...r,x,y:targetRect.y}));
-    x+=r.w;
+    const r=positions[id];
+    const w=shrinkSingle&&id===targetId?shrunkWidth:r.w;
+    proposed.set(id,clampFluidRect({...r,x,y:targetRect.y,w}));
+    x+=w;
   }
   for(const [,next] of proposed){
     for(const other of items){
