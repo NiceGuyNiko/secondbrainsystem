@@ -13,6 +13,8 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   insertFluidBeside,alignFluidWidgetEdge,fluidSharedBoundaries,resizeFluidSharedBoundary,
   fluidDropTargetAtPoint,liftFluidIntoVacancy,preferVacantSnap,fluidGroupId,setFluidGroup,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
+import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
+  resizePresetDivider,presetUpdatePreferred} from "@/lib/widget-preset-layout";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -83,6 +85,7 @@ export default function WidgetStudio(p:Props){
   const [expandedRecords,setExpandedRecords]=useState<Record<string,string[]>>({});
   const [drag,setDrag]=useState<string|null>(null);
   const [selectedWidgetIds,setSelectedWidgetIds]=useState<string[]>([]);
+  const [presetByPage,setPresetByPage]=useState<Record<string,boolean>>({});
   const fluidEnabled=p.mode!=="widgets";
   const [fluidDrop,setFluidDrop]=useState<FluidDrop|null>(null);
   const fluidDropRef=useRef<FluidDrop|null>(null);
@@ -193,6 +196,22 @@ export default function WidgetStudio(p:Props){
   const area=p.mode==="goals"?"goals":"library";
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
+  const presetEnabled=!!page&&presetByPage[page.id]===true;
+  useEffect(()=>{
+    if(!page?.id)return;
+    try{const enabled=localStorage.getItem("aaa-preset-layout-v1:"+page.id)==="true";
+      setPresetByPage(current=>({...current,[page.id]:enabled}));
+    }catch{setPresetByPage(current=>({...current,[page.id]:false}))}
+  },[page?.id]);
+  const togglePresetLayout=()=>{
+    if(!page)return;
+    const enabled=!presetEnabled;
+    setPresetByPage(current=>({...current,[page.id]:enabled}));
+    try{localStorage.setItem("aaa-preset-layout-v1:"+page.id,String(enabled))}catch{}
+    setNotice(enabled
+      ?"Preset widths enabled on this page. Drag a grip to move widgets; dividers now snap to allowed ratios."
+      :"Freeform sizing restored. Saved widget geometry is preserved.");
+  };
   useEffect(()=>{if(p.editIntent)setArrange(true)},[p.editIntent]);
   useEffect(()=>{
     if(!page?.id)return;
@@ -487,7 +506,10 @@ export default function WidgetStudio(p:Props){
       const {data:row,error}=await supabase.from("aaa_page_widgets")
         .insert({page_id:page.id,definition_id:master.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,
           width:sourceInstance?.width??12,height:sourceInstance?.height??2,
-          config:{...(sourceInstance?{heightPx:widgetHeightPx(sourceInstance)}:{}),
+          config:{...(sourceInstance?{heightPx:widgetHeightPx(sourceInstance),
+              ...("presetPreferredWidth" in sourceInstance.config?{presetPreferredWidth:sourceInstance.config.presetPreferredWidth}:{}),
+              ...("presetMinWidth" in sourceInstance.config?{presetMinWidth:sourceInstance.config.presetMinWidth}:{}),
+              ...("presetAllowShrink" in sourceInstance.config?{presetAllowShrink:sourceInstance.config.presetAllowShrink}:{})}:{}),
             ...(fluidPlacement?{fluidDesktop:fluidPlacement,
               heightPx:Math.max(160,fluidPlacement.h-WIDGET_EDITOR_FOOTER_PX)}:{}),
             ...(placement?.sectionId||activePlacementSection?{sectionId:placement?.sectionId??activePlacementSection}:{})}})
@@ -497,7 +519,9 @@ export default function WidgetStudio(p:Props){
         ?{initial:row as PageWidget,placed:(()=>{
           const withNew=[...instanceList,row as PageWidget];
           if(fluidIntent?.targetId&&(fluidIntent.intent==="left"||fluidIntent.intent==="right")){
-            const fit=insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
+            const fit=presetEnabled
+              ?insertPresetWidget(withNew,row.id,fluidIntent.targetId,fluidIntent.intent)
+              :insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
             if(fit.placed)return fit.items;
             // A size lock makes side insertion invalid. Keep the new view
             // intact and put it below the target instead of overlapping it.
@@ -661,7 +685,8 @@ export default function WidgetStudio(p:Props){
       movingGroup!==null&&instanceList.some(widget=>widget.id===id&&fluidGroupId(widget)===movingGroup);
     const sourceRect=source?initialFluidRects(instanceList.filter(widget=>
       widgetSectionId(widget)===widgetSectionId(source)))[source.id]:null;
-    const w=sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
+    const w=presetEnabled&&source?presetToUnits(presetSizingOf(source,sourceRect??undefined).preferred)
+      :sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
     const h=sourceRect?.h??(source?widgetHeightPx(source):280)+WIDGET_EDITOR_FOOTER_PX;
     const isCopy=sourceId.startsWith("developer:");
     const positions=initialFluidRects(existing);
@@ -693,10 +718,15 @@ export default function WidgetStudio(p:Props){
         const mock:PageWidget={...(source??{id:sourceId,page_id:page?.id??"",definition_id:null,
           kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
           id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:sourceRect??{x:raw.x,y:raw.y,w,h}}};
-        const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
-          sourceId,target.id,intent);
-        if(fit.placed){projected=initialFluidRects(fit.items);rect=projected[sourceId]}
-        else {intent="blocked";rect=raw;projected=positions}
+        const fit=presetEnabled
+          ?insertPresetWidget([...existing.filter(widget=>widget.id!==sourceId),mock],
+            sourceId,target.id,intent)
+          :insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
+            sourceId,target.id,intent);
+        if(fit.placed){
+          projected=initialFluidRects(fit.items);rect=projected[sourceId];
+          if(presetEnabled&&"newRow" in fit&&fit.newRow)intent="below";
+        }else {intent="blocked";rect=raw;projected=positions}
         }
       }else rect={...rect,x:peer.x,y:peer.y};
     }
@@ -709,9 +739,11 @@ export default function WidgetStudio(p:Props){
         kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
         id:sourceId,config:{...(source?.config??{}),sectionId,
           fluidDesktop:sourceRect??{x:rect.x,y:rect.y,w,h}}};
-      const simulated=placeFluidWidget(existing.some(widget=>widget.id===sourceId)
-        ?existing:[...existing,mock],sourceId,rect);
+      const simulated=presetEnabled
+        ?movePresetWidget(existing.some(widget=>widget.id===sourceId)?existing:[...existing,mock],sourceId,rect)
+        :placeFluidWidget(existing.some(widget=>widget.id===sourceId)?existing:[...existing,mock],sourceId,rect);
       projected=initialFluidRects(simulated);
+      rect=projected[sourceId]??rect;
     }
     const next:FluidDrop={sectionId,id:sourceId,rect,intent,targetId,projected};
     fluidDropRef.current=next;
@@ -745,8 +777,11 @@ export default function WidgetStudio(p:Props){
           return position?{...item,config:{...item.config,fluidDesktop:position}}:item;
         })
         :placement.targetId&&(placement.intent==="left"||placement.intent==="right")
-          ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
-          :placeFluidWidget(moved,sourceId,placement.rect);
+          ?(presetEnabled
+            ?insertPresetWidget(moved,sourceId,placement.targetId,placement.intent).items
+            :insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items)
+          :(presetEnabled?movePresetWidget(moved,sourceId,placement.rect)
+            :placeFluidWidget(moved,sourceId,placement.rect));
       if(updated.some((w,index)=>JSON.stringify(w.config)!==JSON.stringify(instanceList[index]?.config)))saveLayout(updated);
       else setNotice("This widget is locked or the chosen position is occupied by a pinned widget.");
     }
@@ -823,7 +858,9 @@ export default function WidgetStudio(p:Props){
   const sharedResizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=sharedResizeStart.current;if(!start)return;
     const dx=Math.round((e.clientX-start.x)/start.unit*20)/20;
-    const updated=resizeFluidSharedBoundary(start.initial,start.leftId,start.rightId,dx);
+    const updated=presetEnabled
+      ?resizePresetDivider(start.initial,start.leftId,start.rightId,dx)
+      :resizeFluidSharedBoundary(start.initial,start.leftId,start.rightId,dx);
     const changes=new Map(updated.map(w=>[w.id,w]));
     const next=start.initial.map(w=>changes.get(w.id)??w);
     resizePreviewRef.current=next;setResizePreview(next);
@@ -1011,14 +1048,14 @@ export default function WidgetStudio(p:Props){
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const startTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>,id:string)=>{
-    if(!arrange||e.pointerType!=="touch")return;
+    if(!arrange||(e.pointerType!=="touch"&&!presetEnabled))return;
     e.preventDefault();e.stopPropagation();
     touchDrag.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const moveTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>)=>{
     const state=touchDrag.current;
-    if(!state||e.pointerType!=="touch")return;
+    if(!state||(e.pointerType!=="touch"&&!presetEnabled))return;
     if(!state.active&&Math.hypot(e.clientX-state.x,e.clientY-state.y)<9)return;
     if(!state.active){state.active=true;setDrag(state.id);}
     const target=touchTargetAt(e.clientX,e.clientY,state.id);
@@ -1209,6 +1246,18 @@ export default function WidgetStudio(p:Props){
             band.lanes.some(l=>l.widgets.some(w=>w.id!==instance.id&&w.config.magneticLinked===true))
             ?"Adjacent columns share a magnetic boundary":"No magnetic connection";
         })():"Snapping disabled"):undefined,
+      presetSizing:presetEnabled&&instance
+        ?presetSizingOf(instance,initialFluidRects(instanceList)[instance.id]):undefined,
+      onPresetSizing:presetEnabled&&instance?patch=>{
+        const original=presetSizingOf(instance,initialFluidRects(instanceList)[instance.id]);
+        const preferred=patch.preferred??original.preferred;
+        const minimum=Math.min(patch.minimum??original.minimum,preferred);
+        const next=patch.preferred!==undefined
+          ?presetUpdatePreferred(instanceList,instance.id,preferred):instanceList;
+        saveLayout(next.map(w=>w.id===instance.id?{...w,config:{...w.config,
+          presetPreferredWidth:preferred,presetMinWidth:minimum,
+          presetAllowShrink:patch.allowShrink??original.allowShrink}}:w));
+      }:undefined,
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
@@ -1242,7 +1291,7 @@ export default function WidgetStudio(p:Props){
     });
   // Selection and persisted state are the only sources for the Companion's controls.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties,arrange,formation,fluidEnabled]);
+  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties,arrange,formation,fluidEnabled,presetEnabled]);
 
   const createRecord=async(databaseId:string,widgetId:string)=>{
     const name=newRecord[widgetId]?.trim();if(!name)return;
@@ -1614,6 +1663,9 @@ export default function WidgetStudio(p:Props){
         <h1>{page?.title|| (p.mode==="goals"?"Goals":"Your Library")}</h1>
         <p>{p.mode==="goals"?"Your existing goals, projects and tasks alongside reusable database widgets.":"Create pages and combine reusable database views into a readable workspace."}</p></div>
         <div className="aaa-widget-hero-actions">
+        {arrange&&page&&<button type="button" className="aaa-widget-secondary"
+          aria-pressed={presetEnabled} title="Use snapped widget widths with intelligent insertion on this page"
+          onClick={togglePresetLayout}><LayoutGrid size={15}/> {presetEnabled?"Preset widths: On":"Preset widths: Off"}</button>}
         {arrange&&page&&<button className="aaa-widget-secondary" aria-pressed={allWidgetsCollapsed}
             title={allWidgetsCollapsed?"Expand all widgets":"Collapse all widgets to titles"} onClick={toggleAllWidgetCollapse}>
             {allWidgetsCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>} {allWidgetsCollapsed?"Expand all":"Collapse all"}
