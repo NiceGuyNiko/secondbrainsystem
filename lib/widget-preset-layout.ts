@@ -94,7 +94,10 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
     const rowIds=new Set(row.map(w=>w.id));
     const outsiders=items.filter(w=>widgetSectionId(w)===widgetSectionId(target)&&!rowIds.has(w.id));
     const collision=row.some(item=>outsiders.some(other=>
-      fluidOverlaps(proposed[item.id],rects[other.id])&&other.id!==movingId));
+      fluidOverlaps(proposed[item.id],rects[other.id])&&other.id!==movingId))||
+      row.some(item=>widgetRowPinned(item)&&
+        (Math.abs(proposed[item.id].x-rects[item.id].x)>.001||
+         Math.abs(proposed[item.id].y-rects[item.id].y)>.001));
     if(!collision)return {items:patchRects(items,proposed),placed:true,newRow:false,reason:"fit"};
   }
   // A full-width / locked row is non-destructively preserved. Insert immediately
@@ -120,6 +123,33 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
 }
 /** A drag into free space retains the widget's design width and moves the same
  * source record; no copy or new database record is created. */
+/** Same-row center-drop swaps visual order and preserves each widget's source. */
+export function swapPresetWidgets(items:readonly PageWidget[],firstId:string,secondId:string):PageWidget[] {
+  const first=items.find(w=>w.id===firstId),second=items.find(w=>w.id===secondId);
+  if(!first||!second||first.id===second.id||widgetRowPinned(first)||widgetRowPinned(second)||
+     widgetSectionId(first)!==widgetSectionId(second))return [...items];
+  const rects=initialFluidRects(items),a=rects[firstId],b=rects[secondId];
+  if(Math.abs(a.y-b.y)>1)return [...items];
+  const row=items.filter(w=>widgetSectionId(w)===widgetSectionId(first)&&
+    Math.abs(rects[w.id].y-a.y)<1).sort((x,y)=>rects[x.id].x-rects[y.id].x);
+  const i=row.findIndex(w=>w.id===firstId),j=row.findIndex(w=>w.id===secondId);
+  if(i<0||j<0)return [...items];
+  [row[i],row[j]]=[row[j],row[i]];
+  let x=Math.min(...row.map(w=>rects[w.id].x));
+  const changes:Record<string,FluidWidgetRect>={};
+  for(const item of row){
+    changes[item.id]={...rects[item.id],x:round(x)};
+    x+=rects[item.id].w;
+  }
+  if(row.some(item=>widgetRowPinned(item)&&Math.abs(changes[item.id].x-rects[item.id].x)>.001))
+    return [...items];
+  const rowIds=new Set(row.map(w=>w.id));
+  if(row.some(item=>items.some(other=>!rowIds.has(other.id)&&
+    widgetSectionId(other)===widgetSectionId(item)&&
+    fluidOverlaps(changes[item.id],rects[other.id]))))return [...items];
+  return patchRects(items,changes);
+}
+
 export function movePresetWidget(items:readonly PageWidget[],id:string,rect:FluidWidgetRect):PageWidget[] {
   const widget=items.find(item=>item.id===id);
   if(!widget||widgetRowPinned(widget))return [...items];
