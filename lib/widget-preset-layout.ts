@@ -80,7 +80,7 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
   const choices=row.map((item,i)=>{
     const sizing=presetSizingOf(item,rects[item.id]);
     return options(item,widths[i],sizing.minimum,
-      item.id!==movingId&&intelligentShrink&&sizing.allowShrink);
+      intelligentShrink&&sizing.allowShrink);
   });
   const targetOrder=row.findIndex(item=>item.id===targetId);
   const movingOldInRow=Math.abs(movingRect.y-targetRect.y)<1;
@@ -141,7 +141,13 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
           distanceCost+=difference*Math.abs(i-targetOrder);
         }
       }
-      const score=othersShrink*100000+hoveredShrink*100+distanceCost;
+      const incomingShrink=Math.max(0,
+        widths[row.findIndex(item=>item.id===movingId)]-
+        current[row.findIndex(item=>item.id===movingId)]);
+      // Shrink the hovered card first, and the incoming card as needed.
+      // Keep unaffected siblings unchanged whenever a fit exists.
+      const score=othersShrink*100000+hoveredShrink*100+
+        incomingShrink*250+distanceCost;
       if(score<bestScore){bestScore=score;winner=candidate}
       return;
     }
