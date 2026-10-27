@@ -133,8 +133,10 @@ export default function WidgetStudio(p:Props){
   const [dropHint,setDropHint]=useState<WidgetDropTarget|null>(null);
   const [reorderPreview,setReorderPreview]=useState<PageWidget[]|null>(null);
   const [expandedWidgetActions,setExpandedWidgetActions]=useState<string|null>(null);
-  const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
-  const previewPointer=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
+  const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null;
+    handle?:HTMLElement;pointerId?:number}|null>(null);
+  const previewPointer=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null;
+    handle?:HTMLElement;pointerId?:number}|null>(null);
   const returnWidgetRef=useRef<(id:string)=>void>(()=>{});
   const dividerWasResized=useRef(false);
   const spanHandleDrag=useRef<{id:string;side:"left"|"right";x:number;completed:boolean}|null>(null);
@@ -664,6 +666,44 @@ export default function WidgetStudio(p:Props){
     }
   };
   const clearFluidDrop=()=>{fluidDropRef.current=null;setFluidDrop(null)};
+  // Native HTML dragging may never fire dragend when the Windows screenshot
+  // overlay or an app switch steals focus. Unwind every piece of transient UI,
+  // including pointer captures and the wheel/autoscroll state.
+  const cancelInterruptedWidgetDrag=useCallback(()=>{
+    const developerDrag=previewPointer.current?.active===true;
+    for(const pointer of [touchDrag.current,previewPointer.current]){
+      if(pointer?.handle&&pointer.pointerId!==undefined){
+        try{if(pointer.handle.hasPointerCapture(pointer.pointerId))
+          pointer.handle.releasePointerCapture(pointer.pointerId)}catch{}
+      }
+    }
+    touchDrag.current=null;previewPointer.current=null;
+    fluidDragPointerY.current=null;fluidDropRef.current=null;
+    setFluidDrop(null);setDrag(null);setDropHint(null);setReorderPreview(null);
+    document.body.classList.remove("aaa-page-widget-in-flight");
+    if(developerDrag)window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));
+  },[]);
+  useEffect(()=>{
+    if(!drag)return;
+    const onVisibility=()=>{if(document.hidden)cancelInterruptedWidgetDrag()};
+    const onKey=(event:KeyboardEvent)=>{
+      const screenshotShortcut=event.shiftKey&&(event.ctrlKey||event.metaKey)&&
+        event.key.toLowerCase()==="s";
+      if(event.key==="Escape"||screenshotShortcut)cancelInterruptedWidgetDrag();
+    };
+    window.addEventListener("blur",cancelInterruptedWidgetDrag);
+    document.addEventListener("visibilitychange",onVisibility);
+    window.addEventListener("keydown",onKey,true);
+    window.addEventListener("pointercancel",cancelInterruptedWidgetDrag,true);
+    window.addEventListener("dragend",cancelInterruptedWidgetDrag,true);
+    return()=>{
+      window.removeEventListener("blur",cancelInterruptedWidgetDrag);
+      document.removeEventListener("visibilitychange",onVisibility);
+      window.removeEventListener("keydown",onKey,true);
+      window.removeEventListener("pointercancel",cancelInterruptedWidgetDrag,true);
+      window.removeEventListener("dragend",cancelInterruptedWidgetDrag,true);
+    };
+  },[drag,cancelInterruptedWidgetDrag]);
   const scrollDuringWidgetDrag=useCallback((y:number)=>{
     const viewport=document.querySelector<HTMLElement>(".aaa-working-surface");
     if(!viewport)return;
@@ -720,7 +760,9 @@ export default function WidgetStudio(p:Props){
     let projected:Record<string,FluidWidgetRect>|undefined;
     const stableTarget=presetEnabled
       ?presetDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
-        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id))
+        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id),
+        fluidDropRef.current?.id===sourceId&&fluidDropRef.current?.sectionId===sectionId
+          ?fluidDropRef.current.targetId:undefined)
       :fluidDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
         isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id));
     const target=stableTarget&&existing.find(widget=>widget.id===stableTarget.id);
@@ -1054,7 +1096,8 @@ export default function WidgetStudio(p:Props){
     e.preventDefault();e.stopPropagation();
     fluidDragAnchor.current={x:20,y:18};
     const id="developer:"+(data.instances.some(row=>row.id===widget.id)?widget.id:def.id);
-    previewPointer.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
+    previewPointer.current={id,x:e.clientX,y:e.clientY,active:false,target:null,
+      handle:e.currentTarget,pointerId:e.pointerId};
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const previewPointerMove=(e:React.PointerEvent<HTMLSpanElement>)=>{
@@ -1079,7 +1122,8 @@ export default function WidgetStudio(p:Props){
   const startTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>,id:string)=>{
     if(!arrange||(e.pointerType!=="touch"&&!presetEnabled))return;
     e.preventDefault();e.stopPropagation();
-    touchDrag.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
+    touchDrag.current={id,x:e.clientX,y:e.clientY,active:false,target:null,
+      handle:e.currentTarget,pointerId:e.pointerId};
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const moveTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>)=>{
@@ -1518,7 +1562,7 @@ export default function WidgetStudio(p:Props){
         if(drag===widget.id&&dropHint?.edge!=="reorder"){setDrag(null);setDropHint(null);setReorderPreview(null)}
         else commitDrop(dropHint?.edge==="reorder"?dropHint:dropTargetFor(e,widget))}}
       onDragEnd={()=>{if(preview){window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));return}
-        document.body.classList.remove("aaa-page-widget-in-flight");setDrag(null);setDropHint(null);setReorderPreview(null);clearFluidDrop()}}>
+        cancelInterruptedWidgetDrag()}}>
       {(!hideChrome||labelsShown)&&<header className="aaa-widget-card-head">
         <div className="aaa-widget-title-group">
           <div className="aaa-widget-title-stack">
@@ -1544,7 +1588,8 @@ export default function WidgetStudio(p:Props){
               onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();if(def)select("instance",widget.id)}}}
               onPointerMove={moveTouchRearrange}
               onPointerUp={e=>endTouchRearrange(e)}
-              onPointerCancel={e=>endTouchRearrange(e,true)}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
+              onPointerCancel={e=>endTouchRearrange(e,true)}
+              onLostPointerCapture={()=>{if(touchDrag.current?.id===widget.id)cancelInterruptedWidgetDrag()}}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
               {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
             </svg></span>
           </>}
@@ -1554,7 +1599,8 @@ export default function WidgetStudio(p:Props){
             onPointerDown={e=>previewPointerStart(e,widget,def)}
             onPointerMove={previewPointerMove}
             onPointerUp={e=>previewPointerEnd(e)}
-            onPointerCancel={e=>previewPointerEnd(e,true)}>
+            onPointerCancel={e=>previewPointerEnd(e,true)}
+            onLostPointerCapture={()=>{if(previewPointer.current)cancelInterruptedWidgetDrag()}}>
             <svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">{[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}</svg></span>}
           {def&&<button title="Configure in The Companion" aria-label="Configure widget" onClick={()=>select("instance",widget.id)}><Settings2 size={16}/></button>}
           {def&&<button title="Duplicate to another page" aria-label={`Duplicate ${title}`} onClick={()=>{setDuplicate(widget);setDuplicatePageId(page?.id||"");setDuplicateMode("independent")}}><Copy size={15}/></button>}
