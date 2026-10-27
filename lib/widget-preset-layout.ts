@@ -146,8 +146,19 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
         current[row.findIndex(item=>item.id===movingId)]);
       // Shrink the hovered card first, and the incoming card as needed.
       // Keep unaffected siblings unchanged whenever a fit exists.
-      const score=othersShrink*100000+hoveredShrink*100+
-        incomingShrink*250+distanceCost;
+      // A preferred-size incoming widget should remain preferred when
+      // compatible neighboring presets allow it. If a single hovered card
+      // can absorb the insertion, leave every other card completely alone.
+      // Otherwise, distribute the required adjustment fairly among the
+      // eligible neighboring cards rather than crushing one to its minimum.
+      const existingShrinks=row.map((item,i)=>item.id===movingId?null:
+        Math.max(0,widths[i]-current[i])).filter((n):n is number=>n!==null);
+      const imbalance=existingShrinks.length>1
+        ?Math.max(...existingShrinks)-Math.min(...existingShrinks):0;
+      const targetOnly=incomingShrink<EPS&&othersShrink<EPS;
+      const score=incomingShrink*1_000_000-
+        (targetOnly?1_000_000_000:0)+imbalance*10_000+
+        othersShrink*100+hoveredShrink*30+distanceCost;
       if(score<bestScore){bestScore=score;winner=candidate}
       return;
     }
