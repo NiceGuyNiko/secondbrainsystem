@@ -111,6 +111,14 @@ export default function SettingsWorkspace(p:Props) {
           </label>
         </div>
         <p className="calendar-muted">Fit content height reveals the whole record view without changing its width. Match neighboring height adjusts the clicked widget. Full-width row changes its placement. You can always use the separate full-width button.</p>
+        <h3>Widget sizing &amp; placement</h3>
+        <Switch label="Preset widget widths" checked={formation.presetWidths}
+          onChange={value=>setFormation({presetWidths:value})}
+          description="Use the 20–100% preset widths in Library and Goals. Enabled by default. Turn off to return to the existing freeform widget resizing without changing saved layouts."/>
+        <Switch label="Intelligent shrinking" checked={formation.intelligentShrinking}
+          onChange={value=>setFormation({intelligentShrinking:value})}
+          description="When placing a widget alongside another, shrink the hovered widget first if it can accommodate the insertion. If it is constrained, other unlocked widgets may share the adjustment; locked sizes never change."/>
+        <p className="calendar-muted">Individual widget width limits and locks are configured in that widget's Configure panel. These defaults apply across widget pages; they do not alter source records.</p>
         <h3>Fluid layout</h3>
         <Switch label="Fill Freed Space" checked={formation.fillFreedSpace!=="off"}
           onChange={value=>setFormation({fillFreedSpace:value?"column-rise":"off"})}
