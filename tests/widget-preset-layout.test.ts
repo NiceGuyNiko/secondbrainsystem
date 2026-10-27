@@ -148,6 +148,6 @@ test("a pinned widget's x coordinate never changes during insertion",()=>{
     widget("peer",50,0,50),widget("new",0,420,20,{presetPreferredWidth:20})];
   const projected=insertPresetWidget(source,"new","fixed","left");
   assert.equal(projected.newRow,true);
-  assert.equal(initialFluidRects(projected).fixed.x,0);
+  assert.equal(initialFluidRects(projected.items).fixed.x,0);
   noCollision(projected);
 });
