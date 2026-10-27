@@ -4587,3 +4587,19 @@ input[type="range"]{
   display:block;min-width:0;flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;text-align:right;
 }
+
+/* Preset widgets respond to their own measured content boxes, not browser width. */
+.aaa-widget-preset-content{min-width:0;width:100%}
+.aaa-widget-preset-content[data-aaa-responsive-mode="compact"] .aaa-widget-records-cards,
+.aaa-widget-preset-content[data-aaa-responsive-mode="minimal"] .aaa-widget-records-cards{
+  grid-template-columns:minmax(0,1fr);
+}
+.aaa-widget-preset-content[data-aaa-responsive-mode="compact"] .aaa-widget-record,
+.aaa-widget-preset-content[data-aaa-responsive-mode="minimal"] .aaa-widget-record{
+  padding:8px 9px;gap:4px;
+}
+.aaa-widget-preset-content[data-aaa-responsive-mode="minimal"] .aaa-widget-record span:not(.aaa-widget-sequence){
+  display:none;
+}
+.aaa-widget-preset-content .aaa-widget-record,
+.aaa-widget-preset-content .aaa-widget-record strong{min-width:0;overflow-wrap:anywhere}

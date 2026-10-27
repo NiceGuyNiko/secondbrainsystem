@@ -15,9 +15,13 @@ export type WidgetFormationPreferences={
   snapDistancePx:number;
   fillFreedSpace:WidgetGapBehavior;
   displacement:WidgetDisplacement;
+  /** Preset layout applies to all widget pages by default; override in Settings → Widgets. */
+  presetWidths:boolean;
+  intelligentShrinking:boolean;
 };
 export const defaultWidgetFormationPreferences:WidgetFormationPreferences={
-  magneticSnapping:false,quickEdgeSnap:true,snapDistancePx:14,fillFreedSpace:"column-rise",displacement:"same-column"
+  magneticSnapping:false,quickEdgeSnap:true,snapDistancePx:14,fillFreedSpace:"column-rise",displacement:"same-column",
+  presetWidths:true,intelligentShrinking:true
 };
 export function readWidgetFormationPreferences():WidgetFormationPreferences{
   if(typeof window==="undefined")return defaultWidgetFormationPreferences;
@@ -31,7 +35,9 @@ export function readWidgetFormationPreferences():WidgetFormationPreferences{
         ?Math.min(40,Math.max(2,stored.snapDistancePx)):14,
       fillFreedSpace:["off","column-rise","left-to-right"].includes(stored.fillFreedSpace)
         ?stored.fillFreedSpace:previousFill?"column-rise":"off",
-      displacement:stored.displacement==="next-row"?"next-row":"same-column"
+      displacement:stored.displacement==="next-row"?"next-row":"same-column",
+      presetWidths:typeof stored.presetWidths==="boolean"?stored.presetWidths:true,
+      intelligentShrinking:typeof stored.intelligentShrinking==="boolean"?stored.intelligentShrinking:true
     };
   }catch{return defaultWidgetFormationPreferences}
 }

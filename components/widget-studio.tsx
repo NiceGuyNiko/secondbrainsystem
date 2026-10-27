@@ -13,6 +13,10 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   insertFluidBeside,alignFluidWidgetEdge,fluidSharedBoundaries,resizeFluidSharedBoundary,
   fluidDropTargetAtPoint,liftFluidIntoVacancy,preferVacantSnap,fluidGroupId,setFluidGroup,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
+import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
+  resizePresetDivider,presetUpdatePreferred,swapPresetWidgets,presetDropTargetAtPoint} from "@/lib/widget-preset-layout";
+import {modeAtWidth,modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
+import {widgetDragInterruptedByKey} from "@/lib/widget-drag-interruptions";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -50,6 +54,41 @@ type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"
 type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace"|"blocked";
 type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;
   targetId?:string;projected?:Record<string,FluidWidgetRect>};
+
+/** Observe the actual inner widget width; breakpoints never rewrite geometry. */
+function PresetContentRegion({children}:{children:(mode:PresetContentMode)=>React.ReactNode}){
+  const ref=useRef<HTMLDivElement|null>(null);
+  const [mode,setMode]=useState<PresetContentMode>("expanded");
+  const lastWidth=useRef<number|null>(null);
+  const lastMode=useRef<PresetContentMode|null>(null);
+  useEffect(()=>{
+    const element=ref.current;if(!element)return;
+    let frame=0,settled=0;
+    const read=()=>{
+      const width=Math.round(element.getBoundingClientRect().width);
+      if(lastWidth.current===width)return;
+      lastWidth.current=width;
+      const next=modeWithHysteresis(width,lastMode.current);
+      lastMode.current=next;
+      setMode(current=>current===next?current:next);
+      // On pointer release/settle, snap to the direct mode so hysteresis
+      // cannot leave a presentation permanently on the wrong side.
+      window.clearTimeout(settled);
+      settled=window.setTimeout(()=>{
+        const final=modeAtWidth(Math.round(element.getBoundingClientRect().width));
+        lastMode.current=final;
+        setMode(current=>current===final?current:final);
+      },180);
+    };
+    const measure=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(read)};
+    const observer=typeof ResizeObserver==="undefined"?null:new ResizeObserver(measure);
+    observer?.observe(element);measure();
+    return()=>{observer?.disconnect();cancelAnimationFrame(frame);window.clearTimeout(settled)};
+  },[]);
+  return <div ref={ref} className="aaa-widget-preset-content" data-aaa-responsive-mode={mode}>
+    {children(mode)}
+  </div>;
+}
 
 export default function WidgetStudio(p:Props){
   const [data,setData]=useState<Snapshot>(empty);
@@ -95,8 +134,10 @@ export default function WidgetStudio(p:Props){
   const [dropHint,setDropHint]=useState<WidgetDropTarget|null>(null);
   const [reorderPreview,setReorderPreview]=useState<PageWidget[]|null>(null);
   const [expandedWidgetActions,setExpandedWidgetActions]=useState<string|null>(null);
-  const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
-  const previewPointer=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null}|null>(null);
+  const touchDrag=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null;
+    handle?:HTMLElement;pointerId?:number}|null>(null);
+  const previewPointer=useRef<{id:string;x:number;y:number;active:boolean;target:WidgetDropTarget|null;
+    handle?:HTMLElement;pointerId?:number}|null>(null);
   const returnWidgetRef=useRef<(id:string)=>void>(()=>{});
   const dividerWasResized=useRef(false);
   const spanHandleDrag=useRef<{id:string;side:"left"|"right";x:number;completed:boolean}|null>(null);
@@ -193,6 +234,7 @@ export default function WidgetStudio(p:Props){
   const area=p.mode==="goals"?"goals":"library";
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
+  const presetEnabled=formation.presetWidths;
   useEffect(()=>{if(p.editIntent)setArrange(true)},[p.editIntent]);
   useEffect(()=>{
     if(!page?.id)return;
@@ -487,7 +529,10 @@ export default function WidgetStudio(p:Props){
       const {data:row,error}=await supabase.from("aaa_page_widgets")
         .insert({page_id:page.id,definition_id:master.id,kind:"database",position:instanceList.length?Math.max(...instanceList.map(w=>w.position))+1:0,
           width:sourceInstance?.width??12,height:sourceInstance?.height??2,
-          config:{...(sourceInstance?{heightPx:widgetHeightPx(sourceInstance)}:{}),
+          config:{...(sourceInstance?{heightPx:widgetHeightPx(sourceInstance),
+              ...("presetPreferredWidth" in sourceInstance.config?{presetPreferredWidth:sourceInstance.config.presetPreferredWidth}:{}),
+              ...("presetMinWidth" in sourceInstance.config?{presetMinWidth:sourceInstance.config.presetMinWidth}:{}),
+              ...("presetAllowShrink" in sourceInstance.config?{presetAllowShrink:sourceInstance.config.presetAllowShrink}:{})}:{}),
             ...(fluidPlacement?{fluidDesktop:fluidPlacement,
               heightPx:Math.max(160,fluidPlacement.h-WIDGET_EDITOR_FOOTER_PX)}:{}),
             ...(placement?.sectionId||activePlacementSection?{sectionId:placement?.sectionId??activePlacementSection}:{})}})
@@ -497,7 +542,9 @@ export default function WidgetStudio(p:Props){
         ?{initial:row as PageWidget,placed:(()=>{
           const withNew=[...instanceList,row as PageWidget];
           if(fluidIntent?.targetId&&(fluidIntent.intent==="left"||fluidIntent.intent==="right")){
-            const fit=insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
+            const fit=presetEnabled
+              ?insertPresetWidget(withNew,row.id,fluidIntent.targetId,fluidIntent.intent,formation.intelligentShrinking)
+              :insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
             if(fit.placed)return fit.items;
             // A size lock makes side insertion invalid. Keep the new view
             // intact and put it below the target instead of overlapping it.
@@ -620,6 +667,42 @@ export default function WidgetStudio(p:Props){
     }
   };
   const clearFluidDrop=()=>{fluidDropRef.current=null;setFluidDrop(null)};
+  // Native HTML dragging may never fire dragend when the Windows screenshot
+  // overlay or an app switch steals focus. Unwind every piece of transient UI,
+  // including pointer captures and the wheel/autoscroll state.
+  const cancelInterruptedWidgetDrag=useCallback(()=>{
+    const developerDrag=previewPointer.current?.active===true;
+    for(const pointer of [touchDrag.current,previewPointer.current]){
+      if(pointer?.handle&&pointer.pointerId!==undefined){
+        try{if(pointer.handle.hasPointerCapture(pointer.pointerId))
+          pointer.handle.releasePointerCapture(pointer.pointerId)}catch{}
+      }
+    }
+    touchDrag.current=null;previewPointer.current=null;
+    fluidDragPointerY.current=null;fluidDropRef.current=null;
+    setFluidDrop(null);setDrag(null);setDropHint(null);setReorderPreview(null);
+    document.body.classList.remove("aaa-page-widget-in-flight");
+    if(developerDrag)window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));
+  },[]);
+  useEffect(()=>{
+    if(!drag)return;
+    const onVisibility=()=>{if(document.hidden)cancelInterruptedWidgetDrag()};
+    const onKey=(event:KeyboardEvent)=>{
+      if(widgetDragInterruptedByKey(event))cancelInterruptedWidgetDrag();
+    };
+    window.addEventListener("blur",cancelInterruptedWidgetDrag);
+    document.addEventListener("visibilitychange",onVisibility);
+    window.addEventListener("keydown",onKey,true);
+    window.addEventListener("pointercancel",cancelInterruptedWidgetDrag,true);
+    window.addEventListener("dragend",cancelInterruptedWidgetDrag,true);
+    return()=>{
+      window.removeEventListener("blur",cancelInterruptedWidgetDrag);
+      document.removeEventListener("visibilitychange",onVisibility);
+      window.removeEventListener("keydown",onKey,true);
+      window.removeEventListener("pointercancel",cancelInterruptedWidgetDrag,true);
+      window.removeEventListener("dragend",cancelInterruptedWidgetDrag,true);
+    };
+  },[drag,cancelInterruptedWidgetDrag]);
   const scrollDuringWidgetDrag=useCallback((y:number)=>{
     const viewport=document.querySelector<HTMLElement>(".aaa-working-surface");
     if(!viewport)return;
@@ -661,7 +744,8 @@ export default function WidgetStudio(p:Props){
       movingGroup!==null&&instanceList.some(widget=>widget.id===id&&fluidGroupId(widget)===movingGroup);
     const sourceRect=source?initialFluidRects(instanceList.filter(widget=>
       widgetSectionId(widget)===widgetSectionId(source)))[source.id]:null;
-    const w=sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
+    const w=presetEnabled&&source?presetToUnits(presetSizingOf(source,sourceRect??undefined).preferred)
+      :sourceRect?.w??Math.max(2,Math.min(6,Number(source?.config.layoutWidth??source?.width??4)));
     const h=sourceRect?.h??(source?widgetHeightPx(source):280)+WIDGET_EDITOR_FOOTER_PX;
     const isCopy=sourceId.startsWith("developer:");
     const positions=initialFluidRects(existing);
@@ -673,8 +757,13 @@ export default function WidgetStudio(p:Props){
     let rect=preferVacantSnap(raw,snapped,otherRects);
     let intent:FluidDropIntent="free",targetId:string|undefined;
     let projected:Record<string,FluidWidgetRect>|undefined;
-    const stableTarget=fluidDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
-      isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id));
+    const stableTarget=presetEnabled
+      ?presetDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
+        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id),
+        fluidDropRef.current?.id===sourceId&&fluidDropRef.current?.sectionId===sectionId
+          ?fluidDropRef.current.targetId:undefined)
+      :fluidDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
+        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id));
     const target=stableTarget&&existing.find(widget=>widget.id===stableTarget.id);
     if(target&&target.id!==sourceId){
       targetId=target.id;
@@ -693,11 +782,22 @@ export default function WidgetStudio(p:Props){
         const mock:PageWidget={...(source??{id:sourceId,page_id:page?.id??"",definition_id:null,
           kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
           id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:sourceRect??{x:raw.x,y:raw.y,w,h}}};
-        const fit=insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
-          sourceId,target.id,intent);
-        if(fit.placed){projected=initialFluidRects(fit.items);rect=projected[sourceId]}
-        else {intent="blocked";rect=raw;projected=positions}
+        const fit=presetEnabled
+          ?insertPresetWidget([...existing.filter(widget=>widget.id!==sourceId),mock],
+            sourceId,target.id,intent,formation.intelligentShrinking)
+          :insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
+            sourceId,target.id,intent);
+        if(fit.placed){
+          projected=initialFluidRects(fit.items);rect=projected[sourceId];
+          if(presetEnabled&&"newRow" in fit&&fit.newRow)intent="below";
+        }else {intent="blocked";rect=raw;projected=positions}
         }
+      }else if(presetEnabled&&source&&intent==="replace"){
+        const swapped=swapPresetWidgets(existing,sourceId,target.id);
+        const before=initialFluidRects(existing),after=initialFluidRects(swapped);
+        if(JSON.stringify(after)!==JSON.stringify(before)){
+          projected=after;rect=after[sourceId];
+        }else rect={...rect,x:peer.x,y:peer.y};
       }else rect={...rect,x:peer.x,y:peer.y};
     }
     if(intent==="free"&&formation.fillFreedSpace!=="off"&&!movingGroup){
@@ -709,9 +809,11 @@ export default function WidgetStudio(p:Props){
         kind:"database",title:null,width:w,height:2,position:existing.length,config:{}}),
         id:sourceId,config:{...(source?.config??{}),sectionId,
           fluidDesktop:sourceRect??{x:rect.x,y:rect.y,w,h}}};
-      const simulated=placeFluidWidget(existing.some(widget=>widget.id===sourceId)
-        ?existing:[...existing,mock],sourceId,rect);
+      const simulated=presetEnabled
+        ?movePresetWidget(existing.some(widget=>widget.id===sourceId)?existing:[...existing,mock],sourceId,rect)
+        :placeFluidWidget(existing.some(widget=>widget.id===sourceId)?existing:[...existing,mock],sourceId,rect);
       projected=initialFluidRects(simulated);
+      rect=projected[sourceId]??rect;
     }
     const next:FluidDrop={sectionId,id:sourceId,rect,intent,targetId,projected};
     fluidDropRef.current=next;
@@ -745,8 +847,11 @@ export default function WidgetStudio(p:Props){
           return position?{...item,config:{...item.config,fluidDesktop:position}}:item;
         })
         :placement.targetId&&(placement.intent==="left"||placement.intent==="right")
-          ?insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items
-          :placeFluidWidget(moved,sourceId,placement.rect);
+          ?(presetEnabled
+            ?insertPresetWidget(moved,sourceId,placement.targetId,placement.intent,formation.intelligentShrinking).items
+            :insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items)
+          :(presetEnabled?movePresetWidget(moved,sourceId,placement.rect)
+            :placeFluidWidget(moved,sourceId,placement.rect));
       if(updated.some((w,index)=>JSON.stringify(w.config)!==JSON.stringify(instanceList[index]?.config)))saveLayout(updated);
       else setNotice("This widget is locked or the chosen position is occupied by a pinned widget.");
     }
@@ -823,7 +928,9 @@ export default function WidgetStudio(p:Props){
   const sharedResizeMove=(e:React.PointerEvent<HTMLButtonElement>)=>{
     const start=sharedResizeStart.current;if(!start)return;
     const dx=Math.round((e.clientX-start.x)/start.unit*20)/20;
-    const updated=resizeFluidSharedBoundary(start.initial,start.leftId,start.rightId,dx);
+    const updated=presetEnabled
+      ?resizePresetDivider(start.initial,start.leftId,start.rightId,dx)
+      :resizeFluidSharedBoundary(start.initial,start.leftId,start.rightId,dx);
     const changes=new Map(updated.map(w=>[w.id,w]));
     const next=start.initial.map(w=>changes.get(w.id)??w);
     resizePreviewRef.current=next;setResizePreview(next);
@@ -988,7 +1095,8 @@ export default function WidgetStudio(p:Props){
     e.preventDefault();e.stopPropagation();
     fluidDragAnchor.current={x:20,y:18};
     const id="developer:"+(data.instances.some(row=>row.id===widget.id)?widget.id:def.id);
-    previewPointer.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
+    previewPointer.current={id,x:e.clientX,y:e.clientY,active:false,target:null,
+      handle:e.currentTarget,pointerId:e.pointerId};
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const previewPointerMove=(e:React.PointerEvent<HTMLSpanElement>)=>{
@@ -1011,14 +1119,15 @@ export default function WidgetStudio(p:Props){
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const startTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>,id:string)=>{
-    if(!arrange||e.pointerType!=="touch")return;
+    if(!arrange||(e.pointerType!=="touch"&&!presetEnabled))return;
     e.preventDefault();e.stopPropagation();
-    touchDrag.current={id,x:e.clientX,y:e.clientY,active:false,target:null};
+    touchDrag.current={id,x:e.clientX,y:e.clientY,active:false,target:null,
+      handle:e.currentTarget,pointerId:e.pointerId};
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const moveTouchRearrange=(e:React.PointerEvent<HTMLSpanElement>)=>{
     const state=touchDrag.current;
-    if(!state||e.pointerType!=="touch")return;
+    if(!state||(e.pointerType!=="touch"&&!presetEnabled))return;
     if(!state.active&&Math.hypot(e.clientX-state.x,e.clientY-state.y)<9)return;
     if(!state.active){state.active=true;setDrag(state.id);}
     const target=touchTargetAt(e.clientX,e.clientY,state.id);
@@ -1038,6 +1147,7 @@ export default function WidgetStudio(p:Props){
         ?reorderWidgetColumn(instanceList,pageSections,state.id,state.target.targetId)
         :placeWidget(instanceList,pageSections,state.id,state.target,fillGaps,formation));
     setDrag(null);setDropHint(null);
+    if(cancel)cancelInterruptedWidgetDrag();
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
@@ -1209,6 +1319,18 @@ export default function WidgetStudio(p:Props){
             band.lanes.some(l=>l.widgets.some(w=>w.id!==instance.id&&w.config.magneticLinked===true))
             ?"Adjacent columns share a magnetic boundary":"No magnetic connection";
         })():"Snapping disabled"):undefined,
+      presetSizing:presetEnabled&&instance
+        ?presetSizingOf(instance,initialFluidRects(instanceList)[instance.id]):undefined,
+      onPresetSizing:presetEnabled&&instance?patch=>{
+        const original=presetSizingOf(instance,initialFluidRects(instanceList)[instance.id]);
+        const preferred=patch.preferred??original.preferred;
+        const minimum=Math.min(patch.minimum??original.minimum,preferred);
+        const next=patch.preferred!==undefined
+          ?presetUpdatePreferred(instanceList,instance.id,preferred):instanceList;
+        saveLayout(next.map(w=>w.id===instance.id?{...w,config:{...w.config,
+          presetPreferredWidth:preferred,presetMinWidth:minimum,
+          presetAllowShrink:patch.allowShrink??original.allowShrink}}:w));
+      }:undefined,
       databases:data.databases,views:data.views,properties:data.properties,
       onConfig:updateConfig,onSource:updateSource,
       onRename:name=>instance&&!widgetIsSynced(instance)?changeInstance(instance.id,{title:name}):changeDefinition(def.id,{name}),
@@ -1242,7 +1364,7 @@ export default function WidgetStudio(p:Props){
     });
   // Selection and persisted state are the only sources for the Companion's controls.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties,arrange,formation,fluidEnabled]);
+  },[selected,data.instances,data.definitions,data.databases,data.views,data.properties,arrange,formation,fluidEnabled,presetEnabled]);
 
   const createRecord=async(databaseId:string,widgetId:string)=>{
     const name=newRecord[widgetId]?.trim();if(!name)return;
@@ -1265,13 +1387,19 @@ export default function WidgetStudio(p:Props){
     }catch(e){report(e)}
   };
 
-  const renderRecords=(widgetId:string,def:WidgetDefinition,instance?:PageWidget)=>{
+  const renderRecords=(widgetId:string,def:WidgetDefinition,instance?:PageWidget,
+    contentMode:PresetContentMode="expanded")=>{
     const source=instance?sourceOf(instance):{databaseId:def.database_id,viewId:def.view_id};
     const db=data.databases.find(x=>x.id===source.databaseId);
     if(!db)return <div className="aaa-widget-empty"><Database size={25}/> Choose a database in Configure to connect live records.</div>;
-    const cfg=effectiveConfig(def,instance);
+    const baseCfg=effectiveConfig(def,instance);
+    const compactTable=(contentMode==="compact"||contentMode==="minimal")&&baseCfg.renderer==="table";
+    const minimalCards=contentMode==="minimal"&&baseCfg.renderer==="cards";
+    const cfg={...baseCfg,renderer:compactTable||minimalCards?"list" as const:baseCfg.renderer};
     const fields=data.properties.filter(x=>x.database_id===db.id);
-    const columns=cfg.visibleProperties.length?fields.filter(x=>cfg.visibleProperties.includes(x.id)):fields.slice(0,4);
+    const allColumns=cfg.visibleProperties.length?fields.filter(x=>cfg.visibleProperties.includes(x.id)):fields.slice(0,4);
+    const columns=contentMode==="minimal"?[]:contentMode==="compact"?allColumns.slice(0,1)
+      :contentMode==="comfortable"?allColumns.slice(0,2):allColumns;
     const viewContext={
       name:(id:string)=>data.titles[id]||"Untitled record",
       relationTargets:(recordId:string,propertyId:string)=>data.relations.filter(link=>link.source_record_id===recordId&&link.property_id===propertyId).map(link=>data.titles[link.target_record_id]||"Untitled")
@@ -1434,7 +1562,7 @@ export default function WidgetStudio(p:Props){
         if(drag===widget.id&&dropHint?.edge!=="reorder"){setDrag(null);setDropHint(null);setReorderPreview(null)}
         else commitDrop(dropHint?.edge==="reorder"?dropHint:dropTargetFor(e,widget))}}
       onDragEnd={()=>{if(preview){window.dispatchEvent(new Event("aaa-developer-widget-drag-end"));return}
-        document.body.classList.remove("aaa-page-widget-in-flight");setDrag(null);setDropHint(null);setReorderPreview(null);clearFluidDrop()}}>
+        cancelInterruptedWidgetDrag()}}>
       {(!hideChrome||labelsShown)&&<header className="aaa-widget-card-head">
         <div className="aaa-widget-title-group">
           <div className="aaa-widget-title-stack">
@@ -1460,7 +1588,8 @@ export default function WidgetStudio(p:Props){
               onKeyDown={e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();if(def)select("instance",widget.id)}}}
               onPointerMove={moveTouchRearrange}
               onPointerUp={e=>endTouchRearrange(e)}
-              onPointerCancel={e=>endTouchRearrange(e,true)}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
+              onPointerCancel={e=>endTouchRearrange(e,true)}
+              onLostPointerCapture={()=>{if(touchDrag.current?.id===widget.id)cancelInterruptedWidgetDrag()}}><svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">
               {[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}
             </svg></span>
           </>}
@@ -1470,7 +1599,8 @@ export default function WidgetStudio(p:Props){
             onPointerDown={e=>previewPointerStart(e,widget,def)}
             onPointerMove={previewPointerMove}
             onPointerUp={e=>previewPointerEnd(e)}
-            onPointerCancel={e=>previewPointerEnd(e,true)}>
+            onPointerCancel={e=>previewPointerEnd(e,true)}
+            onLostPointerCapture={()=>{if(previewPointer.current)cancelInterruptedWidgetDrag()}}>
             <svg viewBox="0 0 24 18" width="19" height="16" fill="currentColor" aria-hidden="true">{[5,12,19].map(x=>[5,13].map(y=><circle key={x+"-"+y} cx={x} cy={y} r="1.7"/>))}</svg></span>}
           {def&&<button title="Configure in The Companion" aria-label="Configure widget" onClick={()=>select("instance",widget.id)}><Settings2 size={16}/></button>}
           {def&&<button title="Duplicate to another page" aria-label={`Duplicate ${title}`} onClick={()=>{setDuplicate(widget);setDuplicatePageId(page?.id||"");setDuplicateMode("independent")}}><Copy size={15}/></button>}
@@ -1484,7 +1614,10 @@ export default function WidgetStudio(p:Props){
       </header>}
       {!folded&&<div className="aaa-widget-card-body">
         {widget.kind==="goals"?<PlanningWorkspace key={widget.id} section="Goals" onContext={p.onPlanningContext??(()=>{})} onOpenPage={p.onOpenRecord} onSchedule={p.onSchedule??(()=>{})}/>
-        :def?renderRecords(widget.id,def,widget):<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
+        :def?(presetEnabled&&fluidCard
+          ?<PresetContentRegion>{mode=>renderRecords(widget.id,def,widget,mode)}</PresetContentRegion>
+          :renderRecords(widget.id,def,widget))
+          :<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
       </div>}
       {editing&&!folded&&<footer className="aaa-widget-card-resize">
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
