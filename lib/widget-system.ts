@@ -80,7 +80,10 @@ export function widgetPlacementConfig(widget:PageWidget,sectionId=widgetSectionI
     ...(widget.config.fluidDesktop&&typeof widget.config.fluidDesktop==="object"&&!Array.isArray(widget.config.fluidDesktop)
       ?{fluidDesktop:widget.config.fluidDesktop}:{}),
     ...(typeof widget.config.fluidGroupId==="string"?{fluidGroupId:widget.config.fluidGroupId}:{}),
-    ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{})};
+    ...(typeof widget.config.layoutOffsetPx==="number"?{layoutOffsetPx:widget.config.layoutOffsetPx}:{}),
+    ...(typeof widget.config.presetPreferredWidth==="number"?{presetPreferredWidth:widget.config.presetPreferredWidth}:{}),
+    ...(typeof widget.config.presetMinWidth==="number"?{presetMinWidth:widget.config.presetMinWidth}:{}),
+    ...(typeof widget.config.presetAllowShrink==="boolean"?{presetAllowShrink:widget.config.presetAllowShrink}:{})};
 }
 export function placementConfigAfterPublish(widget:PageWidget):Record<string,unknown>{
   return widgetPlacementConfig(widget);
@@ -119,6 +122,8 @@ export type WidgetConfigureTarget={
   magneticLinked?:boolean;
   layoutEditing?:boolean;
   rowOccupancy?:number;magneticConnections?:string;
+  presetSizing?:{preferred:number;minimum:number;allowShrink:boolean};
+  onPresetSizing?:(patch:Partial<{preferred:number;minimum:number;allowShrink:boolean}>)=>void;
   databases:WidgetDatabase[];views:WidgetView[];properties:WidgetProperty[];
   onConfig:(patch:Partial<WidgetConfig>)=>void;
   onSource:(databaseId:string|null,viewId:string|null)=>void;
