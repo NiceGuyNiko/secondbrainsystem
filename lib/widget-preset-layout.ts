@@ -1,4 +1,4 @@
-import {fluidCanvasHeight,fluidOverlaps,fluidSharedBoundaries,initialFluidRects,placeFluidWidget,resizeFluidSharedBoundary,FLUID_GAP,type FluidWidgetRect} from "./widget-fluid-layout";
+import {fluidCanvasHeight,fluidOverlaps,fluidSharedBoundaries,fluidDropTargetAtPoint,initialFluidRects,placeFluidWidget,resizeFluidSharedBoundary,FLUID_GAP,type FluidWidgetRect} from "./widget-fluid-layout";
 import {widgetRowPinned,widgetSizeLocked} from "./widget-formation";
 import {widgetSectionId,type PageWidget} from "./widget-system";
 
@@ -32,6 +32,22 @@ function options(widget:PageWidget,current:number,min:number,canShrink:boolean):
   const values=PRESET_WIDTHS.filter(n=>n>=min-EPS&&n<=current+EPS);
   return values.length?values.slice().reverse():[current];
 }
+/** Preset insertion targets the actual widget under the cursor, independent
+ * of the cursor's Y within the card. Vertical stacking is a drop into blank
+ * canvas space, not an accidental effect of hovering the bottom of a widget.
+ * The center band is reserved for explicit same-row swaps. */
+export function presetDropTargetAtPoint(positions:Record<string,FluidWidgetRect>,
+  canvas:{left:number;top:number;width:number},pointer:{x:number;y:number},
+  excluded:readonly string[]=[]):{id:string;intent:"left"|"right"|"replace"}|null{
+  const hit=fluidDropTargetAtPoint(positions,canvas,pointer,excluded);
+  if(!hit)return null;
+  const r=positions[hit.id];
+  const left=canvas.left+r.x/12*canvas.width+(r.x>0?7:0);
+  const width=r.w/12*canvas.width-(r.x>0?7:0)-(r.x+r.w<11.999?7:0);
+  const proportion=(pointer.x-left)/Math.max(1,width);
+  return {id:hit.id,intent:proportion<.44?"left":proportion>.56?"right":"replace"};
+}
+
 export type PresetPlacement={
   items:PageWidget[];
   placed:boolean;
