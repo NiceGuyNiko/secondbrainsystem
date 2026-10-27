@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {closestPreset,insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
-  presetUpdatePreferred,resizePresetDivider,swapPresetWidgets,PRESET_WIDTHS} from "../lib/widget-preset-layout";
+  presetUpdatePreferred,resizePresetDivider,swapPresetWidgets,presetDropTargetAtPoint,PRESET_WIDTHS} from "../lib/widget-preset-layout";
 import {fluidOverlaps,initialFluidRects,fluidSharedBoundaries} from "../lib/widget-fluid-layout";
 import type {PageWidget} from "../lib/widget-system";
 
@@ -35,11 +35,11 @@ test("full width table plus 20% rollup projects and saves 80/20",()=>{
   noCollision(result.items);
   assert.equal(result.items[0].definition_id,old.definition_id);
 });
-test("two 50% widgets compress to 40/40/20",()=>{
+test("hovering the second 50% widget shrinks it first to 30%, preserving the first at 50%",()=>{
   const list=[widget("a",0,0,50),widget("b",50,0,50),
     widget("c",0,420,20,{presetPreferredWidth:20,presetMinWidth:20})];
   const result=insertPresetWidget(list,"c","b","right");
-  assert.deepEqual(["a","b","c"].map(id=>width(result.items,id)),[40,40,20]);
+  assert.deepEqual(["a","b","c"].map(id=>width(result.items,id)),[50,30,20]);
   noCollision(result.items);
 });
 test("a size-locked full page never shrinks; visitor goes below",()=>{
@@ -150,4 +150,84 @@ test("a pinned widget's x coordinate never changes during insertion",()=>{
   assert.equal(projected.newRow,true);
   assert.equal(initialFluidRects(projected.items).fixed.x,0);
   noCollision(projected.items);
+});
+
+test("right insertion shrinks hovered card, never its left neighbor",()=>{
+  const left=widget("left",0,0,50),hovered=widget("hovered",50,0,50),
+    incoming=widget("incoming",0,420,20,{presetPreferredWidth:20});
+  const placed=insertPresetWidget([left,hovered,incoming],"incoming","hovered","right");
+  assert.equal(placed.newRow,false);
+  assert.deepEqual(["left","hovered","incoming"].map(id=>width(placed.items,id)),[50,30,20]);
+  const rects=initialFluidRects(placed.items);
+  assert.equal(rects.left.x,0);
+  assert.equal(rects.hovered.x,presetToUnits(50));
+  assert.equal(rects.incoming.x,presetToUnits(80));
+  noCollision(placed.items);
+});
+test("left insertion shrinks the same hovered card and preserves the peer",()=>{
+  const left=widget("left",0,0,50),hovered=widget("hovered",50,0,50),
+    incoming=widget("incoming",0,420,20,{presetPreferredWidth:20});
+  const placed=insertPresetWidget([left,hovered,incoming],"incoming","hovered","left");
+  assert.equal(placed.newRow,false);
+  assert.deepEqual(["left","hovered","incoming"].map(id=>width(placed.items,id)),[50,30,20]);
+  const rects=initialFluidRects(placed.items);
+  assert.equal(rects.left.x,0);
+  assert.equal(rects.incoming.x,presetToUnits(50));
+  assert.equal(rects.hovered.x,presetToUnits(70));
+  noCollision(placed.items);
+});
+test("target changes which widget shrinks when inserting on opposite side",()=>{
+  const list=[widget("left",0,0,50),widget("right",50,0,50),
+    widget("incoming",0,420,20,{presetPreferredWidth:20})];
+  const placed=insertPresetWidget(list,"incoming","left","left");
+  assert.equal(placed.newRow,false);
+  assert.equal(width(placed.items,"left"),30);
+  assert.equal(width(placed.items,"right"),50);
+  assert.equal(initialFluidRects(placed.items).incoming.x,0);
+  noCollision(placed.items);
+});
+test("locked hovered widget is preserved; neighboring unlocked card supplies space",()=>{
+  const list=[widget("other",0,0,50),widget("hovered",50,0,50,{sizeLocked:true}),
+    widget("incoming",0,450,20,{presetPreferredWidth:20})];
+  const placed=insertPresetWidget(list,"incoming","hovered","left");
+  assert.equal(placed.newRow,false);
+  assert.equal(width(placed.items,"hovered"),50);
+  assert.equal(width(placed.items,"other"),30);
+  noCollision(placed.items);
+});
+test("turned-off intelligent shrinking puts a new widget below a full row",()=>{
+  const list=[widget("full",0,0,100),
+    widget("incoming",0,420,20,{presetPreferredWidth:20})];
+  const placed=insertPresetWidget(list,"incoming","full","right",false);
+  assert.equal(placed.newRow,true);
+  assert.equal(width(placed.items,"full"),100);
+  noCollision(placed.items);
+});
+test("hover side is based on target X, even at very top or bottom of widget",()=>{
+  const items=[widget("left",0,0,50),widget("right",50,0,50)];
+  const rects=initialFluidRects(items),canvas={left:100,top:200,width:1200};
+  assert.deepEqual(presetDropTargetAtPoint(rects,canvas,{x:750,y:202}),
+    {id:"right",intent:"left"});
+  assert.deepEqual(presetDropTargetAtPoint(rects,canvas,{x:1280,y:512}),
+    {id:"right",intent:"right"});
+  assert.deepEqual(presetDropTargetAtPoint(rects,canvas,{x:1000,y:360}),
+    {id:"right",intent:"replace"});
+});
+test("locked preferred minimum is respected even when unlocked flag is true",()=>{
+  const list=[widget("fixed",0,0,100,{presetMinWidth:100}),
+    widget("visitor",0,450,20,{presetPreferredWidth:20})];
+  const placed=insertPresetWidget(list,"visitor","fixed","right");
+  assert.equal(placed.newRow,true);
+  assert.equal(width(placed.items,"fixed"),100);
+  noCollision(placed.items);
+});
+test("side drop shifts an overlapping lower card only if extra height requires it",()=>{
+  const list=[widget("main",0,0,100),widget("later",0,328,100),
+    widget("incoming",0,900,20,{presetPreferredWidth:20})];
+  list[2].config.fluidDesktop={x:0,y:900,w:presetToUnits(20),h:480};
+  const placed=insertPresetWidget(list,"incoming","main","right");
+  assert.equal(placed.newRow,false);
+  assert.ok(initialFluidRects(placed.items).later.y>=480+14);
+  assert.equal(initialFluidRects(placed.items).main.y,0);
+  noCollision(placed.items);
 });
