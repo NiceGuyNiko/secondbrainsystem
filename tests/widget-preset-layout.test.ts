@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {closestPreset,insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
-  presetUpdatePreferred,resizePresetDivider,PRESET_WIDTHS} from "../lib/widget-preset-layout";
+  presetUpdatePreferred,resizePresetDivider,swapPresetWidgets,PRESET_WIDTHS} from "../lib/widget-preset-layout";
 import {fluidOverlaps,initialFluidRects,fluidSharedBoundaries} from "../lib/widget-fluid-layout";
 import type {PageWidget} from "../lib/widget-system";
 
@@ -131,4 +131,23 @@ test("preferred width and minimum preferences survive in placement config",()=>{
   const next=presetUpdatePreferred([original],"a",75)[0];
   assert.equal(next.config.presetPreferredWidth,75);
   assert.equal(width([next],"a"),75);
+});
+
+test("center dropping a 20% widget over an 80% sibling swaps their order",()=>{
+  const source=[widget("wide",0,0,80),widget("small",80,0,20)];
+  const projected=swapPresetWidgets(source,"small","wide");
+  assert.equal(initialFluidRects(projected).small.x,0);
+  assert.equal(initialFluidRects(projected).wide.x,presetToUnits(20));
+  assert.equal(width(projected,"wide"),80);
+  assert.equal(width(projected,"small"),20);
+  assert.equal(projected[0].definition_id,source[0].definition_id);
+  noCollision(projected);
+});
+test("a pinned widget's x coordinate never changes during insertion",()=>{
+  const source=[widget("fixed",0,0,50,{rowPinned:true}),
+    widget("peer",50,0,50),widget("new",0,420,20,{presetPreferredWidth:20})];
+  const projected=insertPresetWidget(source,"new","fixed","left");
+  assert.equal(projected.newRow,true);
+  assert.equal(initialFluidRects(projected).fixed.x,0);
+  noCollision(projected);
 });
