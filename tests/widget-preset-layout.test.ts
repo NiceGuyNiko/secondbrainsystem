@@ -221,13 +221,15 @@ test("locked preferred minimum is respected even when unlocked flag is true",()=
   assert.equal(width(placed.items,"fixed"),100);
   noCollision(placed.items);
 });
-test("side drop shifts an overlapping lower card only if extra height requires it",()=>{
+test("tall incoming card shortens into available clearance without displacing lower row",()=>{
   const list=[widget("main",0,0,100),widget("later",0,328,100),
     widget("incoming",0,900,20,{presetPreferredWidth:20})];
   list[2].config.fluidDesktop={x:0,y:900,w:presetToUnits(20),h:480};
   const placed=insertPresetWidget(list,"incoming","main","right");
   assert.equal(placed.newRow,false);
-  assert.ok(initialFluidRects(placed.items).later.y>=480+14);
+  assert.equal(initialFluidRects(placed.items).later.y,328);
+  assert.equal(initialFluidRects(placed.items).incoming.h,314);
+  assert.equal(placed.items[2].config.heightPx,280);
   assert.equal(initialFluidRects(placed.items).main.y,0);
   noCollision(placed.items);
 });
@@ -272,4 +274,83 @@ test("minimum constraints trump ratio balancing and prevent an impossible 30 / 3
   assert.equal(placed.newRow,true);
   assert.equal(width(placed.items,"third"),40);
   noCollision(placed.items);
+});
+
+test("moving a 625px widget beside a short target retains the lower card's Y",()=>{
+  const above=widget("above",0,0,100);
+  const below=widget("below",0,328,100);
+  const moving=widget("moving",0,1100,20,{presetPreferredWidth:20,
+    presetMinWidth:20,heightPx:591});
+  moving.config.fluidDesktop={x:0,y:1100,w:presetToUnits(20),h:625};
+  const placed=insertPresetWidget([above,below,moving],"moving","above","right");
+  const rects=initialFluidRects(placed.items);
+  assert.equal(placed.newRow,false);
+  assert.equal(rects.moving.h,314);
+  assert.equal(rects.below.y,328);
+  assert.equal(rects.above.h,314);
+  assert.equal(placed.items[2].config.heightPx,280);
+  noCollision(placed.items);
+});
+test("height fit is local to occupied columns; unrelated lower widget is untouched",()=>{
+  const above=widget("above",0,0,50);
+  const below=widget("below",0,328,50);
+  const moving=widget("moving",0,950,50,{presetPreferredWidth:50,
+    heightPx:591});
+  moving.config.fluidDesktop={x:0,y:950,w:presetToUnits(50),h:625};
+  const placed=insertPresetWidget([above,below,moving],"moving","above","right");
+  const rects=initialFluidRects(placed.items);
+  assert.equal(placed.newRow,false);
+  assert.equal(rects.moving.h,625);
+  assert.equal(rects.below.y,328);
+  noCollision(placed.items);
+});
+test("content-fit widget stays tall and may move a lower widget instead",()=>{
+  const above=widget("above",0,0,100);
+  const below=widget("below",0,328,100);
+  const moving=widget("moving",0,950,20,{presetPreferredWidth:20,
+    heightPx:591,fitContent:true});
+  moving.config.fluidDesktop={x:0,y:950,w:presetToUnits(20),h:625};
+  const placed=insertPresetWidget([above,below,moving],"moving","above","right");
+  const rects=initialFluidRects(placed.items);
+  assert.equal(rects.moving.h,625);
+  assert.ok(rects.below.y>=639);
+  noCollision(placed.items);
+});
+test("size-locked incoming widget keeps its full height on side insertion",()=>{
+  const above=widget("above",0,0,100);
+  const below=widget("below",0,328,100);
+  const moving=widget("moving",0,950,20,{presetPreferredWidth:20,
+    heightPx:591,sizeLocked:true});
+  moving.config.fluidDesktop={x:0,y:950,w:presetToUnits(20),h:625};
+  const placed=insertPresetWidget([above,below,moving],"moving","above","right");
+  const rects=initialFluidRects(placed.items);
+  assert.equal(rects.moving.h,625);
+  assert.ok(rects.below.y>=639);
+  noCollision(placed.items);
+});
+test("insufficient vertical clearance cannot force a height below 194px",()=>{
+  const above=widget("above",0,0,100);
+  above.config.fluidDesktop={x:0,y:0,w:12,h:194};
+  const below=widget("below",0,208,100);
+  const moving=widget("moving",0,950,20,{presetPreferredWidth:20,heightPx:591});
+  moving.config.fluidDesktop={x:0,y:950,w:presetToUnits(20),h:625};
+  const placed=insertPresetWidget([above,below,moving],"moving","above","right");
+  const rects=initialFluidRects(placed.items);
+  assert.ok(rects.moving.h>=194);
+  assert.ok(rects.below.y>=rects.moving.h+14);
+  noCollision(placed.items);
+});
+test("row transition hysteresis keeps the prior hovered card while crossing its boundary",()=>{
+  const list=[widget("upper",0,0,100),widget("lower",0,328,100)];
+  const r=initialFluidRects(list),canvas={left:100,top:100,width:1200};
+  assert.deepEqual(presetDropTargetAtPoint(r,canvas,{x:700,y:419},[],"lower"),
+    {id:"lower",intent:"replace"});
+  assert.deepEqual(presetDropTargetAtPoint(r,canvas,{x:700,y:393},[],"lower"),
+    {id:"lower",intent:"replace"});
+  assert.deepEqual(presetDropTargetAtPoint(r,canvas,{x:700,y:385},[],"lower"),
+    {id:"upper",intent:"replace"});
+  assert.deepEqual(presetDropTargetAtPoint(r,canvas,{x:700,y:442},[],"upper"),
+    {id:"upper",intent:"replace"});
+  assert.deepEqual(presetDropTargetAtPoint(r,canvas,{x:700,y:475},[],"upper"),
+    {id:"lower",intent:"replace"});
 });
