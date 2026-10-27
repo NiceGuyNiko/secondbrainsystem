@@ -90,7 +90,34 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
     <div className="aaa-widget-config-group"><strong>Appearance &amp; size</strong>
       <div className="aaa-widget-config-pair"><label className="aaa-widget-field">Density<select value={cfg.density} onChange={e=>change({density:e.target.value as WidgetConfig["density"]})}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
       <label className="aaa-widget-field">Accent<select value={cfg.color} onChange={e=>change({color:e.target.value as WidgetConfig["color"]})}><option value="theme">Theme</option><option value="gold">Gold</option><option value="blue">Blue</option><option value="green">Green</option></select></label></div>
-      {selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select disabled={selection.sizeLocked} value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>
+      {selection.presetSizing&&<div className="aaa-widget-layout-constraints" aria-label="Preset widget designer">
+        <strong>Preset width designer</strong>
+        <p>Choose the preferred footprint and smallest usable width. Neighboring widgets only shrink to allowed presets; locked rows place a new widget below.</p>
+        <div className="aaa-widget-config-pair">
+          <label className="aaa-widget-field">Preferred width
+            <select aria-label="Preferred widget width" disabled={selection.sizeLocked}
+              value={selection.presetSizing.preferred}
+              onChange={e=>selection.onPresetSizing?.({preferred:Number(e.target.value)})}>
+              {[20,25,30,33,40,50,60,67,75,80,100].map(width=>
+                <option key={width} value={width}>{width===100?"Full width · 100%":width+"%"}</option>)}
+            </select>
+          </label>
+          <label className="aaa-widget-field">Minimum width
+            <select aria-label="Minimum widget width" disabled={selection.sizeLocked}
+              value={selection.presetSizing.minimum}
+              onChange={e=>selection.onPresetSizing?.({minimum:Number(e.target.value)})}>
+              {[20,25,30,33,40,50,60,67,75,80,100]
+                .filter(width=>width<=selection.presetSizing!.preferred)
+                .map(width=><option key={width} value={width}>{width}%</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="aaa-widget-switch"><span>Allow intelligent shrinking</span>
+          <input type="checkbox" checked={selection.presetSizing.allowShrink}
+            onChange={e=>selection.onPresetSizing?.({allowShrink:e.target.checked})}/>
+        </label>
+      </div>}
+      {!selection.presetSizing&&selection.onSize&&<div className="aaa-widget-config-pair"><label className="aaa-widget-field">Width<select disabled={selection.sizeLocked} value={selection.width??6} onChange={e=>selection.onSize?.(Number(e.target.value),selection.height??2)}>
         {[3,4,6,8,9,12].map(x=><option key={x} value={x}>{x===12?"Full · 100%":x===3?"Small · 25%":x===4?"Third · 33%":x===6?"Medium · 50%":x===8?"Wide · 67%":"Large · 75%"}</option>)}
         {![3,4,6,8,9,12].includes(selection.width??6)&&<option value={selection.width}>{Math.round((selection.width??6)/12*100)}% custom</option>}
       </select></label><label className="aaa-widget-field">Height (px)
@@ -110,7 +137,9 @@ export default function WidgetConfigurePanel({selection,onClose,onEditDatabase}:
           {" · "}{selection.magneticConnections??"No magnetic connection"}</p>
         {selection.sizeLocked&&<p>Width and height are fixed. Unlock the widget before resizing it or using its space for another column.</p>}
       </div>}
-      {selection.onHeightPx&&<p>Width snaps to useful column sizes. Drag the corner for fluid height and width adjustments; neighboring stacks keep their own heights.</p>}
+      {selection.onHeightPx&&<p>{selection.presetSizing
+        ?"Dividers snap to compatible preset ratios. Height stays independent of width; enable content-fit from the widget controls."
+        :"Width snaps to useful column sizes. Drag the corner for fluid height and width adjustments; neighboring stacks keep their own heights."}</p>}
       {selection.synced&&<p className="aaa-widget-sync-notice">Widget Sync is on. Configuration changes here update every member of this sync group. Position, section, width and height stay local to each page.</p>}
     </div>
     <div className="aaa-widget-config-group"><strong>Interaction</strong>
