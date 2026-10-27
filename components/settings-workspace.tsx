@@ -118,7 +118,7 @@ export default function SettingsWorkspace(p:Props) {
         <Switch label="Intelligent shrinking" checked={formation.intelligentShrinking}
           onChange={value=>setFormation({intelligentShrinking:value})}
           description="When placing a widget alongside another, shrink the hovered widget first if it can accommodate the insertion. If it is constrained, other unlocked widgets may share the adjustment; locked sizes never change."/>
-        <p className="calendar-muted">Individual widget width limits and locks are configured in that widget's Configure panel. These defaults apply across widget pages; they do not alter source records.</p>
+        <p className="calendar-muted">Individual widget width limits and locks are configured in that widget&apos;s Configure panel. These defaults apply across widget pages; they do not alter source records.</p>
         <h3>Fluid layout</h3>
         <Switch label="Fill Freed Space" checked={formation.fillFreedSpace!=="off"}
           onChange={value=>setFormation({fillFreedSpace:value?"column-rise":"off"})}
