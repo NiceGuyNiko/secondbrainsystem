@@ -121,7 +121,6 @@ export default function WidgetStudio(p:Props){
   const [expandedRecords,setExpandedRecords]=useState<Record<string,string[]>>({});
   const [drag,setDrag]=useState<string|null>(null);
   const [selectedWidgetIds,setSelectedWidgetIds]=useState<string[]>([]);
-  const [presetByPage,setPresetByPage]=useState<Record<string,boolean>>({});
   const fluidEnabled=p.mode!=="widgets";
   const [fluidDrop,setFluidDrop]=useState<FluidDrop|null>(null);
   const fluidDropRef=useRef<FluidDrop|null>(null);
@@ -232,22 +231,7 @@ export default function WidgetStudio(p:Props){
   const area=p.mode==="goals"?"goals":"library";
   const pages=data.pages.filter(x=>x.area===area);
   const page=pages.find(x=>x.id===p.activePageId)??pages[0];
-  const presetEnabled=!!page&&presetByPage[page.id]===true;
-  useEffect(()=>{
-    if(!page?.id)return;
-    try{const enabled=localStorage.getItem("aaa-preset-layout-v1:"+page.id)==="true";
-      setPresetByPage(current=>({...current,[page.id]:enabled}));
-    }catch{setPresetByPage(current=>({...current,[page.id]:false}))}
-  },[page?.id]);
-  const togglePresetLayout=()=>{
-    if(!page)return;
-    const enabled=!presetEnabled;
-    setPresetByPage(current=>({...current,[page.id]:enabled}));
-    try{localStorage.setItem("aaa-preset-layout-v1:"+page.id,String(enabled))}catch{}
-    setNotice(enabled
-      ?"Preset widths enabled on this page. Drag a grip to move widgets; dividers now snap to allowed ratios."
-      :"Freeform sizing restored. Saved widget geometry is preserved.");
-  };
+  const presetEnabled=formation.presetWidths;
   useEffect(()=>{if(p.editIntent)setArrange(true)},[p.editIntent]);
   useEffect(()=>{
     if(!page?.id)return;
@@ -1714,9 +1698,6 @@ export default function WidgetStudio(p:Props){
         <h1>{page?.title|| (p.mode==="goals"?"Goals":"Your Library")}</h1>
         <p>{p.mode==="goals"?"Your existing goals, projects and tasks alongside reusable database widgets.":"Create pages and combine reusable database views into a readable workspace."}</p></div>
         <div className="aaa-widget-hero-actions">
-        {arrange&&page&&<button type="button" className="aaa-widget-secondary"
-          aria-pressed={presetEnabled} title="Use snapped widget widths with intelligent insertion on this page"
-          onClick={togglePresetLayout}><LayoutGrid size={15}/> {presetEnabled?"Preset widths: On":"Preset widths: Off"}</button>}
         {arrange&&page&&<button className="aaa-widget-secondary" aria-pressed={allWidgetsCollapsed}
             title={allWidgetsCollapsed?"Expand all widgets":"Collapse all widgets to titles"} onClick={toggleAllWidgetCollapse}>
             {allWidgetsCollapsed?<ChevronDown size={15}/>:<ChevronUp size={15}/>} {allWidgetsCollapsed?"Expand all":"Collapse all"}
