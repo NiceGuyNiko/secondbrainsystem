@@ -14,7 +14,7 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   fluidDropTargetAtPoint,liftFluidIntoVacancy,preferVacantSnap,fluidGroupId,setFluidGroup,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
-  resizePresetDivider,presetUpdatePreferred} from "@/lib/widget-preset-layout";
+  resizePresetDivider,presetUpdatePreferred,swapPresetWidgets} from "@/lib/widget-preset-layout";
 import {modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
@@ -756,6 +756,12 @@ export default function WidgetStudio(p:Props){
           if(presetEnabled&&"newRow" in fit&&fit.newRow)intent="below";
         }else {intent="blocked";rect=raw;projected=positions}
         }
+      }else if(presetEnabled&&source&&intent==="replace"){
+        const swapped=swapPresetWidgets(existing,sourceId,target.id);
+        const before=initialFluidRects(existing),after=initialFluidRects(swapped);
+        if(JSON.stringify(after)!==JSON.stringify(before)){
+          projected=after;rect=after[sourceId];
+        }else rect={...rect,x:peer.x,y:peer.y};
       }else rect={...rect,x:peer.x,y:peer.y};
     }
     if(intent==="free"&&formation.fillFreedSpace!=="off"&&!movingGroup){
