@@ -18,7 +18,7 @@ export function presetSizingOf(widget:PageWidget,rect?:FluidWidgetRect):PresetSi
   const current=closestPreset(rect?toPercent(rect):Number(widget.config.layoutWidth??widget.width)/12*100);
   const preferred=PRESET_WIDTHS.includes(widget.config.presetPreferredWidth as PresetWidth)
     ?Number(widget.config.presetPreferredWidth):current;
-  const defaultMinimum=preferred>=80?40:preferred>=50?33:20;
+  const defaultMinimum=20; // All sizes can compact unless the designer restricts them.
   const stored=PRESET_WIDTHS.includes(widget.config.presetMinWidth as PresetWidth)
     ?Number(widget.config.presetMinWidth):defaultMinimum;
   return {preferred,minimum:Math.min(stored,preferred),allowShrink:widget.config.presetAllowShrink!==false};
