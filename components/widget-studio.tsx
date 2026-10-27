@@ -15,7 +15,7 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
   resizePresetDivider,presetUpdatePreferred,swapPresetWidgets} from "@/lib/widget-preset-layout";
-import {modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
+import {modeAtWidth,modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -62,7 +62,7 @@ function PresetContentRegion({children}:{children:(mode:PresetContentMode)=>Reac
   const lastMode=useRef<PresetContentMode|null>(null);
   useEffect(()=>{
     const element=ref.current;if(!element)return;
-    let frame=0;
+    let frame=0,settled=0;
     const read=()=>{
       const width=Math.round(element.getBoundingClientRect().width);
       if(lastWidth.current===width)return;
@@ -70,11 +70,19 @@ function PresetContentRegion({children}:{children:(mode:PresetContentMode)=>Reac
       const next=modeWithHysteresis(width,lastMode.current);
       lastMode.current=next;
       setMode(current=>current===next?current:next);
+      // On pointer release/settle, snap to the direct mode so hysteresis
+      // cannot leave a presentation permanently on the wrong side.
+      window.clearTimeout(settled);
+      settled=window.setTimeout(()=>{
+        const final=modeAtWidth(Math.round(element.getBoundingClientRect().width));
+        lastMode.current=final;
+        setMode(current=>current===final?current:final);
+      },180);
     };
     const measure=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(read)};
     const observer=typeof ResizeObserver==="undefined"?null:new ResizeObserver(measure);
     observer?.observe(element);measure();
-    return()=>{observer?.disconnect();cancelAnimationFrame(frame)};
+    return()=>{observer?.disconnect();cancelAnimationFrame(frame);window.clearTimeout(settled)};
   },[]);
   return <div ref={ref} className="aaa-widget-preset-content" data-aaa-responsive-mode={mode}>
     {children(mode)}
