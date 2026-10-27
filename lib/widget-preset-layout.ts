@@ -60,14 +60,28 @@ function options(widget:PageWidget,current:number,min:number,canShrink:boolean):
  * The center band is reserved for explicit same-row swaps. */
 export function presetDropTargetAtPoint(positions:Record<string,FluidWidgetRect>,
   canvas:{left:number;top:number;width:number},pointer:{x:number;y:number},
-  excluded:readonly string[]=[]):{id:string;intent:"left"|"right"|"replace"}|null{
+  excluded:readonly string[]=[],previousId?:string):{id:string;intent:"left"|"right"|"replace"}|null{
   const hit=fluidDropTargetAtPoint(positions,canvas,pointer,excluded);
-  if(!hit)return null;
-  const r=positions[hit.id];
+  let id=hit?.id;
+  // Crossing a horizontal row boundary should not switch the target as soon
+  // as the pointer touches the next card. Hold the prior target until the
+  // pointer genuinely enters the next card (~40px), in either direction.
+  if(previousId&&positions[previousId]&&!excluded.includes(previousId)){
+    const previous=positions[previousId];
+    const left=canvas.left+previous.x/12*canvas.width+(previous.x>0?7:0);
+    const width=previous.w/12*canvas.width-(previous.x>0?7:0)-
+      (previous.x+previous.w<11.999?7:0);
+    const top=canvas.top+previous.y;
+    if(pointer.x>=left-16&&pointer.x<=left+width+16&&
+       pointer.y>=top-40&&pointer.y<=top+previous.h+40)
+      id=previousId;
+  }
+  if(!id)return null;
+  const r=positions[id];
   const left=canvas.left+r.x/12*canvas.width+(r.x>0?7:0);
   const width=r.w/12*canvas.width-(r.x>0?7:0)-(r.x+r.w<11.999?7:0);
   const proportion=(pointer.x-left)/Math.max(1,width);
-  return {id:hit.id,intent:proportion<.44?"left":proportion>.56?"right":"replace"};
+  return {id,intent:proportion<.44?"left":proportion>.56?"right":"replace"};
 }
 
 export type PresetPlacement={
