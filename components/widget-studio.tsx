@@ -15,6 +15,7 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
   resizePresetDivider,presetUpdatePreferred} from "@/lib/widget-preset-layout";
+import {modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -52,6 +53,33 @@ type SaveTable="aaa_widget_definitions"|"aaa_page_widgets"|"aaa_page_sections"|"
 type FluidDropIntent="free"|"above"|"below"|"left"|"right"|"replace"|"blocked";
 type FluidDrop={sectionId:string;id:string;rect:FluidWidgetRect;intent:FluidDropIntent;
   targetId?:string;projected?:Record<string,FluidWidgetRect>};
+
+/** Observe the actual inner widget width; breakpoints never rewrite geometry. */
+function PresetContentRegion({children}:{children:(mode:PresetContentMode)=>React.ReactNode}){
+  const ref=useRef<HTMLDivElement|null>(null);
+  const [mode,setMode]=useState<PresetContentMode>("expanded");
+  const lastWidth=useRef<number|null>(null);
+  const lastMode=useRef<PresetContentMode|null>(null);
+  useEffect(()=>{
+    const element=ref.current;if(!element)return;
+    let frame=0;
+    const read=()=>{
+      const width=Math.round(element.getBoundingClientRect().width);
+      if(lastWidth.current===width)return;
+      lastWidth.current=width;
+      const next=modeWithHysteresis(width,lastMode.current);
+      lastMode.current=next;
+      setMode(current=>current===next?current:next);
+    };
+    const measure=()=>{cancelAnimationFrame(frame);frame=requestAnimationFrame(read)};
+    const observer=typeof ResizeObserver==="undefined"?null:new ResizeObserver(measure);
+    observer?.observe(element);measure();
+    return()=>{observer?.disconnect();cancelAnimationFrame(frame)};
+  },[]);
+  return <div ref={ref} className="aaa-widget-preset-content" data-aaa-responsive-mode={mode}>
+    {children(mode)}
+  </div>;
+}
 
 export default function WidgetStudio(p:Props){
   const [data,setData]=useState<Snapshot>(empty);
@@ -1314,13 +1342,19 @@ export default function WidgetStudio(p:Props){
     }catch(e){report(e)}
   };
 
-  const renderRecords=(widgetId:string,def:WidgetDefinition,instance?:PageWidget)=>{
+  const renderRecords=(widgetId:string,def:WidgetDefinition,instance?:PageWidget,
+    contentMode:PresetContentMode="expanded")=>{
     const source=instance?sourceOf(instance):{databaseId:def.database_id,viewId:def.view_id};
     const db=data.databases.find(x=>x.id===source.databaseId);
     if(!db)return <div className="aaa-widget-empty"><Database size={25}/> Choose a database in Configure to connect live records.</div>;
-    const cfg=effectiveConfig(def,instance);
+    const baseCfg=effectiveConfig(def,instance);
+    const compactTable=(contentMode==="compact"||contentMode==="minimal")&&baseCfg.renderer==="table";
+    const minimalCards=contentMode==="minimal"&&baseCfg.renderer==="cards";
+    const cfg={...baseCfg,renderer:compactTable||minimalCards?"list" as const:baseCfg.renderer};
     const fields=data.properties.filter(x=>x.database_id===db.id);
-    const columns=cfg.visibleProperties.length?fields.filter(x=>cfg.visibleProperties.includes(x.id)):fields.slice(0,4);
+    const allColumns=cfg.visibleProperties.length?fields.filter(x=>cfg.visibleProperties.includes(x.id)):fields.slice(0,4);
+    const columns=contentMode==="minimal"?[]:contentMode==="compact"?allColumns.slice(0,1)
+      :contentMode==="comfortable"?allColumns.slice(0,2):allColumns;
     const viewContext={
       name:(id:string)=>data.titles[id]||"Untitled record",
       relationTargets:(recordId:string,propertyId:string)=>data.relations.filter(link=>link.source_record_id===recordId&&link.property_id===propertyId).map(link=>data.titles[link.target_record_id]||"Untitled")
@@ -1533,7 +1567,10 @@ export default function WidgetStudio(p:Props){
       </header>}
       {!folded&&<div className="aaa-widget-card-body">
         {widget.kind==="goals"?<PlanningWorkspace key={widget.id} section="Goals" onContext={p.onPlanningContext??(()=>{})} onOpenPage={p.onOpenRecord} onSchedule={p.onSchedule??(()=>{})}/>
-        :def?renderRecords(widget.id,def,widget):<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
+        :def?(presetEnabled&&fluidCard
+          ?<PresetContentRegion>{mode=>renderRecords(widget.id,def,widget,mode)}</PresetContentRegion>
+          :renderRecords(widget.id,def,widget))
+          :<div className="aaa-widget-empty">The reusable widget is unavailable.</div>}
       </div>}
       {editing&&!folded&&<footer className="aaa-widget-card-resize">
         <label>Section<select aria-label={`Move ${title} to section`} value={widgetSectionId(widget)} onChange={e=>moveWidgetToSection(widget,e.target.value)}>
