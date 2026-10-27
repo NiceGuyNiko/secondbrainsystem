@@ -41,7 +41,7 @@ export type PresetPlacement={
 /** A row uses shared top coordinates, not an arbitrary vertical overlap:
  * stacked widgets to the side of a tall card must remain independent. */
 export function insertPresetWidget(items:readonly PageWidget[],movingId:string,targetId:string,
-  side:"left"|"right"):PresetPlacement {
+  side:"left"|"right",intelligentShrink=true):PresetPlacement {
   const moving=items.find(w=>w.id===movingId),target=items.find(w=>w.id===targetId);
   const unchanged=()=>({items:[...items],placed:false,newRow:false,reason:"invalid" as const});
   if(!moving||!target||moving.id===target.id||
@@ -54,52 +54,89 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
   const at=row.findIndex(item=>item.id===targetId);
   if(at<0)return unchanged();
   row.splice(at+(side==="right"?1:0),0,moving);
-  const choices=row.map(item=>{
-    const r=rects[item.id];
-    const sizing=presetSizingOf(item,r);
-    const current=item.id===movingId?sizing.preferred:closestPreset(toPercent(r));
-    return options(item,current,sizing.minimum,item.id===movingId?false:sizing.allowShrink);
+  // The hovered card owns first refusal on resizing. Only shrink other
+  // unlocked cards when the hovered card alone cannot make enough space.
+  const widthOf=(item:PageWidget)=>item.id===movingId
+    ?(PRESET_WIDTHS.includes(item.config.presetPreferredWidth as PresetWidth)
+      ?Number(item.config.presetPreferredWidth):closestPreset(toPercent(rects[item.id])))
+    :closestPreset(toPercent(rects[item.id]));
+  const widths=row.map(widthOf);
+  const choices=row.map((item,i)=>{
+    const sizing=presetSizingOf(item,rects[item.id]);
+    return options(item,widths[i],sizing.minimum,
+      item.id!==movingId&&intelligentShrink&&sizing.allowShrink);
   });
-  let winner:number[]|null=null,bestScore=-Infinity;
-  const evaluate=(choice:number[])=>{
-    const occupied=choice.reduce((sum,width)=>sum+width,0);
-    if(occupied>100+EPS)return;
-    const changed=row.some((item,i)=>item.id!==movingId&&
-      (widgetSizeLocked(item)||item.config.presetAllowShrink===false)&&
-      Math.abs(choice[i]-toPercent(rects[item.id]))>EPS);
-    if(changed)return;
-    const score=occupied*100-choice.reduce((sum,n,i)=>sum+
-      (row[i].id===movingId?0:Math.max(0,toPercent(rects[row[i].id])-n))*2,0);
-    if(score>bestScore){bestScore=score;winner=[...choice]}
+  const targetOrder=row.findIndex(item=>item.id===targetId);
+  const movingOldInRow=Math.abs(movingRect.y-targetRect.y)<1;
+  const leftMost=Math.min(...row.filter(item=>item.id!==movingId||movingOldInRow)
+    .map(item=>rects[item.id].x));
+  const rowIds=new Set(row.map(item=>item.id));
+  const outsiders=items.filter(item=>!rowIds.has(item.id)&&
+    widgetSectionId(item)===widgetSectionId(target));
+  const evaluate=(choice:number[]):Record<string,FluidWidgetRect>|null=>{
+    if(choice.reduce((sum,width)=>sum+width,0)>100+EPS)return null;
+    const proposed:Record<string,FluidWidgetRect>={};
+    let cursor=leftMost;
+    for(let i=0;i<row.length;i++){
+      const old=rects[row[i].id],w=presetToUnits(choice[i]);
+      proposed[row[i].id]={...old,x:round(cursor),y:targetRect.y,w};
+      cursor=round(cursor+w);
+    }
+    if(cursor>12+EPS)return null;
+    if(row.some(item=>widgetRowPinned(item)&&
+      (Math.abs(proposed[item.id].x-rects[item.id].x)>.001||
+       Math.abs(proposed[item.id].y-rects[item.id].y)>.001)))return null;
+    // Keep lower rows in place unless the newly joined card actually
+    // overlaps them. Then move only colliding, unlocked widgets downwards.
+    // This prevents a valid side drop being treated as a vertical insertion.
+    const adjusted={...proposed};
+    const settled:FluidWidgetRect[]=Object.values(proposed);
+    const below=[...outsiders].sort((a,b)=>rects[a.id].y-rects[b.id].y||
+      rects[a.id].x-rects[b.id].x);
+    for(const item of below){
+      const original=rects[item.id];
+      let projected={...original};
+      for(let pass=0;pass<=items.length;pass++){
+        const colliding=settled.filter(placed=>fluidOverlaps(projected,placed));
+        if(!colliding.length)break;
+        if(widgetRowPinned(item)||original.y<targetRect.y-1)return null;
+        const y=Math.max(...colliding.map(placed=>placed.y+placed.h+FLUID_GAP));
+        if(y<=projected.y||pass===items.length)return null;
+        projected={...projected,y};
+      }
+      adjusted[item.id]=projected;
+      settled.push(projected);
+    }
+    return adjusted;
   };
+  let winner:Record<string,FluidWidgetRect>|null=null;
+  let bestScore=Infinity;
   const visit=(index:number,current:number[],total:number)=>{
-    if(index===row.length){evaluate(current);return}
+    if(index===row.length){
+      const candidate=evaluate(current);
+      if(!candidate)return;
+      let othersShrink=0,hoveredShrink=0,distanceCost=0;
+      for(let i=0;i<row.length;i++){
+        if(row[i].id===movingId)continue;
+        const difference=Math.max(0,widths[i]-current[i]);
+        if(row[i].id===targetId)hoveredShrink+=difference;
+        else{
+          othersShrink+=difference;
+          distanceCost+=difference*Math.abs(i-targetOrder);
+        }
+      }
+      const score=othersShrink*100000+hoveredShrink*100+distanceCost;
+      if(score<bestScore){bestScore=score;winner=candidate}
+      return;
+    }
     for(const width of choices[index]){
       if(total+width>100+EPS)continue;
       current.push(width);visit(index+1,current,total+width);current.pop();
     }
   };
-  // Five columns of >=20% is the physical maximum.
+  // Five preset columns maximum, with pruning at 100% occupancy.
   if(row.length<=5)visit(0,[],0);
-  if(winner){
-    const proposed:Record<string,FluidWidgetRect>={};
-    let cursor=0;
-    for(let i=0;i<row.length;i++){
-      const width=presetToUnits(winner[i]);
-      const old=rects[row[i].id];
-      proposed[row[i].id]={...old,x:round(cursor),y:targetRect.y,w:width};
-      cursor=round(cursor+width);
-    }
-    // A tall or offset neighbor may occupy the proposed new horizontal area.
-    const rowIds=new Set(row.map(w=>w.id));
-    const outsiders=items.filter(w=>widgetSectionId(w)===widgetSectionId(target)&&!rowIds.has(w.id));
-    const collision=row.some(item=>outsiders.some(other=>
-      fluidOverlaps(proposed[item.id],rects[other.id])&&other.id!==movingId))||
-      row.some(item=>widgetRowPinned(item)&&
-        (Math.abs(proposed[item.id].x-rects[item.id].x)>.001||
-         Math.abs(proposed[item.id].y-rects[item.id].y)>.001));
-    if(!collision)return {items:patchRects(items,proposed),placed:true,newRow:false,reason:"fit"};
-  }
+  if(winner)return {items:patchRects(items,winner),placed:true,newRow:false,reason:"fit"};
   // A full-width / locked row is non-destructively preserved. Insert immediately
   // below it, shifting later movable rows. Pinned later rows force end-of-section.
   const bottom=Math.max(...row.filter(item=>item.id!==movingId).map(item=>
