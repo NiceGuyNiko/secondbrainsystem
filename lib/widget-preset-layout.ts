@@ -1,5 +1,6 @@
 import {fluidCanvasHeight,fluidOverlaps,fluidSharedBoundaries,fluidDropTargetAtPoint,initialFluidRects,placeFluidWidget,resizeFluidSharedBoundary,FLUID_GAP,type FluidWidgetRect} from "./widget-fluid-layout";
 import {widgetRowPinned,widgetSizeLocked} from "./widget-formation";
+import {WIDGET_EDITOR_FOOTER_PX} from "./widget-layout";
 import {widgetSectionId,type PageWidget} from "./widget-system";
 
 /** Snap points deliberately match the Widget Studio's discrete design sizes. */
@@ -24,8 +25,29 @@ export function presetSizingOf(widget:PageWidget,rect?:FluidWidgetRect):PresetSi
   return {preferred,minimum:Math.min(stored,preferred),allowShrink:widget.config.presetAllowShrink!==false};
 }
 function patchRects(items:readonly PageWidget[],updates:Record<string,FluidWidgetRect>):PageWidget[] {
-  return items.map(item=>updates[item.id]
-    ?{...item,config:{...item.config,fluidDesktop:updates[item.id]}}:item);
+  const original=initialFluidRects(items);
+  return items.map(item=>{
+    const rect=updates[item.id];
+    if(!rect)return item;
+    const heightChanged=Math.abs(rect.h-original[item.id].h)>.5;
+    return {...item,config:{...item.config,fluidDesktop:rect,
+      ...(heightChanged?{heightPx:Math.min(1200,Math.max(160,
+        Math.round(rect.h-WIDGET_EDITOR_FOOTER_PX)))}:{})}};
+  });
+}
+/** Preserve the next row's current position when a tall dragged widget can
+ * use a shorter, still-usable viewport instead of forcing a cascade.
+ * This applies only during a side insertion, never on passive renders. */
+export function fitPresetInsertedHeight(rect:FluidWidgetRect,
+  neighbors:readonly FluidWidgetRect[],allowShrink=true):FluidWidgetRect{
+  if(!allowShrink)return rect;
+  const lower=neighbors.filter(other=>other.y>rect.y+FLUID_GAP&&
+    rect.x<other.x+other.w-.001&&rect.x+rect.w>other.x+.001);
+  if(!lower.length)return rect;
+  const clearance=Math.floor(Math.min(...lower.map(other=>other.y))-rect.y-FLUID_GAP);
+  const MIN_HEIGHT=194; // Matches the fluid renderer's hard minimum.
+  if(clearance<MIN_HEIGHT||clearance>=rect.h-8)return rect;
+  return {...rect,h:clearance};
 }
 function options(widget:PageWidget,current:number,min:number,canShrink:boolean):number[]{
   if(widgetSizeLocked(widget)||!canShrink)return [current];
@@ -99,6 +121,9 @@ export function insertPresetWidget(items:readonly PageWidget[],movingId:string,t
       cursor=round(cursor+w);
     }
     if(cursor>12+EPS)return null;
+    proposed[movingId]=fitPresetInsertedHeight(proposed[movingId],
+      outsiders.map(item=>rects[item.id]),
+      !widgetSizeLocked(moving)&&moving.config.fitContent!==true);
     if(row.some(item=>widgetRowPinned(item)&&
       (Math.abs(proposed[item.id].x-rects[item.id].x)>.001||
        Math.abs(proposed[item.id].y-rects[item.id].y)>.001)))return null;
