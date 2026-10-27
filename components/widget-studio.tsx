@@ -14,7 +14,7 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
   fluidDropTargetAtPoint,liftFluidIntoVacancy,preferVacantSnap,fluidGroupId,setFluidGroup,FLUID_GAP,
   type FluidWidgetRect} from "@/lib/widget-fluid-layout";
 import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
-  resizePresetDivider,presetUpdatePreferred,swapPresetWidgets} from "@/lib/widget-preset-layout";
+  resizePresetDivider,presetUpdatePreferred,swapPresetWidgets,presetDropTargetAtPoint} from "@/lib/widget-preset-layout";
 import {modeAtWidth,modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
@@ -540,7 +540,7 @@ export default function WidgetStudio(p:Props){
           const withNew=[...instanceList,row as PageWidget];
           if(fluidIntent?.targetId&&(fluidIntent.intent==="left"||fluidIntent.intent==="right")){
             const fit=presetEnabled
-              ?insertPresetWidget(withNew,row.id,fluidIntent.targetId,fluidIntent.intent)
+              ?insertPresetWidget(withNew,row.id,fluidIntent.targetId,fluidIntent.intent,formation.intelligentShrinking)
               :insertFluidBeside(withNew,row.id,fluidIntent.targetId,fluidIntent.intent);
             if(fit.placed)return fit.items;
             // A size lock makes side insertion invalid. Keep the new view
@@ -718,8 +718,11 @@ export default function WidgetStudio(p:Props){
     let rect=preferVacantSnap(raw,snapped,otherRects);
     let intent:FluidDropIntent="free",targetId:string|undefined;
     let projected:Record<string,FluidWidgetRect>|undefined;
-    const stableTarget=fluidDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
-      isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id));
+    const stableTarget=presetEnabled
+      ?presetDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
+        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id))
+      :fluidDropTargetAtPoint(positions,field.getBoundingClientRect(),{x,y},
+        isCopy?[]:existing.filter(widget=>belongsToMovingGroup(widget.id)).map(widget=>widget.id));
     const target=stableTarget&&existing.find(widget=>widget.id===stableTarget.id);
     if(target&&target.id!==sourceId){
       targetId=target.id;
@@ -740,7 +743,7 @@ export default function WidgetStudio(p:Props){
           id:sourceId,config:{...(source?.config??{}),sectionId,fluidDesktop:sourceRect??{x:raw.x,y:raw.y,w,h}}};
         const fit=presetEnabled
           ?insertPresetWidget([...existing.filter(widget=>widget.id!==sourceId),mock],
-            sourceId,target.id,intent)
+            sourceId,target.id,intent,formation.intelligentShrinking)
           :insertFluidBeside([...existing.filter(widget=>widget.id!==sourceId),mock],
             sourceId,target.id,intent);
         if(fit.placed){
@@ -804,7 +807,7 @@ export default function WidgetStudio(p:Props){
         })
         :placement.targetId&&(placement.intent==="left"||placement.intent==="right")
           ?(presetEnabled
-            ?insertPresetWidget(moved,sourceId,placement.targetId,placement.intent).items
+            ?insertPresetWidget(moved,sourceId,placement.targetId,placement.intent,formation.intelligentShrinking).items
             :insertFluidBeside(moved,sourceId,placement.targetId,placement.intent).items)
           :(presetEnabled?movePresetWidget(moved,sourceId,placement.rect)
             :placeFluidWidget(moved,sourceId,placement.rect));
