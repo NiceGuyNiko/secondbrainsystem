@@ -231,3 +231,45 @@ test("side drop shifts an overlapping lower card only if extra height requires i
   assert.equal(initialFluidRects(placed.items).main.y,0);
   noCollision(placed.items);
 });
+
+test("reported edge case: two 50% cards with 33% minima accept a 40%-preferred, 20%-minimum card",()=>{
+  const first=widget("first",0,0,50,{presetPreferredWidth:50,presetMinWidth:33});
+  const second=widget("second",50,0,50,{presetPreferredWidth:50,presetMinWidth:33});
+  const third=widget("third",0,430,40,{presetPreferredWidth:40,presetMinWidth:20});
+  const placed=insertPresetWidget([first,second,third],"third","second","right");
+  assert.equal(placed.placed,true);
+  assert.equal(placed.newRow,false);
+  assert.deepEqual(["first","second","third"].map(id=>width(placed.items,id)),[33,33,33]);
+  assert.deepEqual(["first","second","third"].map(id=>initialFluidRects(placed.items)[id].x),
+    [0,presetToUnits(33),presetToUnits(66)]);
+  noCollision(placed.items);
+});
+test("preferred 40 stays 40 in a balanced 30 / 30 / 40 row when neighbors allow 30",()=>{
+  const first=widget("first",0,0,50,{presetMinWidth:25});
+  const second=widget("second",50,0,50,{presetMinWidth:25});
+  const third=widget("third",0,430,40,{presetPreferredWidth:40,presetMinWidth:20});
+  const placed=insertPresetWidget([first,second,third],"third","second","right");
+  assert.equal(placed.newRow,false);
+  assert.deepEqual(["first","second","third"].map(id=>width(placed.items,id)),[30,30,40]);
+  noCollision(placed.items);
+});
+test("minimum 40 preserves incoming preferred width only if other minima allow a legal row",()=>{
+  const first=widget("first",0,0,50,{presetMinWidth:30});
+  const second=widget("second",50,0,50,{presetMinWidth:30});
+  const third=widget("third",0,430,40,{presetPreferredWidth:40,presetMinWidth:40,
+    presetAllowShrink:false});
+  const placed=insertPresetWidget([first,second,third],"third","second","right");
+  assert.equal(placed.newRow,false);
+  assert.deepEqual(["first","second","third"].map(id=>width(placed.items,id)),[30,30,40]);
+  noCollision(placed.items);
+});
+test("minimum constraints trump ratio balancing and prevent an impossible 30 / 30 / 40",()=>{
+  const first=widget("first",0,0,50,{presetMinWidth:33});
+  const second=widget("second",50,0,50,{presetMinWidth:33});
+  const third=widget("third",0,430,40,{presetPreferredWidth:40,presetMinWidth:40,
+    presetAllowShrink:false});
+  const placed=insertPresetWidget([first,second,third],"third","second","right");
+  assert.equal(placed.newRow,true);
+  assert.equal(width(placed.items,"third"),40);
+  noCollision(placed.items);
+});
