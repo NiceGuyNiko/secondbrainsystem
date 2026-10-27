@@ -16,6 +16,7 @@ import {initialFluidRects,fluidCanvasHeight,fluidPointerRect,placeFluidWidget,re
 import {insertPresetWidget,movePresetWidget,presetSizingOf,presetToUnits,
   resizePresetDivider,presetUpdatePreferred,swapPresetWidgets,presetDropTargetAtPoint} from "@/lib/widget-preset-layout";
 import {modeAtWidth,modeWithHysteresis,type PresetContentMode} from "@/lib/widget-preset-presentation";
+import {widgetDragInterruptedByKey} from "@/lib/widget-drag-interruptions";
 import DatabasePropertyValue from "@/components/database-property-value";
 import WidgetPlacementChooser,{type WidgetPlacementChoice} from "@/components/widget-placement-chooser";
 import {isWidgetRecordExpanded,toggleWidgetRecordExpanded} from "@/lib/widget-inline-details";
@@ -687,9 +688,7 @@ export default function WidgetStudio(p:Props){
     if(!drag)return;
     const onVisibility=()=>{if(document.hidden)cancelInterruptedWidgetDrag()};
     const onKey=(event:KeyboardEvent)=>{
-      const screenshotShortcut=event.shiftKey&&(event.ctrlKey||event.metaKey)&&
-        event.key.toLowerCase()==="s";
-      if(event.key==="Escape"||screenshotShortcut)cancelInterruptedWidgetDrag();
+      if(widgetDragInterruptedByKey(event))cancelInterruptedWidgetDrag();
     };
     window.addEventListener("blur",cancelInterruptedWidgetDrag);
     document.addEventListener("visibilitychange",onVisibility);
@@ -1148,6 +1147,7 @@ export default function WidgetStudio(p:Props){
         ?reorderWidgetColumn(instanceList,pageSections,state.id,state.target.targetId)
         :placeWidget(instanceList,pageSections,state.id,state.target,fillGaps,formation));
     setDrag(null);setDropHint(null);
+    if(cancel)cancelInterruptedWidgetDrag();
     if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
   };
   const widgetHover=(event:React.DragEvent<HTMLElement>,widget:PageWidget)=>{
