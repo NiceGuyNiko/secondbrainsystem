@@ -1,0 +1,656 @@
+{
+  "dbs": [
+    {
+      "id": "events",
+      "name": "Events",
+      "icon": "◈",
+      "description": "An example of one database with a recursive Era → Event → Moment hierarchy.",
+      "fields": [
+        {
+          "key": "kind",
+          "name": "Type",
+          "type": "select"
+        },
+        {
+          "key": "summary",
+          "name": "Summary",
+          "type": "text"
+        },
+        {
+          "key": "cover",
+          "name": "Cover",
+          "type": "image"
+        },
+        {
+          "key": "date",
+          "name": "Chronology",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "characters",
+      "name": "Characters",
+      "icon": "♙",
+      "description": "People who participate in linked moments and events.",
+      "fields": [
+        {
+          "key": "description",
+          "name": "Description",
+          "type": "text"
+        },
+        {
+          "key": "role",
+          "name": "Role",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "academic",
+      "name": "Academic Structure",
+      "icon": "▦",
+      "description": "A separate example of recursive parent/child pages.",
+      "fields": [
+        {
+          "key": "kind",
+          "name": "Level",
+          "type": "select"
+        },
+        {
+          "key": "summary",
+          "name": "Description",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "weeks",
+      "name": "Weeks",
+      "icon": "▤",
+      "description": "Shared weeks that can connect to several courses without duplication.",
+      "fields": [
+        {
+          "key": "starts",
+          "name": "Starts",
+          "type": "date"
+        },
+        {
+          "key": "summary",
+          "name": "Summary",
+          "type": "text"
+        }
+      ]
+    }
+  ],
+  "records": [
+    {
+      "id": "era1",
+      "dbId": "events",
+      "title": "The Prelude",
+      "parentId": null,
+      "order": 1,
+      "properties": {
+        "kind": "Era",
+        "summary": "The quiet tensions that set the stage for upheaval.",
+        "date": "Before the Uprising"
+      }
+    },
+    {
+      "id": "era2",
+      "dbId": "events",
+      "title": "The Uprising Era",
+      "parentId": null,
+      "order": 2,
+      "properties": {
+        "kind": "Era",
+        "summary": "A defining age that overturned the established order and changed countless lives."
+      }
+    },
+    {
+      "id": "era3",
+      "dbId": "events",
+      "title": "The Aftermath",
+      "parentId": null,
+      "order": 3,
+      "properties": {
+        "kind": "Era",
+        "summary": "A changed world searches for a new balance."
+      }
+    },
+    {
+      "id": "ev0",
+      "dbId": "events",
+      "title": "Whispers of Change",
+      "parentId": "era1",
+      "order": 1,
+      "properties": {
+        "kind": "Event",
+        "summary": "The first fractures emerge beneath the surface of ordinary life."
+      }
+    },
+    {
+      "id": "ev1",
+      "dbId": "events",
+      "title": "The Blackout",
+      "parentId": "era2",
+      "order": 1,
+      "properties": {
+        "kind": "Event",
+        "summary": "A sudden citywide darkness becomes the setting for a cascade of losses, discoveries, and conflicting memories.",
+        "cover": "night"
+      }
+    },
+    {
+      "id": "ev2",
+      "dbId": "events",
+      "title": "The City Divides",
+      "parentId": "era2",
+      "order": 2,
+      "properties": {
+        "kind": "Event",
+        "summary": "Factions take shape as the repercussions of the Blackout spread through the city.",
+        "cover": "city"
+      }
+    },
+    {
+      "id": "ev3",
+      "dbId": "events",
+      "title": "The First Signal",
+      "parentId": "era2",
+      "order": 3,
+      "properties": {
+        "kind": "Event",
+        "summary": "Something once thought lost is rediscovered, redirecting the path of the Uprising.",
+        "cover": "signal"
+      }
+    },
+    {
+      "id": "ev4",
+      "dbId": "events",
+      "title": "A New Reckoning",
+      "parentId": "era3",
+      "order": 1,
+      "properties": {
+        "kind": "Event",
+        "summary": "Survivors begin to reckon with the cost of change."
+      }
+    },
+    {
+      "id": "m1",
+      "dbId": "events",
+      "title": "The Death of Otto",
+      "parentId": "ev1",
+      "order": 1,
+      "properties": {
+        "kind": "Moment",
+        "summary": "Otto dies in the confusion of the Blackout."
+      }
+    },
+    {
+      "id": "m2",
+      "dbId": "events",
+      "title": "The Death of Rosalina",
+      "parentId": "ev1",
+      "order": 2,
+      "properties": {
+        "kind": "Moment",
+        "summary": "A devastating loss reshapes how several characters remember this night."
+      }
+    },
+    {
+      "id": "m3",
+      "dbId": "events",
+      "title": "A Familiar Glimpse",
+      "parentId": "ev1",
+      "order": 3,
+      "properties": {
+        "kind": "Moment",
+        "summary": "A glimpse during the darkness carries a meaning not yet understood."
+      }
+    },
+    {
+      "id": "m4",
+      "dbId": "events",
+      "title": "Lines Are Drawn",
+      "parentId": "ev2",
+      "order": 1,
+      "properties": {
+        "kind": "Moment",
+        "summary": "Old loyalties are tested as the city divides."
+      }
+    },
+    {
+      "id": "c1",
+      "dbId": "characters",
+      "title": "Alina",
+      "parentId": null,
+      "order": 1,
+      "properties": {
+        "role": "Witness",
+        "description": "Her interpretation of the Blackout changes as she learns more."
+      }
+    },
+    {
+      "id": "c2",
+      "dbId": "characters",
+      "title": "Michael",
+      "parentId": null,
+      "order": 2,
+      "properties": {
+        "role": "Witness",
+        "description": "He experiences the Blackout without understanding every consequence."
+      }
+    },
+    {
+      "id": "c3",
+      "dbId": "characters",
+      "title": "Otto",
+      "parentId": null,
+      "order": 3,
+      "properties": {
+        "role": "Participant",
+        "description": "His death is a turning point in the Blackout."
+      }
+    },
+    {
+      "id": "c4",
+      "dbId": "characters",
+      "title": "Rosalina",
+      "parentId": null,
+      "order": 4,
+      "properties": {
+        "role": "Participant",
+        "description": "Her loss deeply affects those who knew her."
+      }
+    },
+    {
+      "id": "y1",
+      "dbId": "academic",
+      "title": "2026–2027",
+      "parentId": null,
+      "order": 1,
+      "properties": {
+        "kind": "Year",
+        "summary": "Academic year"
+      }
+    },
+    {
+      "id": "s1",
+      "dbId": "academic",
+      "title": "Fall Semester",
+      "parentId": "y1",
+      "order": 1,
+      "properties": {
+        "kind": "Semester",
+        "summary": "Autumn courses and activities."
+      }
+    },
+    {
+      "id": "s2",
+      "dbId": "academic",
+      "title": "Winter Semester",
+      "parentId": "y1",
+      "order": 2,
+      "properties": {
+        "kind": "Semester",
+        "summary": "Upcoming winter semester."
+      }
+    },
+    {
+      "id": "course1",
+      "dbId": "academic",
+      "title": "Biology 101",
+      "parentId": "s1",
+      "order": 1,
+      "properties": {
+        "kind": "Course",
+        "summary": "Cells, genetics, and ecosystems."
+      }
+    },
+    {
+      "id": "course2",
+      "dbId": "academic",
+      "title": "Chemistry 101",
+      "parentId": "s1",
+      "order": 2,
+      "properties": {
+        "kind": "Course",
+        "summary": "Atoms, reactions, and laboratory work."
+      }
+    },
+    {
+      "id": "course3",
+      "dbId": "academic",
+      "title": "Mathematics",
+      "parentId": "s1",
+      "order": 3,
+      "properties": {
+        "kind": "Course",
+        "summary": "Functions, algebra, and calculus foundations."
+      }
+    },
+    {
+      "id": "w1",
+      "dbId": "weeks",
+      "title": "Week 1",
+      "parentId": null,
+      "order": 1,
+      "properties": {
+        "starts": "2026-09-07",
+        "summary": "Start of semester"
+      }
+    },
+    {
+      "id": "w2",
+      "dbId": "weeks",
+      "title": "Week 2",
+      "parentId": null,
+      "order": 2,
+      "properties": {
+        "starts": "2026-09-14",
+        "summary": "Second week"
+      }
+    }
+  ],
+  "relatabases": [
+    {
+      "id": "perspectives",
+      "name": "Perspectives",
+      "leftDb": "events",
+      "rightDb": "characters",
+      "leftLabel": "Moment / Event",
+      "rightLabel": "Character",
+      "description": "Each row is an editable page describing one character in one moment.",
+      "fields": [
+        {
+          "key": "summary",
+          "name": "Perspective Summary",
+          "type": "text"
+        },
+        {
+          "key": "knowledge",
+          "name": "What They Know",
+          "type": "text"
+        },
+        {
+          "key": "emotion",
+          "name": "Emotion",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "courseweeks",
+      "name": "Course Weeks",
+      "leftDb": "academic",
+      "rightDb": "weeks",
+      "leftLabel": "Course",
+      "rightLabel": "Week",
+      "description": "A shared week can be linked to many courses; each pairing stores its own topic and work.",
+      "fields": [
+        {
+          "key": "topic",
+          "name": "Topic",
+          "type": "text"
+        },
+        {
+          "key": "homework",
+          "name": "Homework",
+          "type": "text"
+        },
+        {
+          "key": "status",
+          "name": "Status",
+          "type": "select"
+        }
+      ]
+    }
+  ],
+  "relRecords": [
+    {
+      "id": "p1",
+      "relId": "perspectives",
+      "leftId": "m1",
+      "rightId": "c1",
+      "properties": {
+        "summary": "Alina witnesses Otto’s death and struggles to reconcile what she saw.",
+        "knowledge": "She knows Otto was present when the lights went out.",
+        "emotion": "Shock and grief"
+      }
+    },
+    {
+      "id": "p2",
+      "relId": "perspectives",
+      "leftId": "m2",
+      "rightId": "c1",
+      "properties": {
+        "summary": "Rosalina’s death changes Alina’s understanding of the Blackout.",
+        "knowledge": "She sees some of the events but not every cause.",
+        "emotion": "Loss and uncertainty"
+      }
+    },
+    {
+      "id": "p3",
+      "relId": "perspectives",
+      "leftId": "m3",
+      "rightId": "c2",
+      "properties": {
+        "summary": "Michael glimpses someone familiar without knowing why.",
+        "knowledge": "He recognizes a pair of eyes.",
+        "emotion": "Unease"
+      }
+    },
+    {
+      "id": "cw1",
+      "relId": "courseweeks",
+      "leftId": "course1",
+      "rightId": "w1",
+      "properties": {
+        "topic": "Cell Structure",
+        "homework": "Cell worksheet",
+        "status": "In progress"
+      }
+    },
+    {
+      "id": "cw2",
+      "relId": "courseweeks",
+      "leftId": "course2",
+      "rightId": "w1",
+      "properties": {
+        "topic": "Atomic Structure",
+        "homework": "Lab preparation",
+        "status": "Planned"
+      }
+    },
+    {
+      "id": "cw3",
+      "relId": "courseweeks",
+      "leftId": "course3",
+      "rightId": "w1",
+      "properties": {
+        "topic": "Functions",
+        "homework": "Problem set",
+        "status": "Planned"
+      }
+    },
+    {
+      "id": "cw4",
+      "relId": "courseweeks",
+      "leftId": "course1",
+      "rightId": "w2",
+      "properties": {
+        "topic": "Genetics",
+        "homework": "Genetics quiz",
+        "status": "Planned"
+      }
+    },
+    {
+      "id": "cw5",
+      "relId": "courseweeks",
+      "leftId": "course2",
+      "rightId": "w2",
+      "properties": {
+        "topic": "Chemical Bonds",
+        "homework": "Practice questions",
+        "status": "Planned"
+      }
+    }
+  ],
+  "views": [
+    {
+      "id": "history",
+      "name": "World History · Nested Cards",
+      "sourceType": "database",
+      "sourceId": "events",
+      "mode": "nested",
+      "summaryField": "summary",
+      "coverField": "cover",
+      "shownFields": [
+        "kind",
+        "date"
+      ],
+      "relatedId": "perspectives",
+      "groupBy": "",
+      "showImage": true
+    },
+    {
+      "id": "charlist",
+      "name": "Character Gallery",
+      "sourceType": "database",
+      "sourceId": "characters",
+      "mode": "gallery",
+      "summaryField": "description",
+      "coverField": "",
+      "shownFields": [
+        "role"
+      ],
+      "relatedId": "perspectives",
+      "groupBy": "",
+      "showImage": false
+    },
+    {
+      "id": "academictree",
+      "name": "Academic Hierarchy",
+      "sourceType": "database",
+      "sourceId": "academic",
+      "mode": "nested",
+      "summaryField": "summary",
+      "coverField": "",
+      "shownFields": [
+        "kind"
+      ],
+      "relatedId": "courseweeks",
+      "groupBy": "",
+      "showImage": false
+    },
+    {
+      "id": "weekly",
+      "name": "Weekly Schedule · Relatabase",
+      "sourceType": "relatabase",
+      "sourceId": "courseweeks",
+      "mode": "grouped",
+      "summaryField": "topic",
+      "coverField": "",
+      "shownFields": [
+        "homework",
+        "status"
+      ],
+      "relatedId": "",
+      "groupBy": "right",
+      "showImage": false
+    },
+    {
+      "id": "coursewk",
+      "name": "Course-by-Course Schedule",
+      "sourceType": "relatabase",
+      "sourceId": "courseweeks",
+      "mode": "grouped",
+      "summaryField": "topic",
+      "coverField": "",
+      "shownFields": [
+        "homework",
+        "status"
+      ],
+      "relatedId": "",
+      "groupBy": "left",
+      "showImage": false
+    },
+    {
+      "id": "perspectiveview",
+      "name": "All Character Perspectives",
+      "sourceType": "relatabase",
+      "sourceId": "perspectives",
+      "mode": "grouped",
+      "summaryField": "summary",
+      "coverField": "",
+      "shownFields": [
+        "emotion"
+      ],
+      "relatedId": "",
+      "groupBy": "right",
+      "showImage": false
+    }
+  ],
+  "pages": [
+    {
+      "id": "world",
+      "title": "World History",
+      "icon": "✦",
+      "description": "Finished example · one recursive database + a linked Relatabase for character perspectives.",
+      "blocks": [
+        {
+          "id": "b1",
+          "viewId": "history"
+        }
+      ],
+      "example": true
+    },
+    {
+      "id": "school",
+      "title": "Academic Planner",
+      "icon": "◫",
+      "description": "Finished example · courses and semesters nested in one database; shared weeks linked through a Relatabase.",
+      "blocks": [
+        {
+          "id": "b2",
+          "viewId": "academictree"
+        },
+        {
+          "id": "b3",
+          "viewId": "weekly"
+        },
+        {
+          "id": "b5",
+          "viewId": "coursewk"
+        }
+      ],
+      "example": true
+    },
+    {
+      "id": "people",
+      "title": "Character Perspectives",
+      "icon": "♙",
+      "description": "Finished example · the exact same Perspective relationship records shown from the character side.",
+      "blocks": [
+        {
+          "id": "b6",
+          "viewId": "charlist"
+        },
+        {
+          "id": "b7",
+          "viewId": "perspectiveview"
+        }
+      ],
+      "example": true
+    },
+    {
+      "id": "personal",
+      "title": "My Playground",
+      "icon": "◇",
+      "description": "Your blank canvas. Create your own database, design a view, and embed it here.",
+      "blocks": [],
+      "example": false
+    }
+  ]
+}

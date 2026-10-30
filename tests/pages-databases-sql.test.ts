@@ -10,8 +10,7 @@ test('SQL write boundary: normalized persistence, retry, cycles, profile/account
  create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
  grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
  insert into auth.users values('${a}'),('${b}');`);
- const file=readdirSync('supabase/migrations').find(x=>x.endsWith('_pages_databases_foundation.sql'))!;
- await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
+ for(const file of readdirSync('supabase/migrations').filter(x=>x.includes('_pages_databases_foundation')||x.includes('_pages_canvas_properties')).sort())await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
  await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[a]);
  const workspace=(await db.query<{id:string}>("select public.pd_open_workspace('A') id")).rows[0].id;
  assert.equal((await db.query<{id:string}>("select public.pd_open_workspace('A') id")).rows[0].id,workspace);
@@ -52,5 +51,33 @@ test('SQL write boundary: normalized persistence, retry, cycles, profile/account
  await assert.rejects(db.query('select public.pd_command($1,0,$2,$3::jsonb)',[workspace,id(),JSON.stringify({type:'page',id:id(),title:'No'})]),/unavailable/);
  await db.exec('set role anon');await assert.rejects(db.query('select * from public.pd_pages'),/permission denied/);
  await assert.rejects(db.query("select public.pd_open_workspace('X')"),/permission denied/);
+ }finally{await db.close()}
+});
+
+test('SQL page canvas: typed properties, lossless conversions, view settings and atomic builder batches',async()=>{
+ const db=new PGlite();try{
+ const owner=id();await db.exec(`create role anon;create role authenticated;create schema auth;create table auth.users(id uuid primary key);
+ create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;insert into auth.users values('${owner}');`);
+ for(const file of readdirSync('supabase/migrations').filter(x=>x.includes('_pages_databases_foundation')||x.includes('_pages_canvas_properties')).sort())await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
+ await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[owner]);
+ const w=(await db.query<{id:string}>("select public.pd_open_workspace('canvas') id")).rows[0].id;let rev=0;
+ const send=async(c:Command)=>{const result=(await db.query<{s:State}>('select public.pd_command($1,$2,$3,$4::jsonb) s',[w,rev,id(),JSON.stringify(c)])).rows[0].s;rev=result.revision;return result};
+ const d=id(),field=id(),r=id(),view=id(),p=id(),block=id();
+ await send({type:'database',id:d,name:'Projects',description:'One collection',icon:'◫'});
+ await send({type:'property',id:field,sourceId:d,name:'Summary',propertyType:'text',options:[]});
+ await send({type:'record',id:r,databaseId:d,title:'Biology',parentId:null,values:{[field]:'Urgent, School'}});
+ let s=await send({type:'property',id:field,sourceId:d,name:'Topics',propertyType:'select',options:[]});
+ assert.deepEqual(s.properties[0].options.map(o=>o.label),['Urgent','School']);assert.equal((s.records[0].values?.[field] as string[]).length,2);
+ s=await send({type:'property',id:field,sourceId:d,name:'Topics',propertyType:'text',options:[]});assert.equal(s.records[0].values?.[field],'Urgent, School');
+ await assert.rejects(send({type:'property',id:field,sourceId:d,name:'Topics',propertyType:'number',options:[]}),/not valid numbers/);
+ await assert.rejects(send({type:'record-values',id:r,values:{[id()]:'Wrong field'}}),/Unknown property/);
+ await assert.rejects(db.query('select public.pd_command_v1($1,$2,$3,$4::jsonb)',[w,rev,id(),JSON.stringify({type:'page',id:id(),title:'Bypass'})]),/permission denied/);
+ const transaction:Command={type:'batch',id:id(),commands:[{type:'view',id:view,sourceId:d,sourceKind:'database',name:'Grouped Projects',mode:'grouped',config:{summaryField:field,shownFields:[field],groupBy:field}},{type:'page',id:p,title:'My Semester',description:'Live dashboard',icon:'◇'},{type:'block',id:block,pageId:p,viewId:view},{type:'wizard',id:id(),wizard:{step:3,databaseId:d,viewId:view,pageId:p}}]};
+ s=await send(transaction);assert.equal(s.views[0].config?.summaryField,field);assert.equal(s.views[0].mode,'grouped');assert.equal(s.pages.find(x=>x.id===p)?.description,'Live dashboard');assert.equal(s.wizard?.pageId,p);
+ const invalidPage=id();await assert.rejects(send({type:'batch',id:id(),commands:[{type:'page',id:invalidPage,title:'Must roll back'},{type:'record-values',id:r,values:{invalid:'No'}}]}));
+ assert.equal((await db.query('select * from public.pd_pages where id=$1',[invalidPage])).rows.length,0);
+ assert.equal((await db.query('select * from public.pd_property_history')).rows.length,2,'failed conversion does not leave history or partial data');
+ s=await send({type:'remove-block',id:block});assert.equal(s.blocks.length,0);assert.equal(s.records.length,1);
  }finally{await db.close()}
 });

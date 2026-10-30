@@ -1,36 +1,41 @@
-# Pages & Databases: first implementation slice
+# Page canvas and integrated databases
 
-## Target audit
+## Design correction
 
-Verified target: NiceGuyNiko/secondbrainsystem, main 49b077450c3ee1c0de9b005fe2b9795b4e5e0c45.
-Next.js App Router, React 19, native shell in app/page.tsx, theme tokens in app/globals.css, AuthGate and useProfile for identity. Existing db_* records use user_items pages and power Widgets. Existing test profiles are settings profiles, not isolated data. The new pd_* namespace has no references to either subsystem; workspace identity is (authenticated owner, active settings profile ID).
+The supplied all-about-action-playground-final(1).html is the concrete UI and interaction reference. The initial separate “Pages & Databases” explorer has been replaced. Pages are now the primary destination; their saved views occupy the content canvas. There is no extra navigation column inside the canvas. AAA’s native sidebar lists individual pages and management destinations; the Companion follows the current page or edited record. Legacy Widgets remain independently available.
 
-The supplied ZIP contains contracts, plan and source audit, but not the original HTML/CSS or its browser tests. Exact visual parity cannot be claimed.
+The reference’s scoped CSS, proportions, serif page/card typography, timeline rails, nested levels, card badges, actions, expanded related details, page view headers, View Studio, database tables and modal editing flows have been translated into React components. Colors inherit AAA’s selected theme. No iframe, standalone demo sidebar, or document-level template renderer is embedded in AAA.
 
-## Working in this slice
+## Data and behavior
 
-- Native Pages & Databases destination, with Pages / Databases / Relatabases / Views contextual navigation.
-- Feature enabled automatically in Demo Mode; opt in on staging with NEXT_PUBLIC_AAA_PAGES_DATABASES=true. Production explicitly hides it.
-- Separate normalized tables, canonical editable page IDs, database membership, nested records, manual ordering, server-side cycle protection and transactional reparenting.
-- Independent detailed relationship IDs and creation sequence; same relationship page accessible from either endpoint or its standalone Relatabase.
-- Nested Cards, Table and Gallery database layouts; relationship cards; live page embeddings, default database view choice, shared view editing and independent view copies.
-- Find/create record endpoints with partial search, full ancestor paths and case-insensitive exact-match prevention.
-- Browser-local demo adapter scoped by owner/profile; remote Supabase adapter scoped by server-owned workspace.
-- Workspace revision checks serialize mutations, and request IDs make server retries idempotent. Retried IDs cannot carry a changed command.
-- Partial-width native mobile drawer for this destination, backdrop dismissal and inherited focus/escape behavior.
+- A canonical record is a page. Parenting and manual sibling order belong to the database; visible card layout belongs to a saved view.
+- A page can embed multiple saved views. Customization updates shared config; Independent copy rebinds just that block. Database defaults do not rewrite blocks.
+- Nested Cards supports expand/collapse, before/after/inside drag zones, keyboard-accessible arrows, Move dialog, and Add inside the current card.
+- Detailed relationship records retain independent IDs and sequences. They appear under either endpoint, in standalone tables, or grouped by either side.
+- Properties have stable IDs and typed values (Text, Number, Date, Select, Image, Relation). Select options use stable IDs. Relations and select inputs share an accessible find/create picker. Creating an endpoint preserves the unfinished form.
+- Property renames retain identity. Type changes display a conversion preview and require explicit confirmation; incompatible values reject the conversion. Server snapshots preserve previous schema and values.
+- The Guided Builder uses the same commands, with persisted actual-object milestones. Database creation/schema, view/milestone creation and page/view embedding use atomic command batches.
+- Native partial-width mobile navigation retains outside-tap/Escape dismissal and focus handling.
+- Owner/profile workspace isolation, revision checks, idempotent retries and server validation remain in the independent pd_* namespace. Direct client writes to those tables are revoked.
 
-## Validation
+## Example data
 
-293 repository tests passed at initial integration; targeted domain/SQL tests and TypeScript rerun after view editing was added. Production build succeeded; pre-existing CSS and lint warnings remain.
+The reference’s four databases, two Relatabases, four pages and six saved views are included only as fresh Demo Mode fixtures. Existing demo workspaces are preserved. Hosted workspaces are empty until the user creates content. Shared Week 1 and Perspective rows retain the same canonical IDs wherever displayed. No legacy production records are migrated.
 
-Staging hxfkazgqtjlmduqxfgpp received the additive pages_databases_foundation migration. A transaction-rolled-back authenticated SQL smoke test passed create, retry, nested persistence, cycle rejection, separate profile datasets and cross-account RLS. No user records were imported. Production received no DDL or code merge.
+## Rollout
 
-Supabase advisors flag the two intentional authenticated SECURITY DEFINER entrypoints. Their explicit auth.uid() ownership check, workspace lock, empty search_path and revoked direct table writes are covered by SQL tests. Anonymous execution is revoked. Pre-existing advisor notices concern create_profile_for_new_user, rls_auto_enable and leaked password protection; these were not changed.
+Branch: feat/pages-databases-foundation; draft PR #30. Preview remains Demo Mode. Enable NEXT_PUBLIC_AAA_PAGES_DATABASES=true only on a staging build to use the remote adapter. Production continues to hide the new module until acceptance and explicit production activation.
 
-The managed local preview launcher passes Vite flags (--host/--strictPort) to Next.js and fails. No working app configuration was changed to compensate. Deployed preview QA is recorded separately.
+Migrations, in order:
+1. 20261030010539_pages_databases_foundation.sql
+2. 20261030014841_pages_canvas_properties.sql
 
-## Remaining plan work
+The second migration is additive: it extends only the new module. Internal v1 write execution is revoked from authenticated callers; the current endpoint enforces ownership, typed property validation, conversions and atomic batches. Authenticated SECURITY DEFINER endpoints are intentional, use an empty search_path and explicit auth.uid checks. Anonymous execution remains revoked.
 
-This is a first slice, not completion of all acceptance gates. Still needed: generic typed property definitions and editors; conversion previews and migration history; simple relation properties; complete universal picker keyboard behavior; contextual filters/grouping and calendar/date modes; rich page/navigation parent blocks; Guided Builder; export/import; pagination; offline synchronization; full touch and authenticated hosted browser acceptance. Manual order has no timestamp semantics. Full-workspace reads and a single workspace revision are deliberate small-dataset limits of this slice.
+## Verification and limits
 
-The deployment preview is explicitly Demo Mode. Its UI is not evidence of hosted RLS or cross-device persistence. Before production activation, follow docs/DB-SCHEMA-RELEASE-GATE.md, complete authenticated staging acceptance, production schema review, and the remaining product gates.
+Domain and PGlite integration tests cover canonical identities, bidirectional details, shared view mappings, clone behavior, property conversions, rollback on invalid batches, creation retries, stale revisions, profile/account isolation and revoked direct writes. The reference fixture is checked for shared Week IDs and valid view field mappings.
+
+Browser and remote verification results are recorded in the PR after deployment. Browser-local Demo Mode does not prove authenticated hosted persistence. Production activation still requires the checks in docs/DB-SCHEMA-RELEASE-GATE.md.
+
+Remaining beyond this redesign: import/export UI, rich text/page block types beyond text and live database views, free-page navigation-parent relationships, advanced sorting/filtering, pagination, offline synchronization and collaboration. Type migration history is stored but a user-facing undo/history browser is not yet provided. These are not represented as completed acceptance gates.

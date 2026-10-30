@@ -38,3 +38,25 @@ test('demo persistence isolates profile and owner, prevents stale writes and rep
  assert.equal((await b.load()).databases.length,0);assert.equal((await other.load()).databases.length,0);
  await assert.rejects(a.send(s,{type:'page',id:id(),title:'Stale'},id()),/changed/);
 });
+
+test('page-first properties: text/select conversion, stable field IDs, canonical view mappings, and atomic builder commands',()=>{
+ let s=emptyState();const send=(c:Command)=>s=applyCommand(s,c);const db=id(),p=id(),r=id(),view=id(),page=id(),block=id();
+ send({type:'database',id:db,name:'School Projects'});
+ send({type:'property',id:p,sourceId:db,name:'Topics',propertyType:'text',options:[]});
+ send({type:'record',id:r,databaseId:db,title:'Biology',parentId:null,values:{[p]:'Urgent, School'}});
+ send({type:'property',id:p,sourceId:db,name:'Topics renamed',propertyType:'select',options:[]});
+ const prop=s.properties.find(x=>x.id===p)!;assert.deepEqual(prop.options.map(o=>o.label),['Urgent','School']);assert.equal((s.records[0].values?.[p] as string[]).length,2);
+ send({type:'property',id:p,sourceId:db,name:'Topics renamed',propertyType:'text',options:[]});assert.equal(s.records[0].values?.[p],'Urgent, School');
+ assert.throws(()=>send({type:'property',id:p,sourceId:db,name:'Topics',propertyType:'number',options:[]}),/not valid numbers/);
+ send({type:'batch',id:id(),commands:[{type:'view',id:view,sourceId:db,sourceKind:'database',name:'Nested',mode:'nested',config:{summaryField:p}},{type:'page',id:page,title:'My Semester',description:'Live page'},{type:'block',id:block,pageId:page,viewId:view},{type:'wizard',id:id(),wizard:{step:3,databaseId:db,viewId:view,pageId:page}}]});
+ assert.equal(s.blocks[0].pageId,page);assert.equal(s.views[0].config?.summaryField,p);assert.equal(s.wizard?.step,3);
+ const before=structuredClone(s);assert.throws(()=>send({type:'batch',id:id(),commands:[{type:'page',id:id(),title:'Should roll back'},{type:'record-values',id:r,values:{bad:'Invalid'}}]}),/Unknown property/);assert.deepEqual(s,before);
+});
+
+test('reference examples share Week and Perspective records across page views',async()=>{
+ const {playgroundSeed}=await import('../lib/pages-databases/demo');const s=playgroundSeed();
+ assert.equal(s.databases.length,4);assert.equal(s.pages.filter(p=>!s.records.some(r=>r.id===p.id)&&!s.links.some(l=>l.id===p.id)).length,4);
+ const weeks=s.databases.find(d=>d.name==='Weeks')!,week=s.records.find(r=>r.databaseId===weeks.id&&pageTitle(s,r.id)==='Week 1')!;
+ assert.equal(s.links.filter(l=>l.rightId===week.id).length,3);assert.equal(s.records.filter(r=>r.id===week.id).length,1);
+ for(const v of s.views)assert.doesNotThrow(()=>applyCommand(s,{type:'edit-view',id:v.id,name:v.name,mode:v.mode,config:v.config}));
+});
