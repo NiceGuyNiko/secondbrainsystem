@@ -1,0 +1,56 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {PGlite} from '@electric-sql/pglite';
+import {readFileSync,readdirSync} from 'node:fs';
+import type {Command,State} from '../lib/pages-databases/domain';
+const id=()=>crypto.randomUUID();
+test('SQL write boundary: normalized persistence, retry, cycles, profile/account isolation, no direct or anonymous writes',async()=>{
+ const db=new PGlite();try{
+ const a=id(),b=id();await db.exec(`create role anon;create role authenticated;create schema auth;
+ create table auth.users(id uuid primary key);create function auth.uid() returns uuid language sql as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
+ grant usage on schema auth to authenticated;grant execute on function auth.uid() to authenticated;
+ insert into auth.users values('${a}'),('${b}');`);
+ const file=readdirSync('supabase/migrations').find(x=>x.endsWith('_pages_databases_foundation.sql'))!;
+ await db.exec(readFileSync('supabase/migrations/'+file,'utf8'));
+ await db.exec('set role authenticated');await db.query("select set_config('request.jwt.claim.sub',$1,false)",[a]);
+ const workspace=(await db.query<{id:string}>("select public.pd_open_workspace('A') id")).rows[0].id;
+ assert.equal((await db.query<{id:string}>("select public.pd_open_workspace('A') id")).rows[0].id,workspace);
+ const w2=(await db.query<{id:string}>("select public.pd_open_workspace('B') id")).rows[0].id;
+ let revision=0;
+ const send=async(c:Command,request=id(),expected=revision)=>{
+  const result=await db.query<{s:State}>('select public.pd_command($1,$2,$3,$4::jsonb) s',[workspace,expected,request,JSON.stringify(c)]);revision=result.rows[0].s.revision;return result.rows[0].s;
+ };
+ const events=id(),characters=id(),era=id(),moment=id(),before=id(),alina=id(),rel=id(),link=id(),v=id(),p=id(),block=id();
+ const cmd:Command={type:'database',id:events,name:'Events'},req=id();await send(cmd,req);await send(cmd,req,0);assert.equal(revision,1);
+ await assert.rejects(send({type:'database',id:id(),name:'Duplicate request'},req),/reused/);
+ await assert.rejects(send({type:'page',id:id(),title:'Stale'},id(),0),/changed/);
+ await send({type:'database',id:characters,name:'Characters'});
+ await send({type:'record',id:era,databaseId:events,title:'Era',parentId:null});
+ await send({type:'record',id:moment,databaseId:events,title:'Moment',parentId:era});
+ await send({type:'record',id:before,databaseId:events,title:'Before',parentId:era});
+ let s=await send({type:'move',id:before,parentId:era,beforeId:moment});
+ assert.deepEqual(s.records.filter(r=>r.parentId===era).map(r=>r.id),[before,moment]);
+ await assert.rejects(send({type:'move',id:era,parentId:moment,beforeId:null}),/cycle/);
+ await assert.rejects(send({type:'record',id:id(),databaseId:characters,title:'Invalid',parentId:era}),/foreign key/);
+ assert.equal((await db.query<{n:number}>('select count(*)::int n from public.pd_pages')).rows[0].n,3,'failed creation rolls back orphan page');
+ await send({type:'record',id:alina,databaseId:characters,title:'Alina',parentId:null});
+ await send({type:'relatabase',id:rel,name:'Perspectives',leftDatabaseId:events,rightDatabaseId:characters});
+ await assert.rejects(send({type:'link',id:id(),relatabaseId:rel,leftId:alina,rightId:moment,title:'Invalid'}),/endpoint/);
+ await send({type:'link',id:link,relatabaseId:rel,leftId:moment,rightId:alina,title:'Alina at Moment'});
+ s=await send({type:'edit-page',id:link,title:'Perspective',content:'One page from both endpoints'});
+ assert.equal(s.links[0].sequence,1);assert.equal(s.pages.find(p=>p.id===link)?.content,'One page from both endpoints');
+ await send({type:'view',id:v,sourceId:events,sourceKind:'database',name:'History',mode:'nested'});
+ await send({type:'page',id:p,title:'History page'});await send({type:'block',id:block,pageId:p,viewId:v});
+ s=await send({type:'default-view',id:events,viewId:v});assert.equal(s.blocks[0].viewId,v);
+ s=await send({type:'edit-view',id:v,name:'Shared History',mode:'gallery'});assert.equal(s.views.find(v=>v.id===s.blocks[0].viewId)?.mode,'gallery');
+ s=await send({type:'clone-view',id:id(),blockId:block,viewId:v});assert.notEqual(s.blocks[0].viewId,v);assert.equal(s.records.length,4);
+ const isolated=(await db.query<{s:State}>('select public.pd_load($1) s',[w2])).rows[0].s;assert.equal(isolated.records.length,0);
+ await assert.rejects(db.query('insert into public.pd_pages values($1,$2,$3,$4)',[id(),workspace,'Bypass','']),/permission denied/);
+ await db.query("select set_config('request.jwt.claim.sub',$1,false)",[b]);
+ assert.equal((await db.query('select * from public.pd_pages')).rows.length,0);
+ await assert.rejects(db.query('select public.pd_load($1)',[workspace]),/unavailable/);
+ await assert.rejects(db.query('select public.pd_command($1,0,$2,$3::jsonb)',[workspace,id(),JSON.stringify({type:'page',id:id(),title:'No'})]),/unavailable/);
+ await db.exec('set role anon');await assert.rejects(db.query('select * from public.pd_pages'),/permission denied/);
+ await assert.rejects(db.query("select public.pd_open_workspace('X')"),/permission denied/);
+ }finally{await db.close()}
+});

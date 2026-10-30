@@ -5,6 +5,7 @@ import ThemedTooltips from "@/components/themed-tooltips";
 import {toggleMobileSidebarMode,modeForMobileSidebarDivider,modeAfterSidebarPageSelection,type MobileSidebarMode} from "@/lib/mobile-sidebar-model";
 import { updateFavicon } from "@/lib/favicon";
 import AuthGate from "@/components/auth-gate";
+import PagesDatabasesWorkspace from "@/components/pages-databases-workspace";
 import DemoDatabaseWorkshop from "@/components/demo-database-workshop";
 import ThoughtWorkspace from "@/components/thought-workspace";
 import PlanningWorkspace from "@/components/planning-workspace";
@@ -62,6 +63,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 type Section =
+  | "Pages & Databases"
   | "Calendar"
   | "Goals"
   | "Library"
@@ -119,6 +121,7 @@ function Workspace() {
   const [newDatabaseOpen,setNewDatabaseOpen]=useState(false);
   const [newDatabaseName,setNewDatabaseName]=useState("");
   const [creatingDatabase,setCreatingDatabase]=useState(false);
+  const pagesDatabasesEnabled=environment.ok&&environment.deploy!=="production"&&(environment.data==="demo"||process.env.NEXT_PUBLIC_AAA_PAGES_DATABASES==="true");
   const staging=environment.ok&&environment.data==="staging";
   const production=environment.ok&&environment.data==="production";
   const [productionEngineState,setProductionEngineState]=useState<DatabaseEngineState>("checking");
@@ -360,6 +363,8 @@ function Workspace() {
     section === "Calendar" || section === "Fluid Calendar";
   const contextual = calendarSection
     ? categories.map((c) => ({ id: c.name, title: c.name }))
+    : section === "Pages & Databases"
+      ? [{id:"pages",title:"Pages"},{id:"databases",title:"Databases"},{id:"relatabases",title:"Relatabases"},{id:"views",title:"Views"}]
     : section === "Developing IT"
       ? [{id:"widgets",title:"Widgets"},{id:"databases",title:"Databases"}]
     : section === "Library"
@@ -485,8 +490,9 @@ function Workspace() {
           <PanelRightOpen size={21} />
         </button>
       </header>
+      {mobileOpen&&section==="Pages & Databases"&&<button className="pd-drawer-backdrop" aria-label="Close navigation" tabIndex={-1} onClick={()=>setMobileOpen(false)}/>}
       <aside
-        className={`aaa-sidebar ${mobileOpen ? "aaa-sidebar-open" : ""} aaa-sidebar-nav-mode-${mobileSidebarMode}`}
+        className={`aaa-sidebar ${section==="Pages & Databases"?"pd-shell-drawer":""} ${mobileOpen ? "aaa-sidebar-open" : ""} aaa-sidebar-nav-mode-${mobileSidebarMode}`}
         aria-label="Workspace navigation"
         style={{"--aaa-mobile-nav-percent":mobileNavPercent+"%"} as CSSProperties}
       >
@@ -553,13 +559,14 @@ function Workspace() {
               { name: "Library", icon: LibraryBig, badge: "BETA" },
               { name: "Developing IT", icon: Settings2, badge: "BETA" },
               { name: "Databases", icon: Database, badge: "BETA" },
+              { name: "Pages & Databases", icon: BookOpen, badge: "BETA" },
               { name: "Workspaces", icon: Layers3, badge: "NA" },
               { name: "Resources", icon: BookOpen, badge: "NA" },
               { name: "Settings", icon: Settings2, badge: "GO" },
               { name: "Fluid Calendar", icon: Zap, badge: "BETA" },
               { name: "Think About It", icon: LibraryBig, badge: "BETA" },
             ] as const
-          ).filter(x=>x.name==="Fluid Calendar"?effective.fluidCalendar:x.name==="Think About It"?effective.thinkAboutIt:true).map(({ name, icon: Icon, badge }) => (
+          ).filter(x=>x.name==="Pages & Databases"?pagesDatabasesEnabled:x.name==="Fluid Calendar"?effective.fluidCalendar:x.name==="Think About It"?effective.thinkAboutIt:true).map(({ name, icon: Icon, badge }) => (
             <button
               key={name}
               title={collapsed?navigationLabel(name):undefined}
@@ -667,7 +674,7 @@ function Workspace() {
                   key={c.id}
                   className={"aaa-context-row " + (
                     (section==="Databases"&&(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id))||
-                    ((section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
+                    ((section==="Pages & Databases"||section==="Workspaces"||section==="Library"||section==="Goals"||section==="Developing IT")&&contextId===c.id)?"active":""
                   ) + (c.id==="writing-events"?" aaa-context-nested":"")}
                   title={collapsed?c.title:undefined}
                   aria-pressed={section === "Databases"?(engineEnabled||isDemo?stagingDatabaseId===c.id:databaseCategory===c.id):contextId===c.id||activeThought===c.id}
@@ -767,7 +774,9 @@ function Workspace() {
                 </div>
 
               </div>
-              {section === "Developing IT" && contextId === "databases" && isDemo ? (
+              {section === "Pages & Databases" && pagesDatabasesEnabled ? (
+                <PagesDatabasesWorkspace key={userId+":"+settings.account.activeProfileId} ownerId={userId} profileId={settings.account.activeProfileId} area={contextId||"pages"}/>
+              ) : section === "Developing IT" && contextId === "databases" && isDemo ? (
                 <DemoDatabaseWorkshop selectedDatabaseId={stagingDatabaseId} onSelectDatabase={setStagingDatabaseId} onDatabasesChange={()=>void refreshStagingDatabases()} onBuildWidget={id=>void buildWidgetFromDatabase(id)}/>
               ) : section === "Developing IT" && contextId === "databases" && engineEnabled ? (
                 <section className="aaa-widget-database-development">
