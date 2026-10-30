@@ -47,3 +47,5 @@ Remaining beyond this redesign: import/export UI, rich text/page block types bey
 - Deployed Demo Mode browser acceptance passes native Pages navigation, direct page opening, Era → Event → Moment expansion, opening a linked Perspective, creating A Hidden Warning inside The Blackout with a selected Type and Summary, and persistence after Reload.
 - The browser completed all four Guided Builder stages: created a database and Summary property, created Semester 1, saved a Nested Cards view with the Summary mapping, and created a finished page containing that live view.
 - Browser inspection caught and corrected explicit picker accessible names and theme contrast on badges/actions. Mobile touch gestures and authenticated hosted-browser persistence remain unverified.
+
+- Browser acceptance also creates New Student from a relationship endpoint picker, retains the unfinished Perspective Summary, and saves the new detailed link under the existing moment. Invalid forms now disable Save without incorrectly displaying a network-saving state.
