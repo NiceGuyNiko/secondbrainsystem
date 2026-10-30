@@ -39,3 +39,11 @@ Domain and PGlite integration tests cover canonical identities, bidirectional de
 Browser and remote verification results are recorded in the PR after deployment. Browser-local Demo Mode does not prove authenticated hosted persistence. Production activation still requires the checks in docs/DB-SCHEMA-RELEASE-GATE.md.
 
 Remaining beyond this redesign: import/export UI, rich text/page block types beyond text and live database views, free-page navigation-parent relationships, advanced sorting/filtering, pagination, offline synchronization and collaboration. Type migration history is stored but a user-facing undo/history browser is not yet provided. These are not represented as completed acceptance gates.
+
+### Acceptance evidence
+
+- All 296 repository tests pass; TypeScript, source schema contract, and the production build pass.
+- Staging's authenticated, rolled-back SQL smoke test passes atomic batches, typed values, Text-to-Select conversion, grouped view config, page embedding, and persisted builder state. No production DDL was applied.
+- Deployed Demo Mode browser acceptance passes native Pages navigation, direct page opening, Era → Event → Moment expansion, opening a linked Perspective, creating A Hidden Warning inside The Blackout with a selected Type and Summary, and persistence after Reload.
+- The browser completed all four Guided Builder stages: created a database and Summary property, created Semester 1, saved a Nested Cards view with the Summary mapping, and created a finished page containing that live view.
+- Browser inspection caught and corrected explicit picker accessible names and theme contrast on badges/actions. Mobile touch gestures and authenticated hosted-browser persistence remain unverified.
