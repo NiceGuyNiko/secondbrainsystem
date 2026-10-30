@@ -4603,3 +4603,7 @@ input[type="range"]{
 }
 .aaa-widget-preset-content .aaa-widget-record,
 .aaa-widget-preset-content .aaa-widget-record strong{min-width:0;overflow-wrap:anywhere}
+
+/* Native partial-width page navigation drawer. */
+.pd-drawer-backdrop{display:none}
+@media(max-width:767px){.pd-drawer-backdrop{display:block;position:fixed;inset:0;background:#0008;border:0;z-index:99}.aaa-sidebar.pd-shell-drawer.aaa-sidebar-open{width:min(86vw,340px)!important;right:auto!important;z-index:100!important;box-shadow:12px 0 40px #0005}}
